@@ -158,8 +158,8 @@ export default function DirectoryClient({
 
   if (selected)
     return (
-      <main className="h-dvh overflow-hidden bg-[var(--app-bg)] sm:p-6">
-        <section className="native-enter native-shadow mx-auto flex h-dvh max-w-xl flex-col overflow-hidden bg-white sm:h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
+      <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
+        <section className="native-enter native-shadow mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]">
           <div className="native-scroll min-h-0 flex-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="relative h-[62dvh] min-h-[360px] max-h-[600px] overflow-hidden bg-gradient-to-br from-[var(--app-brand)] to-[#07131d]">
               {selected.photoPath ? (
@@ -309,8 +309,8 @@ export default function DirectoryClient({
     );
 
   return (
-    <main className="h-dvh overflow-hidden bg-[var(--app-bg)] sm:p-6">
-      <section className="native-enter native-shadow relative mx-auto flex h-dvh max-w-xl flex-col overflow-hidden bg-white sm:h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
+    <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
+      <section className="native-enter native-shadow relative mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]">
         <header className="safe-top z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 pb-3 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -352,7 +352,7 @@ export default function DirectoryClient({
             )}
           </label>
         </div>
-        <div className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white">
           <p className="px-4 py-3 text-sm font-medium text-[var(--app-muted)]">
             {query
               ? `${results.length} ${results.length === 1 ? copy.result : copy.results}`
