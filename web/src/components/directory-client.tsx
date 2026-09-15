@@ -564,14 +564,13 @@ export default function DirectoryClient({
                             <ChevronRight className="size-4" />
                           </a>
                         )}
-                        {deacon.email && (
-                          <a
-                            className="flex min-h-11 items-center gap-2 break-all text-[var(--app-brand)]"
-                            href={`mailto:${deacon.email}`}
-                          >
-                            {deacon.email}
-                            <ChevronRight className="size-4 shrink-0" />
-                          </a>
+                        {!deacon.phone && (
+                          <p className="flex min-h-11 items-center gap-2">
+                            <Phone className="size-4 shrink-0" />
+                            <span>
+                              {copy.phone}: {copy.notProvided}
+                            </span>
+                          </p>
                         )}
                       </div>
                     ))}
