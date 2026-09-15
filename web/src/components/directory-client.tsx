@@ -335,12 +335,6 @@ export default function DirectoryClient({
             <div className="min-w-0">
               <h1 className="mt-0.5 text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--app-ink)] min-[375px]:text-[26px]">
                 {copy.memberDirectory}
-                <span
-                  aria-label={`${members.length} ${members.length === 1 ? copy.member : copy.members}`}
-                  className="ml-2 align-middle text-sm font-medium tracking-normal text-[var(--app-muted)]"
-                >
-                  {members.length}
-                </span>
               </h1>
             </div>
             <button
@@ -407,6 +401,9 @@ export default function DirectoryClient({
               {copy.noMembers}
             </div>
           )}
+          <p className="px-4 py-5 text-center text-sm text-[var(--app-muted)]">
+            {members.length} {copy.members}
+          </p>
         </div>
         {settingsOpen && (
           <div
