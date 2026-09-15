@@ -2,13 +2,23 @@ import BottomNavigation from "@/components/bottom-navigation";
 import GroupsBrowser from "@/components/groups-browser";
 import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
-import { loadDeaconGroups } from "@/lib/directory-data";
+import { loadDeaconGroups, loadDirectory } from "@/lib/directory-data";
 import { groupCopy } from "@/lib/group-copy";
+import { loadNavigationUser } from "@/lib/navigation-user";
 
 export default async function GroupsPage() {
   const { supabase, profile } = await requireActiveProfile();
   const locale = await getLocale();
   const groups = await loadDeaconGroups(supabase);
+  const deacons = await loadDirectory(supabase, [
+    ...new Set(
+      groups.flatMap((group) =>
+        group.deacons.flatMap((deacon) =>
+          deacon.personId ? [deacon.personId] : [],
+        ),
+      ),
+    ),
+  ]);
   const isDeacon = profile.ministry_roles.includes("deacon");
   const ledGroup = isDeacon
     ? groups.find((group) =>
@@ -29,11 +39,13 @@ export default async function GroupsPage() {
         </header>
         <GroupsBrowser
           groups={groups}
+          deacons={deacons}
           ledGroupId={ledGroup?.id}
           isDeacon={isDeacon}
           locale={locale}
         />
         <BottomNavigation
+          currentUser={await loadNavigationUser(supabase, profile)}
           role={profile.role}
           isPastor={profile.ministry_roles.includes("pastor")}
           isDeacon={isDeacon}

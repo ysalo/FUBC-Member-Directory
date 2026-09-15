@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth";
 import { dictionaries } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import MemberPhoto from "@/components/member-photo";
 
 export default async function AccessStatusPage({
   params,
@@ -44,9 +45,25 @@ export default async function AccessStatusPage({
           {message.title}
         </h1>
         <p className="mt-3 leading-7 text-slate-600">{message.body}</p>
-        <p className="mt-5 rounded-xl bg-slate-50 p-3 text-sm text-slate-500">
-          {copy.signedInAs} {profile.email}
-        </p>
+        <div className="mt-5 rounded-xl bg-[var(--app-surface-muted)] p-3 text-left">
+          <p className="mb-2 text-xs text-[var(--app-muted)]">
+            {copy.signedInAs}
+          </p>
+          <div className="flex items-center gap-3">
+            <MemberPhoto
+              name={profile.display_name || profile.email}
+              photoPath={profile.avatar_url}
+            />
+            <div className="min-w-0">
+              <p className="break-words text-sm font-semibold">
+                {profile.display_name || profile.email}
+              </p>
+              <p className="break-all text-xs text-[var(--app-muted)]">
+                {profile.email}
+              </p>
+            </div>
+          </div>
+        </div>
         <div className="mt-6">
           <SignOutButton label={copy.signOut} loadingLabel={copy.signingOut} />
         </div>

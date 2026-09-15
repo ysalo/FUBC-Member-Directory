@@ -12,9 +12,19 @@ const compiled = ts.transpileModule(source, {
     target: ts.ScriptTarget.ES2022,
   },
 }).outputText;
-const { visitTimeToIso, localVisitTime, formatVisitDate } = await import(
-  "data:text/javascript;base64," + Buffer.from(compiled).toString("base64")
-);
+const { visitTimeToIso, localVisitTime, formatVisitDate, visitCopy } =
+  await import(
+    "data:text/javascript;base64," + Buffer.from(compiled).toString("base64")
+  );
+test("all planning entry points and submit buttons use the same label", () => {
+  for (const [locale, label] of [
+    ["en", "Plan visit"],
+    ["uk", "Запланувати відвідування"],
+  ]) {
+    assert.equal(visitCopy(locale).request, label);
+    assert.equal(visitCopy(locale).submit, label);
+  }
+});
 test("visitation always uses fixed PDT in summer and winter", () => {
   assert.equal(visitTimeToIso("2026-09-15T12:30"), "2026-09-15T19:30:00.000Z");
   assert.equal(visitTimeToIso("2026-12-15T12:30"), "2026-12-15T19:30:00.000Z");

@@ -7,8 +7,12 @@ import {
   Menu,
   X,
   CalendarDays,
+  ChevronRight,
+  Languages,
+  Type,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import Link from "@/components/navigation-link";
 import LanguageSwitcher from "@/components/language-switcher";
@@ -19,6 +23,8 @@ import { groupCopy } from "@/lib/group-copy";
 import type { AppRole } from "@/lib/auth";
 import { pendingVisitCount } from "@/app/visitation/actions";
 import { visitCopy } from "@/lib/visitation";
+import MemberPhoto from "@/components/member-photo";
+import type { NavigationUser } from "@/lib/navigation-user";
 
 export default function BottomNavigation({
   role,
@@ -26,12 +32,14 @@ export default function BottomNavigation({
   isPastor = false,
   locale,
   fixed = false,
+  currentUser,
 }: {
   role: AppRole;
   isDeacon: boolean;
   isPastor?: boolean;
   locale: Locale;
   fixed?: boolean;
+  currentUser: NavigationUser;
 }) {
   const pathname = usePathname();
   const copy = dictionaries[locale];
@@ -70,15 +78,18 @@ export default function BottomNavigation({
   const dialog = useRef<HTMLElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    const saved =
-      window.localStorage.getItem("directory-text-size") === "large"
-        ? "large"
-        : "standard";
+    let saved = "standard";
+    try {
+      if (window.localStorage.getItem("directory-text-size") === "large")
+        saved = "large";
+    } catch {}
     document.documentElement.dataset.textSize = saved;
   }, []);
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const focusable = () =>
       Array.from(
         dialog.current?.querySelectorAll<HTMLElement>(
@@ -103,20 +114,16 @@ export default function BottomNavigation({
     document.addEventListener("keydown", key);
     return () => {
       document.removeEventListener("keydown", key);
+      document.body.style.overflow = overflow;
       previous?.focus();
     };
   }, [open]);
-  if (
-    /^\/admin\/[^/]+$/.test(pathname) &&
-    !["/admin/accounts", "/admin/groups"].includes(pathname)
-  )
-    return null;
   const tabs = [
     {
       href: "/",
       label: labels.directory,
       Icon: BookUser,
-      active: pathname === "/",
+      active: pathname === "/" || pathname.startsWith("/members"),
     },
     {
       href: "/groups",
@@ -190,6 +197,7 @@ export default function BottomNavigation({
               setOpen(true);
             }}
             aria-expanded={open}
+            aria-haspopup="dialog"
             className="bottom-navigation-item flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 font-medium text-[var(--app-muted)]"
           >
             <Menu className="bottom-navigation-icon" strokeWidth={1.75} />
@@ -197,64 +205,119 @@ export default function BottomNavigation({
           </button>
         </div>
       </nav>
-      {open && (
-        <div
-          className="native-fade fixed inset-0 z-[80] flex justify-end bg-[#07131d]/45"
-          onClick={() => setOpen(false)}
-        >
-          <aside
-            ref={dialog}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-title"
-            onClick={(e) => e.stopPropagation()}
-            className="safe-top safe-bottom native-enter flex h-dvh w-[min(88%,22rem)] flex-col overflow-y-auto bg-white px-5"
+      {open &&
+        createPortal(
+          <div
+            className="native-fade fixed inset-0 z-[80] flex justify-end bg-[#07131d]/45"
+            onClick={() => setOpen(false)}
           >
-            <div className="flex items-center justify-between border-b border-[var(--app-line)] pb-3">
-              <h2 id="settings-title" className="text-xl font-bold">
-                {copy.settings}
-              </h2>
-              <button
-                aria-label={copy.closeSettings}
-                onClick={() => setOpen(false)}
-                className="grid size-11 place-items-center"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <section className="border-b border-[var(--app-line)] py-5">
-              <h3 className="mb-3 font-medium">{copy.language}</h3>
-              <LanguageSwitcher locale={locale} />
-            </section>
-            <AppearanceSettings locale={locale} />
-            <section className="py-5">
-              <h3 className="mb-3 font-medium">{copy.textSize}</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {["standard", "large"].map((size) => (
-                  <button
-                    key={size}
-                    aria-pressed={size === textSize}
-                    onClick={() => {
-                      setTextSize(size);
-                      document.documentElement.dataset.textSize = size;
-                      window.localStorage.setItem("directory-text-size", size);
-                    }}
-                    className={`min-h-11 rounded-lg px-2 ${size === textSize ? "bg-[var(--app-surface-muted)] font-semibold" : "text-[var(--app-muted)]"}`}
-                  >
-                    {size === "large" ? copy.largerText : copy.standardText}
-                  </button>
-                ))}
+            <aside
+              ref={dialog}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="settings-title"
+              onClick={(e) => e.stopPropagation()}
+              className="safe-top safe-bottom native-enter flex h-dvh w-[min(92%,24rem)] flex-col overflow-y-auto border-l border-[var(--app-line)] bg-[var(--app-surface)] px-5 text-[var(--app-ink)] shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--app-line)] pb-3">
+                <h2 id="settings-title" className="text-xl font-bold">
+                  {copy.settings}
+                </h2>
+                <button
+                  aria-label={copy.closeSettings}
+                  onClick={() => setOpen(false)}
+                  className="grid size-11 place-items-center rounded-full bg-[var(--app-surface-muted)]"
+                >
+                  <X className="size-5" />
+                </button>
               </div>
-            </section>
-            <div className="mt-auto border-t border-[var(--app-line)] py-5">
-              <SignOutButton
-                label={copy.signOut}
-                loadingLabel={copy.signingOut}
-              />
-            </div>
-          </aside>
-        </div>
-      )}
+              <section className="my-5 rounded-2xl border border-[var(--app-line)] bg-[var(--app-brand-soft)] p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
+                  {copy.signedInAs}
+                </p>
+                {currentUser.personId ? (
+                  <Link
+                    href={`/members/${currentUser.personId}`}
+                    onClick={() => setOpen(false)}
+                    className="flex min-h-11 items-center gap-3 rounded-xl"
+                  >
+                    <MemberPhoto
+                      name={currentUser.name}
+                      photoPath={currentUser.photoPath}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words font-semibold">
+                        {currentUser.name}
+                      </span>
+                      <span className="block text-xs text-[var(--app-brand)]">
+                        {copy.memberProfile}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="size-5 shrink-0"
+                    />
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <MemberPhoto
+                      name={currentUser.name}
+                      photoPath={currentUser.photoPath}
+                    />
+                    <span className="min-w-0 break-words font-semibold">
+                      {currentUser.name}
+                    </span>
+                  </div>
+                )}
+                <p className="mt-3 break-all text-sm text-[var(--app-muted)]">
+                  {currentUser.email}
+                </p>
+              </section>
+              <section className="border-b border-[var(--app-line)] py-5">
+                <h3 className="mb-3 flex items-center gap-2 font-medium">
+                  <Languages aria-hidden="true" className="size-4" />
+                  {copy.language}
+                </h3>
+                <LanguageSwitcher locale={locale} />
+              </section>
+              <AppearanceSettings locale={locale} />
+              <section className="py-5">
+                <h3 className="mb-3 flex items-center gap-2 font-medium">
+                  <Type aria-hidden="true" className="size-4" />
+                  {copy.textSize}
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {["standard", "large"].map((size) => (
+                    <button
+                      key={size}
+                      aria-pressed={size === textSize}
+                      onClick={() => {
+                        setTextSize(size);
+                        document.documentElement.dataset.textSize = size;
+                        try {
+                          window.localStorage.setItem(
+                            "directory-text-size",
+                            size,
+                          );
+                        } catch {}
+                      }}
+                      className={`min-h-11 rounded-lg px-2 ${size === textSize ? "bg-[var(--app-surface-muted)] font-semibold" : "text-[var(--app-muted)]"}`}
+                    >
+                      {size === "large" ? copy.largerText : copy.standardText}
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <div className="mt-auto border-t border-[var(--app-line)] py-5">
+                <SignOutButton
+                  label={copy.signOut}
+                  loadingLabel={copy.signingOut}
+                />
+              </div>
+            </aside>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

@@ -3,8 +3,8 @@ import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { visitCopy, formatVisitDate, type Visit } from "@/lib/visitation";
 import { CalendarDays, ChevronRight, Search, X } from "lucide-react";
-import MemberPhoto from "@/components/member-photo";
-import { loadVisitPhotos } from "@/lib/visit-photos";
+import VisitMemberLink from "@/components/visit-member-link";
+import { loadVisitIdentities } from "@/lib/member-profile-data";
 export default async function VisitationPage({
   searchParams,
 }: {
@@ -19,7 +19,7 @@ export default async function VisitationPage({
     .order("scheduled_at");
   if (error) throw new Error("Unable to load visitation");
   const query = (await searchParams).q?.trim() ?? "";
-  const visits = ((data ?? []) as Visit[]).filter((v) =>
+  const filteredVisits = ((data ?? []) as Visit[]).filter((v) =>
     [
       v.member_name,
       v.pastor_name,
@@ -31,10 +31,7 @@ export default async function VisitationPage({
       .toLocaleLowerCase(locale)
       .includes(query.toLocaleLowerCase(locale)),
   );
-  const photos = await loadVisitPhotos(
-    supabase,
-    visits.map((v) => v.person_id),
-  );
+  const visits = await loadVisitIdentities(supabase, filteredVisits);
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 py-5">
@@ -105,37 +102,57 @@ export default async function VisitationPage({
                   (r) => r.deacon_id === profile.id,
                 );
                 return (
-                  <Link
+                  <article
                     key={v.id}
-                    href={"/visitation/" + v.id}
-                    className="relative block rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-4 pr-9 hover:bg-[var(--app-brand-soft)]"
+                    className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-4"
                   >
-                    <span className="flex items-center gap-3">
-                      <MemberPhoto
+                    <h3 className="text-lg font-semibold">
+                      <VisitMemberLink
+                        personId={v.member_available ? v.person_id : null}
                         name={v.member_name}
-                        photoPath={photos.get(v.person_id)}
+                        photoPath={v.member_photo}
+                        showPhoto
+                        locale={locale}
                       />
-                      <span className="min-w-0 break-words text-lg font-semibold">
-                        {v.member_name}
-                      </span>
-                    </span>
-                    <span className="my-2 flex items-center gap-2 text-sm font-medium">
+                    </h3>
+                    <Link
+                      href={"/visitation/" + v.id}
+                      className="my-2 flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-[var(--app-brand)] underline-offset-4 hover:underline"
+                    >
                       <CalendarDays
                         aria-hidden="true"
                         className="size-4 shrink-0 text-[var(--app-brand)]"
                       />
                       {formatVisitDate(v.scheduled_at, locale)}
-                    </span>
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="absolute right-3 top-5 size-4 text-[var(--app-muted)]"
-                    />
-                    <span className="block break-words text-sm text-[var(--app-muted)]">
-                      {c[v.status]} ·{" "}
-                      {v.visit_recipients
-                        .map((r) => r.deacon_name + ": " + c[r.response])
-                        .join(" · ")}
-                    </span>
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="ml-auto size-4 shrink-0"
+                      />
+                    </Link>
+                    <p className="text-sm text-[var(--app-muted)]">
+                      {c.requester}:{" "}
+                      <VisitMemberLink
+                        personId={v.pastor_person_id}
+                        name={v.pastor_name}
+                        locale={locale}
+                      />
+                    </p>
+                    <p className="mt-2 text-sm text-[var(--app-muted)]">
+                      {c[v.status]}
+                    </p>
+                    <ul className="space-y-1 text-sm text-[var(--app-muted)]">
+                      {v.visit_recipients.map((recipient) => (
+                        <li key={recipient.deacon_id}>
+                          <VisitMemberLink
+                            personId={recipient.deacon_person_id}
+                            name={recipient.deacon_name}
+                            locale={locale}
+                          />
+                          {": "}
+                          {c[recipient.response]}
+                        </li>
+                      ))}
+                    </ul>
                     {v.status === "open" &&
                       v.visit_recipients.some(
                         (r) => r.response === "accepted",
@@ -147,7 +164,7 @@ export default async function VisitationPage({
                           {c.updated}
                         </span>
                       )}
-                  </Link>
+                  </article>
                 );
               })}
             </div>

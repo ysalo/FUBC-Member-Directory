@@ -2,6 +2,8 @@ import type { Locale } from "./i18n";
 export type VisitRecipient = {
   deacon_id: string;
   deacon_name: string;
+  deacon_person_id?: string | null;
+  deacon_photo?: string | null;
   response: "pending" | "accepted" | "declined";
   decline_reason: string;
   last_viewed_revision: number;
@@ -11,9 +13,12 @@ export type Visit = {
   pastor_id: string;
   person_id: string;
   pastor_name: string;
+  pastor_person_id?: string | null;
+  pastor_photo?: string | null;
   member_name: string;
   member_address: string;
   member_photo?: string | null;
+  member_available?: boolean;
   location: string;
   scheduled_at: string;
   notes: string;
@@ -22,11 +27,17 @@ export type Visit = {
   updated_fields: string[];
   visit_recipients: VisitRecipient[];
 };
-export type VisitDeacon = { id: string; name: string; group_id: string | null };
+export type VisitDeacon = {
+  id: string;
+  name: string;
+  group_id: string | null;
+  person_id?: string | null;
+  photo_path?: string | null;
+};
 const en = {
   title: "Visitation",
   requester: "Planned by",
-  request: "Plan a visit",
+  request: "Plan visit",
   edit: "Edit planned visit",
   mine: "My planned visits",
   invitations: "Invitations",
@@ -45,7 +56,7 @@ const en = {
   noResults: "No matches found.",
   pendingRequests: "visits awaiting response",
   save: "Save changes",
-  submit: "Schedule visit",
+  submit: "Plan visit",
   accept: "Accept",
   decline: "Decline",
   reason: "Decline reason (optional)",

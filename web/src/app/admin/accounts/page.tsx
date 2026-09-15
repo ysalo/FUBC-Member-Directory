@@ -1,11 +1,12 @@
-import Link from "@/components/navigation-link";
+import BackButton from "@/components/back-button";
+import VisitMemberLink from "@/components/visit-member-link";
+import { loadVisitPhotos } from "@/lib/visit-photos";
 import {
   requireAdmin,
   type AccountProfile,
   type AccountStatus,
 } from "@/lib/auth";
 import { reviewAccount } from "./actions";
-import LanguageSwitcher from "@/components/language-switcher";
 import { t, type TranslationKey } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
@@ -39,16 +40,17 @@ const sectionKeys: {
 export default async function AccountsPage() {
   const locale = await getLocale();
   const { supabase } = await requireAdmin();
-  const [{ data: profileRows, error }, { data: people }] = await Promise.all([
-    supabase.from("profiles").select("*").order("created_at"),
-    supabase
-      .from("people")
-      .select("id, first_name, last_name, archived_at")
-      .is("archived_at", null)
-      .order("last_name")
-      .order("first_name"),
-  ]);
-  if (error) throw new Error("Unable to load account requests.");
+  const [{ data: profileRows, error }, { data: people, error: peopleError }] =
+    await Promise.all([
+      supabase.from("profiles").select("*").order("created_at"),
+      supabase
+        .from("people")
+        .select("id, first_name, last_name, archived_at")
+        .is("archived_at", null)
+        .order("last_name")
+        .order("first_name"),
+    ]);
+  if (error || peopleError) throw new Error("Unable to load account requests.");
   const profiles = (profileRows ?? []) as AccountProfile[];
   const memberNames = new Map(
     (people ?? []).map((person) => [
@@ -60,18 +62,18 @@ export default async function AccountsPage() {
     (account.person_id ? memberNames.get(account.person_id) : null) ||
     account.display_name ||
     t(locale, "unnamedAccount");
+  const photos = await loadVisitPhotos(
+    supabase,
+    profiles.flatMap((account) =>
+      account.person_id ? [account.person_id] : [],
+    ),
+  );
 
   return (
     <main className="safe-page min-h-dvh p-4 sm:p-8">
       <section className="native-enter mx-auto max-w-5xl">
         <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 min-[430px]:flex-row min-[430px]:items-center">
-          <Link
-            href="/admin"
-            aria-label={t(locale, "backToManagement")}
-            className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-2xl font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            ←
-          </Link>
+          <BackButton href="/admin" label={t(locale, "backToManagement")} />
           <div className="min-w-0 flex-1">
             <p className="font-medium text-[var(--app-accent)]">
               {t(locale, "administratorOnly")}
@@ -83,7 +85,6 @@ export default async function AccountsPage() {
               {t(locale, "accountAccessHelp")}
             </p>
           </div>
-          <LanguageSwitcher locale={locale} />
         </header>
         <div className="mt-8 space-y-8">
           {sectionKeys.map((section) => {
@@ -108,12 +109,20 @@ export default async function AccountsPage() {
                       className="rounded-2xl bg-white p-4 shadow-sm sm:p-5"
                     >
                       <div className="flex min-w-0 items-start gap-3">
-                        <div className="grid size-11 shrink-0 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">
-                          {accountName(account).slice(0, 1).toUpperCase()}
-                        </div>
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-slate-900">
-                            {accountName(account)}
+                            <VisitMemberLink
+                              personId={
+                                account.person_id &&
+                                memberNames.has(account.person_id)
+                                  ? account.person_id
+                                  : null
+                              }
+                              name={accountName(account)}
+                              photoPath={photos.get(account.person_id ?? "")}
+                              showPhoto
+                              locale={locale}
+                            />
                           </p>
                           <p className="truncate text-sm text-slate-500">
                             {account.email}

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Search, X } from "lucide-react";
-import MemberPhoto from "@/components/member-photo";
+import VisitMemberLink from "@/components/visit-member-link";
 import { useRouter } from "next/navigation";
 import { mutateVisit } from "@/app/visitation/actions";
 import {
@@ -17,6 +17,7 @@ type VisitMember = {
   address: string;
   groupId: string | null;
   photoPath?: string | null;
+  available?: boolean;
 };
 export default function VisitForm({
   member,
@@ -93,27 +94,25 @@ export default function VisitForm({
         {!member && !visit ? (
           <section className="min-w-0" aria-label={c.person}>
             <h2 className="font-medium">{c.person}</h2>
-            <button
-              type="button"
-              aria-expanded={choosing}
-              onClick={() => setChoosing(!choosing)}
-              className={`${input} flex items-center justify-between gap-3 text-left`}
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                {person && (
-                  <MemberPhoto
-                    name={person.name}
-                    photoPath={person.photoPath}
-                  />
-                )}
-                <span className="min-w-0 break-words">
-                  {person?.name ?? c.choosePerson}
-                </span>
-              </span>
-              <span className="shrink-0 text-sm text-[var(--app-brand)]">
-                {person ? c.change : "⌄"}
-              </span>
-            </button>
+            <div className={`${input} flex items-center justify-between gap-3`}>
+              {person && (
+                <VisitMemberLink
+                  personId={person.id}
+                  name={person.name}
+                  photoPath={person.photoPath}
+                  showPhoto
+                  locale={locale}
+                />
+              )}
+              <button
+                type="button"
+                aria-expanded={choosing}
+                onClick={() => setChoosing(!choosing)}
+                className="min-h-11 shrink-0 rounded-md px-2 text-sm text-[var(--app-brand)]"
+              >
+                {person ? c.change : c.choosePerson}
+              </button>
+            </div>
             {choosing && (
               <div className="mt-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-3">
                 <div className="directory-search flex min-h-11 items-center gap-3 border-b border-[var(--app-line)] px-1">
@@ -150,33 +149,43 @@ export default function VisitForm({
                         .includes(query.trim().toLocaleLowerCase(locale)),
                     )
                     .map((m) => (
-                      <button
-                        type="button"
+                      <div
                         key={m.id}
-                        aria-pressed={person?.id === m.id}
-                        className="flex min-h-12 w-full items-center justify-between gap-3 border-b border-[var(--app-line)] px-2 py-3 text-left hover:bg-[var(--app-brand-soft)]"
-                        onClick={() => {
-                          setPerson(m);
-                          setLocation(m.address);
-                          setSelected(
-                            deacons
-                              .filter(
-                                (d) => m.groupId && d.group_id === m.groupId,
-                              )
-                              .map((d) => d.id),
-                          );
-                          setChoosing(false);
-                          setQuery("");
-                        }}
+                        className="flex min-h-12 items-center justify-between gap-3 border-b border-[var(--app-line)] px-2 py-3"
                       >
-                        <span className="flex min-w-0 items-center gap-3">
-                          <MemberPhoto name={m.name} photoPath={m.photoPath} />
-                          <span className="break-words">{m.name}</span>
-                        </span>
-                        {person?.id === m.id && (
-                          <span aria-hidden="true">✓</span>
-                        )}
-                      </button>
+                        <VisitMemberLink
+                          personId={m.id}
+                          name={m.name}
+                          photoPath={m.photoPath}
+                          showPhoto
+                          locale={locale}
+                        />
+                        <button
+                          type="button"
+                          aria-label={`${c.choosePerson}: ${m.name}`}
+                          aria-pressed={person?.id === m.id}
+                          className="min-h-11 shrink-0 rounded-md px-3 text-sm text-[var(--app-brand)] hover:bg-[var(--app-brand-soft)]"
+                          onClick={() => {
+                            setPerson(m);
+                            setLocation(m.address);
+                            setSelected(
+                              deacons
+                                .filter(
+                                  (d) => m.groupId && d.group_id === m.groupId,
+                                )
+                                .map((d) => d.id),
+                            );
+                            setChoosing(false);
+                            setQuery("");
+                          }}
+                        >
+                          {person?.id === m.id
+                            ? "✓"
+                            : locale === "uk"
+                              ? "Обрати"
+                              : "Select"}
+                        </button>
+                      </div>
                     ))}
                   {!members.some((m) =>
                     m.name
@@ -196,11 +205,16 @@ export default function VisitForm({
           </section>
         ) : (
           <section className="flex items-center gap-3 rounded-2xl bg-[var(--app-surface-muted)] p-4">
-            {person && (
-              <MemberPhoto name={person.name} photoPath={person.photoPath} />
-            )}
             <h2 className="min-w-0 text-xl font-semibold break-words">
-              {person?.name}
+              {person && (
+                <VisitMemberLink
+                  personId={person.available === false ? null : person.id}
+                  name={person.name}
+                  photoPath={person.photoPath}
+                  showPhoto
+                  locale={locale}
+                />
+              )}
             </h2>
           </section>
         )}
@@ -227,12 +241,13 @@ export default function VisitForm({
                           Number(a.group_id === person.groupId),
                       )
                       .map((d) => (
-                        <label
+                        <div
                           key={d.id}
                           className="flex min-h-12 items-center gap-3 break-words"
                         >
                           <input
                             type="checkbox"
+                            aria-label={d.name}
                             name="deacon"
                             value={d.id}
                             checked={selected.includes(d.id)}
@@ -248,12 +263,36 @@ export default function VisitForm({
                             }
                             className="size-5 shrink-0"
                           />
-                          {d.name}
-                        </label>
+                          <VisitMemberLink
+                            personId={d.person_id}
+                            name={d.name}
+                            photoPath={d.photo_path}
+                            showPhoto
+                            locale={locale}
+                          />
+                        </div>
                       ))}
                   </>
                 )}
               </fieldset>
+            )}
+            {visit && (
+              <section className="rounded-2xl border border-[var(--app-line)] p-4">
+                <h2 className="mb-3 font-semibold">{c.recipients}</h2>
+                <ul className="space-y-3">
+                  {visit.visit_recipients.map((recipient) => (
+                    <li key={recipient.deacon_id}>
+                      <VisitMemberLink
+                        personId={recipient.deacon_person_id}
+                        name={recipient.deacon_name}
+                        photoPath={recipient.deacon_photo}
+                        showPhoto
+                        locale={locale}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
             <label className="block font-medium">
               {c.location}

@@ -20,6 +20,11 @@ import { upcomingBirthdays, ageOn, membershipDuration } from "@/lib/birthdays";
 import type { AppRole } from "@/lib/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dictionaries, type Locale } from "@/lib/i18n";
+import { useRouter } from "next/navigation";
+import BackButton from "@/components/back-button";
+import MemberPhoto from "@/components/member-photo";
+import type { NavigationUser } from "@/lib/navigation-user";
+import { visitCopy } from "@/lib/visitation";
 
 export type DirectoryPerson = {
   id: string;
@@ -90,6 +95,9 @@ export default function DirectoryClient({
   today = "",
   showBirthdays = false,
   birthdayNotificationKey,
+  currentUser,
+  initialMember,
+  backHref = "/",
 }: {
   members: DirectoryPerson[];
   role: AppRole;
@@ -100,12 +108,15 @@ export default function DirectoryClient({
   today?: string;
   showBirthdays?: boolean;
   birthdayNotificationKey?: string;
+  currentUser: NavigationUser;
+  initialMember?: DirectoryPerson;
+  backHref?: string;
 }) {
   const copy = dictionaries[locale];
+  const router = useRouter();
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<DirectoryPerson | null>(null);
+  const selected = initialMember;
   const [photoOpen, setPhotoOpen] = useState(false);
-  const [unlinkedDeacon, setUnlinkedDeacon] = useState<string | null>(null);
   const [view, setView] = useState<"members" | "birthdays">("members");
   const [badgeFilters, setBadgeFilters] = useState({
     widowed: false,
@@ -136,7 +147,6 @@ export default function DirectoryClient({
     };
   }, [filtersOpen]);
   const listRef = useRef<HTMLDivElement>(null);
-  const savedScroll = useRef(0);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const labels = groupCopy(locale);
   const scopeGroups = deaconGroups;
@@ -160,19 +170,14 @@ export default function DirectoryClient({
     },
   ];
   const birthdays = today ? upcomingBirthdays(scopedMembers, today) : [];
-  const openMember = (person: DirectoryPerson) => {
-    savedScroll.current = listRef.current?.scrollTop ?? 0;
-    setSelected(person);
+  const memberHref = (person: DirectoryPerson) => {
+    const group = deaconGroups?.[0];
+    return `/members/${person.id}${group ? `?group=${group.id}` : ""}`;
   };
   const returnToDirectory = () => {
     setPhotoOpen(false);
-    setSelected(null);
+    router.push(backHref);
   };
-  useEffect(() => {
-    if (!selected && !unlinkedDeacon && listRef.current)
-      listRef.current.scrollTop = savedScroll.current;
-  }, [selected, unlinkedDeacon]);
-
   const dateLocale = locale === "uk" ? "uk-UA" : "en-US";
   const tenure = selected
     ? membershipDuration(selected.membershipJoinedAt, today)
@@ -281,26 +286,6 @@ export default function DirectoryClient({
     return [...grouped.entries()];
   }, [nameLocale, results]);
 
-  if (unlinkedDeacon)
-    return (
-      <main className="fixed inset-0 h-dvh bg-[var(--app-bg)] sm:p-6">
-        <section className="safe-top native-enter mx-auto h-full max-w-xl bg-white px-5 sm:rounded-[2rem]">
-          <button
-            onClick={() => setUnlinkedDeacon(null)}
-            aria-label={labels.backToGroups}
-            className="grid size-11 place-items-center text-2xl"
-          >
-            ←
-          </button>
-          <h1 className="mt-5 text-2xl font-semibold">{unlinkedDeacon}</h1>
-          <p className="mt-6 flex items-center gap-3 text-[var(--app-muted)]">
-            <Phone className="size-5" />
-            {copy.phone}: {copy.notProvided}
-          </p>
-        </section>
-      </main>
-    );
-
   if (selected)
     return (
       <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
@@ -363,13 +348,14 @@ export default function DirectoryClient({
                 className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(7,19,29,0.12)_0%,transparent_22%,transparent_48%,rgba(7,19,29,0.01)_56%,rgba(7,19,29,0.04)_64%,rgba(7,19,29,0.10)_72%,rgba(7,19,29,0.22)_80%,rgba(7,19,29,0.42)_88%,rgba(7,19,29,0.65)_95%,rgba(7,19,29,0.82)_100%)]"
               />
               <div className="safe-top absolute inset-x-0 top-0 z-10 flex items-start justify-between px-4">
-                <button
-                  onClick={returnToDirectory}
-                  aria-label={copy.backToDirectory}
-                  className="grid size-11 shrink-0 place-items-center rounded-full border border-white/15 bg-[#07131d]/65 text-2xl font-medium text-white shadow-lg backdrop-blur-xl hover:bg-[#07131d]/80"
-                >
-                  ←
-                </button>
+                <BackButton
+                  href={backHref}
+                  label={
+                    backHref.startsWith("/groups/")
+                      ? labels.backToGroups
+                      : copy.backToDirectory
+                  }
+                />
               </div>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-5 pb-6 pt-14 text-left">
                 <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[30px] font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-md min-[375px]:text-[34px]">
@@ -385,7 +371,7 @@ export default function DirectoryClient({
                   href={`/visitation/new?person=${selected.id}`}
                   className="flex min-h-12 items-center justify-center rounded-xl bg-[var(--app-brand)] px-4 py-3 font-semibold text-white"
                 >
-                  {locale === "uk" ? "Запросити відвідування" : "Request visit"}
+                  {visitCopy(locale).request}
                 </Link>
               )}
               <div className="flex min-h-14 items-center gap-4 py-1">
@@ -522,6 +508,13 @@ export default function DirectoryClient({
               </div>
             </div>
           </div>
+          <BottomNavigation
+            currentUser={currentUser}
+            role={role}
+            isDeacon={isDeacon}
+            isPastor={isPastor}
+            locale={locale}
+          />
         </section>
         {photoOpen && selected.photoPath && (
           <div
@@ -640,16 +633,7 @@ export default function DirectoryClient({
             {deaconGroups ? labels.myGroups : copy.memberDirectory}
           </h1>
           {deaconGroups && (
-            <Link
-              href="/groups"
-              aria-label={labels.backToGroups}
-              className="flex min-h-11 w-fit items-center gap-2 text-sm text-[var(--app-brand)]"
-            >
-              <span aria-hidden className="text-xl">
-                ←
-              </span>
-              {labels.browseGroups}
-            </Link>
+            <BackButton href="/groups" label={labels.backToGroups} />
           )}
         </div>
         {!deaconGroups && searchBar}
@@ -669,48 +653,74 @@ export default function DirectoryClient({
                   <h2 className="break-words text-xl font-semibold leading-tight">
                     {group.name}
                   </h2>
-                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                    {labels.responsibleDeacons}
-                  </p>
-                  {group.deacons.map((deacon) => (
-                    <button
-                      key={deacon.id}
-                      disabled={deacon.status !== "active"}
-                      onClick={() => {
+                  <div className="mt-4 rounded-2xl border border-[var(--app-line)] bg-[var(--app-brand-soft)] p-4">
+                    <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--app-brand)]">
+                      <UsersRound aria-hidden="true" className="size-5" />
+                      {labels.responsibleDeacons}
+                    </p>
+                    <div className="space-y-2">
+                      {group.deacons.map((deacon) => {
                         const person = members.find(
-                          (person) => person.id === deacon.personId,
+                          (member) => member.id === deacon.personId,
                         );
-                        if (person) openMember(person);
-                        else {
-                          savedScroll.current = listRef.current?.scrollTop ?? 0;
-                          setUnlinkedDeacon(deacon.name);
-                        }
-                      }}
-                      className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left text-sm disabled:text-[var(--app-muted)]"
-                    >
-                      <span>
-                        {deacon.name}
-                        {deacon.status !== "active" && (
-                          <span> — {labels.inactive}</span>
-                        )}
-                      </span>
-                      {deacon.status === "active" && (
-                        <ChevronRight className="size-5 shrink-0 text-slate-300" />
-                      )}
-                    </button>
-                  ))}
-                  {group.deacons.length < 2 && (
-                    <div className="text-sm text-[var(--app-muted)]">
-                      {Array.from(
-                        { length: 2 - group.deacons.length },
-                        (_, index) => (
-                          <p key={index} className="flex min-h-11 items-center">
-                            {labels.deacon}: {labels.none}
-                          </p>
-                        ),
-                      )}
+                        const content = (
+                          <>
+                            <MemberPhoto
+                              name={person?.name || deacon.name}
+                              photoPath={person?.photoPath}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block break-words text-base font-semibold">
+                                {person?.name || deacon.name}
+                              </span>
+                              <span className="block text-xs text-[var(--app-muted)]">
+                                {labels.deacon}
+                                {deacon.status !== "active"
+                                  ? ` · ${labels.inactive}`
+                                  : ""}
+                                {!person ? ` · ${copy.notLinked}` : ""}
+                              </span>
+                            </span>
+                          </>
+                        );
+                        return person ? (
+                          <Link
+                            key={deacon.id}
+                            href={`/members/${person.id}?group=${group.id}`}
+                            className="flex min-h-16 items-center gap-3 rounded-xl bg-[var(--app-surface)] p-3 shadow-sm hover:bg-[var(--app-surface-muted)]"
+                          >
+                            {content}
+                            <ChevronRight
+                              aria-hidden="true"
+                              className="size-5 shrink-0 text-[var(--app-brand)]"
+                            />
+                          </Link>
+                        ) : (
+                          <div
+                            key={deacon.id}
+                            className="flex min-h-16 items-center gap-3 rounded-xl bg-[var(--app-surface)] p-3"
+                          >
+                            {content}
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
+                    {group.deacons.length < 2 && (
+                      <div className="text-sm text-[var(--app-muted)]">
+                        {Array.from(
+                          { length: 2 - group.deacons.length },
+                          (_, index) => (
+                            <p
+                              key={index}
+                              className="flex min-h-11 items-center"
+                            >
+                              {labels.deacon}: {labels.none}
+                            </p>
+                          ),
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </section>
               ))}
               <div className="-mx-4">
@@ -769,9 +779,9 @@ export default function DirectoryClient({
                         (member) => member.id === birthday.id,
                       )!;
                       return (
-                        <button
+                        <Link
                           key={birthday.id}
-                          onClick={() => openMember(person)}
+                          href={memberHref(person)}
                           className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm"
                         >
                           <span>
@@ -788,7 +798,7 @@ export default function DirectoryClient({
                               timeZone: "UTC",
                             }).format(new Date(birthday.date + "T00:00:00Z"))}
                           </span>
-                        </button>
+                        </Link>
                       );
                     })}
                     {!visibleBirthdays.length && (
@@ -809,9 +819,9 @@ export default function DirectoryClient({
                   </h2>
                   <div className="divide-y divide-[var(--app-line)] pl-4">
                     {people.map((person) => (
-                      <button
+                      <Link
                         key={person.id}
-                        onClick={() => openMember(person)}
+                        href={memberHref(person)}
                         className="flex min-h-[68px] w-full items-center gap-3 py-2.5 pr-2 text-left hover:bg-[var(--app-brand-soft)] active:bg-[#d9e9f3]"
                       >
                         <Avatar person={person} />
@@ -830,7 +840,7 @@ export default function DirectoryClient({
                         <span aria-hidden className="text-xl text-slate-300">
                           ›
                         </span>
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 </section>
@@ -854,6 +864,7 @@ export default function DirectoryClient({
           </dl>
         </div>
         <BottomNavigation
+          currentUser={currentUser}
           role={role}
           isDeacon={isDeacon}
           isPastor={isPastor}

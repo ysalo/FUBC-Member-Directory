@@ -6,6 +6,8 @@ import { getLocale } from "@/lib/locale";
 import VisitForm from "@/components/visit-form";
 import VisitBack from "@/components/visit-back";
 import { visitCopy, type VisitDeacon } from "@/lib/visitation";
+import { loadMemberProfileIds } from "@/lib/member-profile-data";
+import { loadVisitPhotos } from "@/lib/visit-photos";
 export default async function NewVisit({
   searchParams,
 }: {
@@ -21,6 +23,12 @@ export default async function NewVisit({
     getLocale(),
   ]);
   if (result.error) throw new Error("Unable to load deacons");
+  const deacons = (result.data ?? []) as VisitDeacon[];
+  const identities = await loadMemberProfileIds(
+    supabase,
+    deacons.map((deacon) => deacon.id),
+  );
+  const photos = await loadVisitPhotos(supabase, [...identities.values()]);
   const member = person ? members[0] : undefined;
   if (person && !member) notFound();
   return (
@@ -32,7 +40,11 @@ export default async function NewVisit({
       <VisitForm
         member={member}
         members={person ? [] : members}
-        deacons={(result.data ?? []) as VisitDeacon[]}
+        deacons={deacons.map((deacon) => ({
+          ...deacon,
+          person_id: identities.get(deacon.id) ?? null,
+          photo_path: photos.get(identities.get(deacon.id) ?? ""),
+        }))}
         locale={locale}
         submission={randomUUID()}
       />

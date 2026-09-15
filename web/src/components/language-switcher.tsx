@@ -1,36 +1,46 @@
 "use client";
 
-import type { Locale } from "@/lib/i18n";
+import { Check, Languages } from "lucide-react";
+import { dictionaries, type Locale } from "@/lib/i18n";
 
-export default function LanguageSwitcher({ locale }: { locale: Locale }) {
-  function select(nextLocale: Locale) {
-    if (nextLocale === locale) return;
-    document.cookie = `app_locale=${nextLocale}; Max-Age=31536000; Path=/; SameSite=Lax`;
-    window.location.reload();
-  }
+function selectLocale(nextLocale: Locale) {
+  document.cookie = `app_locale=${nextLocale}; Max-Age=31536000; Path=/; SameSite=Lax`;
+  window.location.reload();
+}
 
+export default function LanguageSwitcher({
+  locale,
+  compact = false,
+}: {
+  locale: Locale;
+  compact?: boolean;
+}) {
+  const copy = dictionaries[locale];
   return (
     <div
-      className="inline-flex shrink-0 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-1"
+      className={`grid min-w-0 grid-cols-2 gap-1 rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-1 ${compact ? "w-full" : ""}`}
       role="group"
-      aria-label={locale === "uk" ? "Мова" : "Language"}
+      aria-label={copy.language}
     >
-      <button
-        type="button"
-        onClick={() => select("en")}
-        aria-pressed={locale === "en"}
-        className={`min-h-11 min-w-11 rounded-lg px-2 text-sm font-semibold ${locale === "en" ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
-      >
-        EN
-      </button>
-      <button
-        type="button"
-        onClick={() => select("uk")}
-        aria-pressed={locale === "uk"}
-        className={`min-h-11 min-w-11 rounded-lg px-2 text-sm font-semibold ${locale === "uk" ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
-      >
-        УКР
-      </button>
+      {(["en", "uk"] as const).map((value) => (
+        <button
+          key={value}
+          type="button"
+          lang={value}
+          onClick={() => {
+            if (value !== locale) selectLocale(value);
+          }}
+          aria-pressed={locale === value}
+          className={`flex min-h-11 min-w-0 flex-wrap items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-semibold focus-visible:outline-[var(--app-brand)] ${locale === value ? "bg-[var(--app-surface)] text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)] hover:bg-[var(--app-surface)]"}`}
+        >
+          {locale === value ? (
+            <Check aria-hidden="true" className="size-4 shrink-0" />
+          ) : (
+            <Languages aria-hidden="true" className="size-4 shrink-0" />
+          )}
+          <span>{value === "en" ? copy.english : copy.ukrainian}</span>
+        </button>
+      ))}
     </div>
   );
 }

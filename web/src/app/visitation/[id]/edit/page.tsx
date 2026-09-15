@@ -4,7 +4,7 @@ import { getLocale } from "@/lib/locale";
 import { visitCopy, type Visit } from "@/lib/visitation";
 import VisitForm from "@/components/visit-form";
 import VisitBack from "@/components/visit-back";
-import { loadVisitPhotos } from "@/lib/visit-photos";
+import { loadVisitIdentities } from "@/lib/member-profile-data";
 export default async function EditVisit({
   params,
 }: {
@@ -20,12 +20,9 @@ export default async function EditVisit({
     .maybeSingle();
   if (error) throw new Error("Unable to load visit");
   if (!data || data.pastor_id !== profile.id) notFound();
-  const v = data as Visit;
+  const [v] = await loadVisitIdentities(supabase, [data as Visit]);
   if (v.status !== "open") redirect("/visitation/" + id);
   const locale = await getLocale();
-  const photo = (await loadVisitPhotos(supabase, [v.person_id])).get(
-    v.person_id,
-  );
   return (
     <>
       <VisitBack locale={locale} href={`/visitation/${id}`} />
@@ -38,7 +35,8 @@ export default async function EditVisit({
           name: v.member_name,
           address: v.member_address,
           groupId: null,
-          photoPath: photo,
+          photoPath: v.member_photo,
+          available: v.member_available,
         }}
         visit={v}
         deacons={[]}
