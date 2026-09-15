@@ -4,6 +4,7 @@ import { requireActiveProfile } from "@/lib/auth";
 import { loadDirectory } from "@/lib/directory-data";
 import { getLocale } from "@/lib/locale";
 import VisitForm from "@/components/visit-form";
+import VisitBack from "@/components/visit-back";
 import { visitCopy, type VisitDeacon } from "@/lib/visitation";
 export default async function NewVisit({
   searchParams,
@@ -24,7 +25,8 @@ export default async function NewVisit({
   if (person && !member) notFound();
   return (
     <>
-      <h1 className="py-5 text-2xl font-semibold">
+      <VisitBack locale={locale} />
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">
         {visitCopy(locale).request}
       </h1>
       <VisitForm

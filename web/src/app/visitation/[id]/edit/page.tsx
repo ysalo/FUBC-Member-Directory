@@ -3,6 +3,7 @@ import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { visitCopy, type Visit } from "@/lib/visitation";
 import VisitForm from "@/components/visit-form";
+import VisitBack from "@/components/visit-back";
 export default async function EditVisit({
   params,
 }: {
@@ -23,7 +24,10 @@ export default async function EditVisit({
   const locale = await getLocale();
   return (
     <>
-      <h1 className="py-5 text-2xl font-semibold">{visitCopy(locale).edit}</h1>
+      <VisitBack locale={locale} href={`/visitation/${id}`} />
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">
+        {visitCopy(locale).edit}
+      </h1>
       <VisitForm
         member={{
           id: v.person_id,

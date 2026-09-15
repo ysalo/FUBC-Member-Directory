@@ -108,11 +108,21 @@ try {
     page.getByRole("button", { name: "Submit request" }),
   ).toBeDisabled();
   await page.getByLabel("Date and time").fill("2099-12-15T12:30");
-  await page.getByLabel("Person to visit").selectOption("member");
+  await page.getByLabel("Search people").fill("zzzz");
+  await expect(page.getByText("No matches found.")).toBeVisible();
+  await page.getByLabel("Search people").fill("First");
+  await expect(
+    page.getByRole("button", { name: "Other member", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "First member", exact: true }).click();
   await expect(page.getByLabel("First Deacon", { exact: true })).toBeChecked();
   await expect(page.getByLabel("Second Deacon", { exact: true })).toBeChecked();
   await expect(page.getByLabel("Visit location")).toHaveValue("First home");
-  await page.getByLabel("Person to visit").selectOption("other");
+  await page
+    .getByRole("button", { name: "First member Change", exact: true })
+    .click();
+  await page.getByLabel("Search people").fill("Other");
+  await page.getByRole("button", { name: "Other member", exact: true }).click();
   await expect(
     page.getByLabel("First Deacon", { exact: true }),
   ).not.toBeChecked();
@@ -198,6 +208,7 @@ try {
     for (const theme of ["light", "dark"]) {
       await page.setViewportSize({ width, height: 812 });
       await page.goto(url + "/?missing=1&locale=uk");
+      await page.locator('input[name="time"]').fill('2099-12-15T12:30');
       await page.evaluate((t) => {
         document.documentElement.dataset.theme = t;
         document.documentElement.dataset.textSize = "large";
@@ -215,6 +226,11 @@ try {
         fullPage: true,
         animations: "disabled",
       });
+      await page.goto(url + '/?mode=new');
+      await page.locator('input[name="time"]').fill('2099-12-15T12:30');
+      await page.evaluate((t) => {document.documentElement.dataset.theme=t; document.documentElement.dataset.textSize='large';}, theme);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({path:resolve(dir, `picker-${width}-${theme}.png`),fullPage:true,animations:'disabled'});
     }
   for (const mode of ["pastor", "deacon"])
     for (const theme of ["light", "dark"]) {

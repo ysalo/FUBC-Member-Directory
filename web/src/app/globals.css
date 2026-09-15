@@ -167,6 +167,21 @@ textarea {
   flex-shrink: 0;
 }
 
+.visit-date-input {
+  box-sizing: border-box;
+  appearance: none;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+.visit-date-input::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
+.visit-date-input::-webkit-datetime-edit {
+  min-width: 0;
+  padding: 0;
+}
 .safe-page {
   padding-bottom: max(env(safe-area-inset-bottom), 0px);
 }

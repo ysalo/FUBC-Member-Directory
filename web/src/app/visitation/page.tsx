@@ -3,7 +3,11 @@ import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { visitCopy, formatVisitDate, type Visit } from "@/lib/visitation";
 import { CalendarDays, ChevronRight } from "lucide-react";
-export default async function VisitationPage() {
+export default async function VisitationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const { supabase, profile } = await requireActiveProfile(),
     locale = await getLocale(),
     c = visitCopy(locale);
@@ -12,7 +16,19 @@ export default async function VisitationPage() {
     .select("*,visit_recipients(*)")
     .order("scheduled_at");
   if (error) throw new Error("Unable to load visitation");
-  const visits = (data ?? []) as Visit[];
+  const query = (await searchParams).q?.trim() ?? "";
+  const visits = ((data ?? []) as Visit[]).filter((v) =>
+    [
+      v.member_name,
+      v.pastor_name,
+      v.location,
+      c[v.status],
+      ...v.visit_recipients.map((r) => r.deacon_name),
+    ]
+      .join(" ")
+      .toLocaleLowerCase(locale)
+      .includes(query.toLocaleLowerCase(locale)),
+  );
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 py-5">
@@ -26,6 +42,21 @@ export default async function VisitationPage() {
           </Link>
         )}
       </div>
+      <form className="mb-6 flex min-w-0 gap-2" role="search">
+        <label className="min-w-0 flex-1">
+          <span className="sr-only">{c.searchVisits}</span>
+          <input
+            type="search"
+            name="q"
+            defaultValue={query}
+            placeholder={c.searchVisits}
+            className="min-h-12 min-w-0 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] px-3"
+          />
+        </label>
+        <button className="min-h-12 rounded-xl bg-[var(--app-brand-soft)] px-3 text-sm font-semibold text-[var(--app-brand)]">
+          {locale === "uk" ? "Пошук" : "Search"}
+        </button>
+      </form>
       {[
         {
           title: c.mine,
@@ -45,7 +76,9 @@ export default async function VisitationPage() {
           <section key={g.title} className="mb-7">
             <h2 className="mb-3 text-lg font-semibold">{g.title}</h2>
             {!g.items.length && (
-              <p className="text-[var(--app-muted)]">{c.empty}</p>
+              <p className="text-[var(--app-muted)]">
+                {query ? c.noResults : c.empty}
+              </p>
             )}
             <div className="space-y-3">
               {g.items.map((v) => {

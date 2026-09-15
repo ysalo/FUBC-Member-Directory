@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import Link from "@/components/navigation-link";
+import VisitBack from "@/components/visit-back";
 import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
-import { visitCopy, type Visit } from "@/lib/visitation";
+import { type Visit } from "@/lib/visitation";
 import VisitControls from "@/components/visit-controls";
 import VisitDetails from "@/components/visit-details";
 
@@ -25,12 +25,7 @@ export default async function VisitPage({
   const v = data as Visit;
   return (
     <>
-      <Link
-        href="/visitation"
-        className="mb-3 inline-flex min-h-11 items-center text-sm font-medium text-[var(--app-brand)]"
-      >
-        {visitCopy(locale).back}
-      </Link>
+      <VisitBack locale={locale} />
       <VisitDetails visit={v} locale={locale} userId={profile.id} />
       <VisitControls visit={v} userId={profile.id} locale={locale} />
     </>

@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "@/components/navigation-link";
 import { mutateVisit } from "@/app/visitation/actions";
 import {
   localVisitTime,
@@ -36,6 +35,8 @@ export default function VisitForm({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [person, setPerson] = useState(member);
+  const [choosing, setChoosing] = useState(!member);
+  const [query, setQuery] = useState("");
   const [location, setLocation] = useState(
     visit?.location ?? member?.address ?? "",
   );
@@ -47,7 +48,7 @@ export default function VisitForm({
           .map((d) => d.id),
   );
   const input =
-    "mt-2 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-3 text-[var(--app-ink)]";
+    "mt-2 block min-h-12 min-w-0 w-full max-w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-3 text-[var(--app-ink)]";
   return (
     <form
       className="space-y-5"
@@ -75,7 +76,7 @@ export default function VisitForm({
       <input type="hidden" name="revision" value={visit?.revision || ""} />
       <input type="hidden" name="personId" value={person?.id ?? ""} />
       <input type="hidden" name="submission" value={submission} />
-      <fieldset disabled={busy} className="space-y-5">
+      <fieldset disabled={busy} className="min-w-0 space-y-5">
         <label className="block font-medium">
           {c.time}
           <input
@@ -83,35 +84,85 @@ export default function VisitForm({
             name="time"
             required
             defaultValue={visit ? localVisitTime(visit.scheduled_at) : ""}
-            className={input}
+            className={`${input} visit-date-input`}
           />
         </label>
         {!member && !visit ? (
-          <label className="block font-medium">
-            {c.person}
-            <select
-              required
-              value={person?.id ?? ""}
-              className={input}
-              onChange={(e) => {
-                const next = members.find((m) => m.id === e.target.value);
-                setPerson(next);
-                setLocation(next?.address ?? "");
-                setSelected(
-                  deacons
-                    .filter((d) => next?.groupId && d.group_id === next.groupId)
-                    .map((d) => d.id),
-                );
-              }}
+          <section className="min-w-0" aria-label={c.person}>
+            <h2 className="font-medium">{c.person}</h2>
+            <button
+              type="button"
+              aria-expanded={choosing}
+              onClick={() => setChoosing(!choosing)}
+              className={`${input} flex items-center justify-between gap-3 text-left`}
             >
-              <option value="">{c.choosePerson}</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <span className="break-words">
+                {person?.name ?? c.choosePerson}
+              </span>
+              <span className="shrink-0 text-sm text-[var(--app-brand)]">
+                {person ? c.change : "⌄"}
+              </span>
+            </button>
+            {choosing && (
+              <div className="mt-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-3">
+                <label className="block text-sm font-medium">
+                  {c.searchPeople}
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className={input}
+                  />
+                </label>
+                <div className="mt-2 max-h-64 overflow-y-auto overscroll-contain">
+                  {members
+                    .filter((m) =>
+                      m.name
+                        .toLocaleLowerCase(locale)
+                        .includes(query.trim().toLocaleLowerCase(locale)),
+                    )
+                    .map((m) => (
+                      <button
+                        type="button"
+                        key={m.id}
+                        aria-pressed={person?.id === m.id}
+                        className="flex min-h-12 w-full items-center justify-between gap-3 border-b border-[var(--app-line)] px-2 py-3 text-left hover:bg-[var(--app-brand-soft)]"
+                        onClick={() => {
+                          setPerson(m);
+                          setLocation(m.address);
+                          setSelected(
+                            deacons
+                              .filter(
+                                (d) => m.groupId && d.group_id === m.groupId,
+                              )
+                              .map((d) => d.id),
+                          );
+                          setChoosing(false);
+                          setQuery("");
+                        }}
+                      >
+                        <span className="break-words">{m.name}</span>
+                        {person?.id === m.id && (
+                          <span aria-hidden="true">✓</span>
+                        )}
+                      </button>
+                    ))}
+                  {!members.some((m) =>
+                    m.name
+                      .toLocaleLowerCase(locale)
+                      .includes(query.trim().toLocaleLowerCase(locale)),
+                  ) && (
+                    <p
+                      role="status"
+                      className="p-3 text-sm text-[var(--app-muted)]"
+                    >
+                      {c.noResults}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
         ) : (
           <section className="rounded-2xl bg-[var(--app-surface-muted)] p-4">
             <h2 className="text-xl font-semibold break-words">
@@ -206,12 +257,6 @@ export default function VisitForm({
           {error}
         </p>
       )}
-      <Link
-        href={visit ? "/visitation/" + visit.id : "/visitation"}
-        className="inline-flex min-h-11 items-center"
-      >
-        {c.back}
-      </Link>
     </form>
   );
 }
