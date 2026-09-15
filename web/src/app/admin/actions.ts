@@ -13,6 +13,16 @@ const allowedPhotoTypes = new Map([
   ["image/webp", "webp"],
 ]);
 
+function memberStatus(formData: FormData) {
+  const status = value(formData, "maritalStatus");
+  if (status && !["single", "married", "widowed"].includes(status))
+    throw new Error("Invalid marital status.");
+  return {
+    marital_status: status || null,
+    is_orphan: value(formData, "isOrphan") === "on",
+  };
+}
+
 async function uploadPhoto(
   supabase: Awaited<ReturnType<typeof createClient>>,
   photo: FormDataEntryValue | null,
@@ -42,9 +52,11 @@ export async function addMember(formData: FormData) {
   if (!firstName || !lastName)
     throw new Error("First and last name are required.");
 
+  const status = memberStatus(formData);
   const photoPath = await uploadPhoto(supabase, formData.get("photo"));
 
   const { error } = await supabase.from("people").insert({
+    ...status,
     first_name: firstName,
     last_name: lastName,
     date_of_birth: value(formData, "dateOfBirth") || null,
@@ -64,6 +76,7 @@ export async function addMember(formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath("/groups");
   revalidatePath("/admin");
 }
 
@@ -81,12 +94,14 @@ export async function updateMember(memberId: string, formData: FormData) {
     .single();
   if (loadError) throw new Error("Unable to load this member.");
 
+  const status = memberStatus(formData);
   const newPhotoPath = await uploadPhoto(supabase, formData.get("photo"));
   const removePhoto = value(formData, "removePhoto") === "on";
   const photoPath = newPhotoPath ?? (removePhoto ? null : current.photo_path);
   const { error } = await supabase
     .from("people")
     .update({
+      ...status,
       first_name: firstName,
       last_name: lastName,
       date_of_birth: value(formData, "dateOfBirth") || null,
@@ -117,6 +132,7 @@ export async function updateMember(memberId: string, formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath("/groups");
   revalidatePath("/admin");
   revalidatePath(`/admin/${memberId}`);
   redirect("/admin");
@@ -133,6 +149,7 @@ export async function archiveMember(memberId: string) {
     .eq("id", memberId);
   if (error) throw new Error("Unable to archive this member.");
   revalidatePath("/");
+  revalidatePath("/groups");
   revalidatePath("/admin");
 }
 
@@ -147,5 +164,6 @@ export async function restoreMember(memberId: string) {
     .eq("id", memberId);
   if (error) throw new Error("Unable to restore this member.");
   revalidatePath("/");
+  revalidatePath("/groups");
   revalidatePath("/admin");
 }

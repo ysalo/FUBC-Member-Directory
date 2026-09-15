@@ -2,6 +2,8 @@
 
 ## Purpose
 
+Latest release: member marital status and orphan badges/filters, singular My Group, separate Birthdays view, fellow-deacon contacts, profile age/group, and hamburger Settings. The user confirmed `web/supabase/migrations/20260915020000_member_status_and_single_group.sql` succeeded on September 15, 2026. See `docs/DEACON_GROUPS.md` for the access model and phone-linking requirement.
+
 Private directory for roughly 800 members. Approved accounts can search and view member data; editors manage member records; administrators will manage access and roles. The current focus is the web application, with a future SwiftUI client planned against the same Supabase backend.
 
 ## Local workspace

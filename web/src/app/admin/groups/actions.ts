@@ -43,17 +43,19 @@ export async function mutateGroup(
   } else return { error: copy.failed };
   if (result.error) {
     const message = result.error.message;
-    const error = message.includes("Assignment changed")
-      ? copy.stale
-      : message.includes("two distinct")
-        ? copy.invalidDeacons
-        : message.includes("designated deacons")
-          ? copy.activeRequired
-          : message.includes("Remove all")
-            ? copy.emptyRequired
-            : message.includes("Group name")
-              ? copy.invalidName
-              : copy.failed;
+    const error = message.includes("already belongs")
+      ? copy.alreadyAssigned
+      : message.includes("Assignment changed")
+        ? copy.stale
+        : message.includes("two distinct")
+          ? copy.invalidDeacons
+          : message.includes("designated deacons")
+            ? copy.activeRequired
+            : message.includes("Remove all")
+              ? copy.emptyRequired
+              : message.includes("Group name")
+                ? copy.invalidName
+                : copy.failed;
     return { error };
   }
   revalidatePath("/admin/groups");

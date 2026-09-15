@@ -5,6 +5,7 @@ import { updateMember } from "../actions";
 import LanguageSwitcher from "@/components/language-switcher";
 import { t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import MemberStatusFields from "@/components/member-status-fields";
 
 export default async function EditMemberPage({
   params,
@@ -106,6 +107,11 @@ export default async function EditMemberPage({
               className={inputClass}
             />
           </label>
+          <MemberStatusFields
+            locale={locale}
+            maritalStatus={person.marital_status}
+            isOrphan={person.is_orphan}
+          />
           <label className="block text-sm font-medium text-slate-700">
             {t(locale, "phone")}
             <input

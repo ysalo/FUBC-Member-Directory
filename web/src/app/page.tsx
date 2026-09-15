@@ -2,6 +2,7 @@ import DirectoryClient from "@/components/directory-client";
 import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { loadDirectory } from "@/lib/directory-data";
+import { churchToday } from "@/lib/birthdays";
 
 export default async function DirectoryPage() {
   const { supabase, profile } = await requireActiveProfile();
@@ -10,6 +11,7 @@ export default async function DirectoryPage() {
   return (
     <DirectoryClient
       members={members}
+      today={churchToday()}
       role={profile.role}
       locale={locale}
       isDeacon={profile.ministry_roles.includes("deacon")}

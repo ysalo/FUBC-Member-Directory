@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { churchToday, upcomingBirthdays } from "../../src/lib/birthdays.ts";
+import {
+  ageOn,
+  churchToday,
+  upcomingBirthdays,
+} from "../../src/lib/birthdays.ts";
+
+test("age changes on birthdays, handles leap days, and omits unknown/future dates", () => {
+  assert.equal(ageOn("1990-09-15", "2026-09-14"), 35);
+  assert.equal(ageOn("1990-09-15", "2026-09-15"), 36);
+  assert.equal(ageOn("2000-02-29", "2027-02-28"), 27);
+  assert.equal(ageOn("2000-02-29", "2028-02-28"), 27);
+  assert.equal(ageOn("", "2026-09-14"), null);
+  assert.equal(ageOn("2027-01-01", "2026-09-14"), null);
+});
 
 test("includes today and cross-year birthdays, excludes unknown and outside dates", () => {
   assert.deepEqual(

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  BookUser,
-  UsersRound,
-  SlidersHorizontal,
-  Settings,
-  X,
-} from "lucide-react";
+import { BookUser, UsersRound, SlidersHorizontal, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "@/components/navigation-link";
@@ -136,7 +130,7 @@ export default function BottomNavigation({
             aria-expanded={open}
             className="bottom-navigation-item flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 font-medium text-[var(--app-muted)]"
           >
-            <Settings className="bottom-navigation-icon" strokeWidth={1.75} />
+            <Menu className="bottom-navigation-icon" strokeWidth={1.75} />
             <span className="max-w-full truncate">{copy.settings}</span>
           </button>
         </div>

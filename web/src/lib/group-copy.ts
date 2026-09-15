@@ -2,7 +2,20 @@ import type { Locale } from "@/lib/i18n";
 
 const en = {
   directory: "Directory",
-  myGroups: "My Groups",
+  myGroups: "My Group",
+  birthdays: "Birthdays",
+  membersTab: "Members",
+  allPeople: "All",
+  widowed: "Widowed",
+  orphan: "Orphan",
+  maritalStatus: "Marital status",
+  single: "Single",
+  married: "Married",
+  unknown: "Not provided",
+  otherDeacon: "Your fellow deacon",
+  age: "Age",
+  assignedGroup: "Group",
+  alreadyAssigned: "This deacon already belongs to another group.",
   groups: "Deacon Groups",
   deacon: "Deacon",
   upcoming: "Upcoming birthdays",
@@ -42,7 +55,20 @@ const en = {
 };
 const uk: typeof en = {
   directory: "Довідник",
-  myGroups: "Мої групи",
+  myGroups: "Моя група",
+  birthdays: "Дні народження",
+  membersTab: "Члени",
+  allPeople: "Усі",
+  widowed: "Вдівець / вдова",
+  orphan: "Сирота",
+  maritalStatus: "Сімейний стан",
+  single: "Неодружений / неодружена",
+  married: "Одружений / одружена",
+  unknown: "Не вказано",
+  otherDeacon: "Ваш співдиякон",
+  age: "Вік",
+  assignedGroup: "Група",
+  alreadyAssigned: "Цього диякона вже призначено до іншої групи.",
   groups: "Дияконські групи",
   deacon: "Диякон",
   upcoming: "Найближчі дні народження",
@@ -88,5 +114,11 @@ export type DeaconGroup = {
   id: string;
   name: string;
   memberIds: string[];
-  deacons: { id: string; name: string; status: string }[];
+  deacons: {
+    id: string;
+    name: string;
+    status: string;
+    email: string | null;
+    phone: string | null;
+  }[];
 };

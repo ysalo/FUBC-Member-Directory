@@ -12,7 +12,7 @@ type Person = {
   last_name: string;
   archived_at: string | null;
 };
-type Eligible = { id: string; display_name: string };
+type Eligible = { id: string; display_name: string; group_id: string | null };
 const field =
   "min-h-11 w-full min-w-0 rounded-lg border border-[var(--app-line)] bg-white px-3";
 const button =
@@ -31,7 +31,9 @@ function GroupEditor({
   const [pending, start] = useTransition();
   const [message, setMessage] = useState("");
   const options = [
-    ...eligible,
+    ...eligible.filter(
+      (deacon) => !deacon.group_id || deacon.group_id === group?.id,
+    ),
     ...(group?.deacons
       .filter((d) => !eligible.some((e) => e.id === d.id))
       .map((d) => ({

@@ -12,7 +12,7 @@ export async function loadDirectory(
   let query = supabase
     .from("people")
     .select(
-      "id, first_name, last_name, date_of_birth, membership_joined_at, phone, address_line_1, address_line_2, city, state, postal_code, photo_path",
+      "id, first_name, last_name, date_of_birth, membership_joined_at, marital_status, is_orphan, phone, address_line_1, address_line_2, city, state, postal_code, photo_path",
     )
     .is("archived_at", null)
     .order("last_name")
@@ -20,6 +20,17 @@ export async function loadDirectory(
   if (ids) query = query.in("id", ids);
   const { data: people, error } = await query;
   if (error) throw new Error("Unable to load the directory.");
+  const { data: memberGroups, error: groupError } =
+    await supabase.rpc("list_member_groups");
+  if (groupError) throw new Error("Unable to load member groups.");
+  const groupNames = new Map<string, string>(
+    (memberGroups ?? []).map(
+      (row: { person_id: string; group_name: string }) => [
+        row.person_id,
+        row.group_name,
+      ],
+    ),
+  );
 
   const photoPaths = (people ?? []).flatMap((person) =>
     person.photo_path && !person.photo_path.startsWith("/")
@@ -45,6 +56,9 @@ export async function loadDirectory(
     phone: person.phone ?? "",
     dateOfBirth: person.date_of_birth ?? "",
     membershipJoinedAt: person.membership_joined_at ?? "",
+    maritalStatus: person.marital_status,
+    isOrphan: person.is_orphan,
+    groupName: groupNames.get(person.id) ?? "",
     address: [
       person.address_line_1,
       person.address_line_2,
@@ -101,6 +115,8 @@ export async function loadDeaconGroups(
         profile_id: string;
         display_name: string;
         status: string;
+        email: string | null;
+        phone: string | null;
       }[]
     )
       .filter((row) => row.group_id === group.id)
@@ -108,6 +124,8 @@ export async function loadDeaconGroups(
         id: row.profile_id,
         name: row.display_name,
         status: row.status,
+        email: row.email,
+        phone: row.phone,
       })),
   }));
 }

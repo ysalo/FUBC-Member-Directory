@@ -1,5 +1,24 @@
 export type UpcomingBirthday = { id: string; date: string; daysAway: number };
 
+export function ageOn(dateOfBirth: string, today: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) || !today || dateOfBirth > today)
+    return null;
+  const [year, month, day] = dateOfBirth.split("-").map(Number);
+  const [currentYear, currentMonth, currentDay] = today.split("-").map(Number);
+  const leap =
+    currentYear % 4 === 0 &&
+    (currentYear % 100 !== 0 || currentYear % 400 === 0);
+  const birthdayDay = month === 2 && day === 29 && !leap ? 28 : day;
+  return (
+    currentYear -
+    year -
+    (currentMonth < month ||
+    (currentMonth === month && currentDay < birthdayDay)
+      ? 1
+      : 0)
+  );
+}
+
 export function upcomingBirthdays(
   people: { id: string; dateOfBirth: string }[],
   today: string,

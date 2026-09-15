@@ -1,10 +1,12 @@
 # Implementation Status and Operations
 
-Deacon Groups are implemented locally: separate ministry designation, editor/admin group management, assigned-member lists, upcoming birthdays, and bilingual bottom navigation. Deployment requires the additive migration first. See [Deacon Groups](DEACON_GROUPS.md). Notifications and pastor-specific workflows are deferred.
+Deacon Groups and the two-account, 20-fictional-member demo are deployed. The latest release adds marital status/orphan badges and filters, singular My Group, a separate Birthdays view, fellow-deacon contacts, profile age/group, and hamburger Settings. The user confirmed `20260915020000_member_status_and_single_group.sql` succeeded on September 15, 2026; the release is ready for Vercel deployment. See [Deacon Groups](DEACON_GROUPS.md). Notifications and pastor-specific workflows are deferred.
 
 Verification for this release: TypeScript and production webpack build passed; targeted lint passed with only existing image-element warnings. The PostgreSQL-in-memory group suite and three birthday unit tests passed. All 30 public/route-protection Playwright checks passed across configured desktop/iPhone viewports using the production server. Development-server testing initially timed out on the slow filesystem. Authenticated new-screen interactions, multi-session database contention, and real-iPhone Safari acceptance remain manual checks after migration.
 
-Last reviewed against the workspace: September 14, 2026.
+Verification of the member-status/singular-group release: TypeScript, targeted lint (existing image warnings only), production webpack build, PostgreSQL group/security suite, four birthday/age unit tests, and 30 public/route-protection Playwright checks passed. Authenticated member/group UI and real-device Safari checks remain manual acceptance steps.
+
+Last reviewed against the workspace: September 15, 2026.
 
 ## Current deployed baseline
 

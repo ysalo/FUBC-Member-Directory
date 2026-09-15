@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import BottomNavigation from "@/components/bottom-navigation";
 import { groupCopy, type DeaconGroup } from "@/lib/group-copy";
-import { upcomingBirthdays } from "@/lib/birthdays";
+import { upcomingBirthdays, ageOn } from "@/lib/birthdays";
 import type { AppRole } from "@/lib/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dictionaries, type Locale } from "@/lib/i18n";
@@ -26,6 +26,9 @@ export type DirectoryPerson = {
   dateOfBirth: string;
   membershipJoinedAt: string;
   photoPath: string | null;
+  maritalStatus: "single" | "married" | "widowed" | null;
+  isOrphan: boolean;
+  groupName: string;
 };
 
 const gradients = [
@@ -77,6 +80,7 @@ export default function DirectoryClient({
   isDeacon = false,
   deaconGroups,
   today = "",
+  viewerId,
 }: {
   members: DirectoryPerson[];
   role: AppRole;
@@ -84,20 +88,21 @@ export default function DirectoryClient({
   isDeacon?: boolean;
   deaconGroups?: DeaconGroup[];
   today?: string;
+  viewerId?: string;
 }) {
   const copy = dictionaries[locale];
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<DirectoryPerson | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
-  const [groupId, setGroupId] = useState("");
+  const [view, setView] = useState<"members" | "birthdays">("members");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "widowed" | "orphan"
+  >("all");
   const listRef = useRef<HTMLDivElement>(null);
   const savedScroll = useRef(0);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const labels = groupCopy(locale);
-  const scopeGroups = useMemo(
-    () => deaconGroups?.filter((group) => !groupId || group.id === groupId),
-    [deaconGroups, groupId],
-  );
+  const scopeGroups = deaconGroups;
   const scopedMembers = useMemo(() => {
     const scopeIds = new Set(scopeGroups?.flatMap((group) => group.memberIds));
     return deaconGroups
@@ -134,11 +139,19 @@ export default function DirectoryClient({
 
   const results = useMemo(() => {
     const collator = new Intl.Collator(nameLocale, { sensitivity: "base" });
-    const sorted = [...scopedMembers].sort(
-      (a, b) =>
-        collator.compare(a.lastName, b.lastName) ||
-        collator.compare(a.firstName, b.firstName),
-    );
+    const sorted = scopedMembers
+      .filter(
+        (person) =>
+          statusFilter === "all" ||
+          (statusFilter === "widowed"
+            ? person.maritalStatus === "widowed"
+            : person.isOrphan),
+      )
+      .sort(
+        (a, b) =>
+          collator.compare(a.lastName, b.lastName) ||
+          collator.compare(a.firstName, b.firstName),
+      );
     const term = query.trim().toLocaleLowerCase(nameLocale);
     return term
       ? sorted.filter((person) =>
@@ -152,7 +165,24 @@ export default function DirectoryClient({
           ].some((field) => field.toLocaleLowerCase(nameLocale).includes(term)),
         )
       : sorted;
-  }, [scopedMembers, nameLocale, query]);
+  }, [scopedMembers, nameLocale, query, statusFilter]);
+  const visibleBirthdays = birthdays.filter((birthday) =>
+    results.some((person) => person.id === birthday.id),
+  );
+  const badges = (person: DirectoryPerson) => (
+    <span className="flex flex-wrap gap-2 text-xs font-medium text-[var(--app-muted)]">
+      {person.maritalStatus === "widowed" && (
+        <span className="rounded-full bg-[var(--app-surface-muted)] px-2 py-0.5">
+          {labels.widowed}
+        </span>
+      )}
+      {person.isOrphan && (
+        <span className="rounded-full bg-[var(--app-surface-muted)] px-2 py-0.5">
+          {labels.orphan}
+        </span>
+      )}
+    </span>
+  );
 
   const groups = useMemo(() => {
     const grouped = new Map<string, DirectoryPerson[]>();
@@ -242,6 +272,31 @@ export default function DirectoryClient({
               </div>
             </div>
             <div className="mx-5 mb-10 mt-7 space-y-7 sm:mx-7">
+              {badges(selected)}
+              <div className="flex min-h-14 items-center gap-4 py-1">
+                <UserRound className="size-5 shrink-0 text-slate-400" />
+                <span>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
+                    {labels.maritalStatus}
+                  </span>
+                  <span className="mt-0.5 block text-[17px]">
+                    {selected.maritalStatus
+                      ? labels[selected.maritalStatus]
+                      : copy.notProvided}
+                  </span>
+                </span>
+              </div>
+              <div className="flex min-h-14 items-center gap-4 py-1">
+                <UserRound className="size-5 shrink-0 text-slate-400" />
+                <span>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
+                    {labels.assignedGroup}
+                  </span>
+                  <span className="mt-0.5 block text-[17px]">
+                    {selected.groupName || labels.unassigned}
+                  </span>
+                </span>
+              </div>
               {selected.phone && (
                 <a
                   href={`tel:${selected.phone.replace(/[^\d+]/g, "")}`}
@@ -286,6 +341,11 @@ export default function DirectoryClient({
                   </span>
                   <span className="mt-0.5 block text-[17px] text-[var(--app-ink)]">
                     {formatDate(selected.dateOfBirth)}
+                    {ageOn(selected.dateOfBirth, today) !== null && (
+                      <span className="block text-sm text-[var(--app-muted)]">
+                        {labels.age}: {ageOn(selected.dateOfBirth, today)}
+                      </span>
+                    )}
                   </span>
                 </span>
               </div>
@@ -337,21 +397,19 @@ export default function DirectoryClient({
             {deaconGroups ? labels.myGroups : copy.memberDirectory}
           </h1>
           {deaconGroups && (
-            <div className="flex items-center gap-3 pb-2">
-              <span className="text-sm font-semibold">{labels.myGroups}</span>
-              <select
-                aria-label={labels.groups}
-                value={groupId}
-                onChange={(event) => setGroupId(event.target.value)}
-                className="min-h-11 min-w-0 flex-1 bg-transparent text-sm"
-              >
-                <option value="">{labels.all}</option>
-                {deaconGroups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
+            <div className="pb-1">
+              <div className="flex w-full" aria-label={labels.myGroups}>
+                {(["members", "birthdays"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    aria-pressed={view === tab}
+                    onClick={() => setView(tab)}
+                    className={`min-h-11 min-w-0 flex-1 px-3 text-sm ${view === tab ? "font-semibold text-[var(--app-brand)] border-b-2 border-current" : "text-[var(--app-muted)]"}`}
+                  >
+                    {tab === "members" ? labels.membersTab : labels.birthdays}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           )}
         </div>
@@ -374,12 +432,24 @@ export default function DirectoryClient({
               </button>
             )}
           </label>
+          <div className="flex gap-4" aria-label={labels.maritalStatus}>
+            {(["all", "widowed", "orphan"] as const).map((filter) => (
+              <button
+                key={filter}
+                aria-pressed={statusFilter === filter}
+                onClick={() => setStatusFilter(filter)}
+                className={`min-h-11 text-sm ${statusFilter === filter ? "font-semibold text-[var(--app-brand)]" : "text-[var(--app-muted)]"}`}
+              >
+                {filter === "all" ? labels.allPeople : labels[filter]}
+              </button>
+            ))}
+          </div>
         </div>
         <div
           ref={listRef}
           className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white"
         >
-          {deaconGroups && !query && (
+          {deaconGroups && (
             <div className="space-y-5 px-4 py-4">
               {!deaconGroups.length && (
                 <p className="py-6 text-center text-sm text-[var(--app-muted)]">
@@ -388,23 +458,42 @@ export default function DirectoryClient({
               )}
               {scopeGroups?.map((group) => (
                 <section key={group.id}>
-                  <h2 className="font-semibold">
-                    {group.name}{" "}
-                    <span className="text-sm font-normal text-[var(--app-muted)]">
-                      · {group.memberIds.length} {copy.members}
-                    </span>
-                  </h2>
-                  {group.deacons.map((deacon) => (
-                    <p
-                      key={deacon.id}
-                      className="mt-1 text-sm text-[var(--app-muted)]"
-                    >
-                      {deacon.name}
-                      {deacon.status !== "active" && (
-                        <span> — {labels.inactive}</span>
-                      )}
-                    </p>
-                  ))}
+                  <h2 className="font-semibold">{group.name}</h2>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
+                    {labels.otherDeacon}
+                  </p>
+                  {group.deacons
+                    .filter((deacon) => deacon.id !== viewerId)
+                    .map((deacon) => (
+                      <div
+                        key={deacon.id}
+                        className="mt-1 text-sm text-[var(--app-muted)]"
+                      >
+                        {deacon.name}
+                        {deacon.status !== "active" && (
+                          <span> — {labels.inactive}</span>
+                        )}
+                        {deacon.phone && (
+                          <a
+                            className="flex min-h-11 items-center gap-2 text-[var(--app-brand)]"
+                            href={`tel:${deacon.phone.replace(/[^\d+]/g, "")}`}
+                          >
+                            <Phone className="size-4" />
+                            {deacon.phone}
+                            <ChevronRight className="size-4" />
+                          </a>
+                        )}
+                        {deacon.email && (
+                          <a
+                            className="flex min-h-11 items-center gap-2 break-all text-[var(--app-brand)]"
+                            href={`mailto:${deacon.email}`}
+                          >
+                            {deacon.email}
+                            <ChevronRight className="size-4 shrink-0" />
+                          </a>
+                        )}
+                      </div>
+                    ))}
                   {group.deacons.length < 2 && (
                     <p className="mt-2 text-sm text-[var(--app-muted)]">
                       {labels.incomplete}
@@ -412,13 +501,13 @@ export default function DirectoryClient({
                   )}
                 </section>
               ))}
-              {!!deaconGroups.length && (
+              {!!deaconGroups.length && view === "birthdays" && (
                 <section>
                   <h2 className="font-semibold">{labels.upcoming}</h2>
                   <p className="mt-1 text-xs text-[var(--app-muted)]">
                     {labels.next30}
                   </p>
-                  {birthdays.map((birthday) => {
+                  {visibleBirthdays.map((birthday) => {
                     const person = members.find(
                       (member) => member.id === birthday.id,
                     )!;
@@ -428,7 +517,10 @@ export default function DirectoryClient({
                         onClick={() => openMember(person)}
                         className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm"
                       >
-                        <span>{person.name}</span>
+                        <span>
+                          {person.name}
+                          {badges(person)}
+                        </span>
                         <span className="shrink-0 text-[var(--app-muted)]">
                           {new Intl.DateTimeFormat(dateLocale, {
                             month: "short",
@@ -439,7 +531,7 @@ export default function DirectoryClient({
                       </button>
                     );
                   })}
-                  {!birthdays.length && (
+                  {!visibleBirthdays.length && (
                     <p className="mt-3 text-sm text-[var(--app-muted)]">
                       {labels.noBirthdays}
                     </p>
@@ -448,34 +540,41 @@ export default function DirectoryClient({
               )}
             </div>
           )}
-          <div>
-            {groups.map(([letter, people]) => (
-              <section key={letter} id={`letter-${letter}`}>
-                <h2 className="sticky top-0 z-10 border-y border-[var(--app-line)] bg-[var(--app-surface-muted)]/95 px-4 py-1.5 text-sm font-bold text-[var(--app-brand)] backdrop-blur">
-                  {letter}
-                </h2>
-                <div className="divide-y divide-[var(--app-line)] pl-4">
-                  {people.map((person) => (
-                    <button
-                      key={person.id}
-                      onClick={() => openMember(person)}
-                      className="flex min-h-[68px] w-full items-center gap-3 py-2.5 pr-2 text-left hover:bg-[var(--app-brand-soft)] active:bg-[#d9e9f3]"
-                    >
-                      <Avatar person={person} />
-                      <span className="min-w-0 flex-1 truncate text-[17px] font-medium text-[var(--app-ink)]">
-                        {person.firstName}{" "}
-                        <span className="font-semibold">{person.lastName}</span>
-                      </span>
-                      <span aria-hidden className="text-xl text-slate-300">
-                        ›
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-          {!results.length && (
+          {view === "members" && (
+            <div>
+              {groups.map(([letter, people]) => (
+                <section key={letter} id={`letter-${letter}`}>
+                  <h2 className="sticky top-0 z-10 border-y border-[var(--app-line)] bg-[var(--app-surface-muted)]/95 px-4 py-1.5 text-sm font-bold text-[var(--app-brand)] backdrop-blur">
+                    {letter}
+                  </h2>
+                  <div className="divide-y divide-[var(--app-line)] pl-4">
+                    {people.map((person) => (
+                      <button
+                        key={person.id}
+                        onClick={() => openMember(person)}
+                        className="flex min-h-[68px] w-full items-center gap-3 py-2.5 pr-2 text-left hover:bg-[var(--app-brand-soft)] active:bg-[#d9e9f3]"
+                      >
+                        <Avatar person={person} />
+                        <span className="min-w-0 flex-1 text-[17px] font-medium text-[var(--app-ink)]">
+                          <span className="block truncate">
+                            {person.firstName}{" "}
+                            <span className="font-semibold">
+                              {person.lastName}
+                            </span>
+                          </span>
+                          {badges(person)}
+                        </span>
+                        <span aria-hidden className="text-xl text-slate-300">
+                          ›
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+          {view === "members" && !results.length && (
             <div className="px-5 py-16 text-center text-[var(--app-muted)]">
               {copy.noMembers}
             </div>

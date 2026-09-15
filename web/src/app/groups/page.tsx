@@ -22,6 +22,7 @@ export default async function MyGroupsPage() {
   return (
     <DirectoryClient
       members={members}
+      viewerId={profile.id}
       role={profile.role}
       locale={locale}
       isDeacon

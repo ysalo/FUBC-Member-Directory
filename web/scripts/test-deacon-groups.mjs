@@ -33,6 +33,15 @@ await db.exec(`
 // Exercise the deployed upgrade, then the complete clean baseline below.
 await db.exec(baseline.split("-- Apply after the existing migrations;")[0]);
 await db.exec(migration);
+await db.exec(
+  await readFile(
+    new URL(
+      "../supabase/migrations/20260915020000_member_status_and_single_group.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 for (let n = 1; n <= 7; n++)
   await db.query("insert into auth.users(id,email) values($1,$2)", [
     uid(n),
@@ -46,6 +55,8 @@ await db.exec(`
   update public.profiles set status='pending' where id='${uid(6)}';
   insert into public.people(id,first_name,last_name) values('${person(1)}','Андрій','Бойко'),('${person(2)}','Марія','Коваль'),('${person(3)}','Петро','Петренко');
   insert into storage.objects(bucket_id) values('member-photos');
+  update public.people set phone='(253) 555-0100' where id='${person(2)}';
+  update public.profiles set person_id='${person(2)}' where id='${uid(4)}';
 `);
 async function as(n) {
   await db.exec("reset role");
@@ -121,6 +132,24 @@ await fails(
 );
 await fails("select public.delete_deacon_group($1)", [g1], /Remove all/);
 await fails(
+  "select public.save_deacon_group(null,'Second group',$1::uuid[])",
+  [[uid(3)]],
+  /already belongs/,
+);
+await fails(
+  "update public.people set marital_status='divorced' where id=$1",
+  [person(1)],
+  /check constraint/,
+);
+await db.query(
+  "update public.people set marital_status='widowed', is_orphan=true where id=$1",
+  [person(1)],
+);
+assert.equal(
+  await scalar("select is_orphan from public.people where id=$1", [person(1)]),
+  true,
+);
+await fails(
   "select public.assign_deacon_group_member($1,$2,null)",
   [person(1), g2],
   /Assignment changed/,
@@ -139,6 +168,24 @@ assert.equal(
 );
 await as(3);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 1);
+assert.equal(
+  (
+    await db.query(
+      "select * from public.list_group_deacons() where profile_id=$1",
+      [uid(4)],
+    )
+  ).rows[0].email,
+  "test4@example.test",
+);
+assert.equal(
+  (
+    await db.query(
+      "select * from public.list_group_deacons() where profile_id=$1",
+      [uid(4)],
+    )
+  ).rows[0].phone,
+  "(253) 555-0100",
+);
 assert.equal(
   await scalar("select count(*)::int from public.people"),
   3,
@@ -166,11 +213,23 @@ await fails(
 );
 await as(5);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 0);
+assert.ok(
+  (await db.query("select * from public.list_member_groups()")).rows.length > 0,
+  "approved readers see group labels without roster access",
+);
 assert.equal(
   (await db.query("select * from public.list_group_deacons()")).rows.length,
   0,
 );
 await as(6);
+assert.equal(
+  (await db.query("select * from public.list_member_groups()")).rows.length,
+  0,
+);
+assert.equal(
+  (await db.query("select * from public.list_group_deacons()")).rows.length,
+  0,
+);
 for (const table of [
   "public.people",
   "public.deacon_groups",
@@ -204,6 +263,10 @@ assert.equal(
 );
 await as(3);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 0);
+assert.equal(
+  (await db.query("select * from public.list_member_groups()")).rows.length,
+  0,
+);
 assert.equal(await scalar("select count(*)::int from storage.objects"), 0);
 await as(1);
 await db.query(
@@ -212,6 +275,14 @@ await db.query(
 );
 await as(3);
 assert.equal(await scalar("select count(*)::int from public.people"), 0);
+assert.equal(
+  (await db.query("select * from public.list_member_groups()")).rows.length,
+  0,
+);
+assert.equal(
+  (await db.query("select * from public.list_group_deacons()")).rows.length,
+  0,
+);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 0);
 assert.equal(await scalar("select count(*)::int from storage.objects"), 0);
 await as(1);

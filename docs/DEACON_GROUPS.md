@@ -12,15 +12,21 @@ For an optional 20-person demo, run `web/supabase/seed_deacon_group.sql` in SQL 
 
 Administrators designate deacons from Manage → Account Requests. This is independent of member/editor/admin permissions: a deacon may also be an editor. Linking the account to a directory person remains optional.
 
-Editors and administrators use Manage → Deacon Groups to create and name groups, select up to two deacons, and assign members. Groups can remain incomplete during setup; twenty members is guidance, not a limit. Each member belongs to at most one group, while a deacon may serve multiple groups. Transfers/removals require confirmation. Stale transfers fail instead of overwriting a newer assignment; refresh and retry.
+Editors and administrators use Manage → Deacon Groups to create and name groups, select up to two deacons, and assign members. Groups can remain incomplete during setup; twenty members is guidance, not a limit. Each member belongs to at most one group, and a deacon belongs to at most one group. Transfers/removals require confirmation. Stale transfers fail instead of overwriting a newer assignment; refresh and retry.
 
 Revoked deacons retain their assignments, marked inactive, but lose access immediately. Replace them through group management. Removing deacon designation removes that account's assignments atomically. Delete groups only after removing all assignments. Archived people disappear from deacon lists/birthdays but remain available to managers for removal or restoration.
 
 ## Navigation and member experience
 
-Bottom tabs provide Directory, My Groups for deacons, Manage for editors/admins, and Settings. Settings contains language, text size, and sign-out. Navigation is hidden on member profiles/photo viewers. Returning from a profile restores the originating list's search, group selection, and scroll position.
+Bottom tabs provide Directory, My Group for deacons, Manage for editors/admins, and Settings (hamburger icon). Settings contains language, text size, and sign-out. Navigation is hidden on member profiles/photo viewers. Returning from a profile restores the originating list's search, filters, view, and scroll position.
 
-My Groups shows the signed-in deacon's groups, both assigned deacons, searchable surname-grouped members, and upcoming birthdays. Deacons retain full-directory access but do not gain editing privileges merely through designation. Labels support English and Ukrainian.
+My Group shows the signed-in deacon's single group and their fellow deacon's contact information. Members is the default view; Birthdays is a separate selectable view for the next 30 days. The total member count is centered at the bottom, not in the group heading. Deacons retain full-directory access but do not gain editing privileges merely through designation. Labels support English and Ukrainian.
+
+Members have nullable marital status (`single`, `married`, `widowed`) and an independent `is_orphan` flag. Existing records remain unknown/not orphan unless edited explicitly. Only Widowed and Orphan appear as list badges, with All/Widowed/Orphan filters in Directory and My Group. Member profiles show birth date plus calculated age, marital status, badges, and assigned group (or Unassigned). Age uses the server-supplied church date, with February 29 observed on February 28 in non-leap years.
+
+Apply `web/supabase/migrations/20260915020000_member_status_and_single_group.sql` before deploying these changes. It adds the fields, enforces one group per deacon, and updates minimal-information RPCs. It fails without changes if a deacon already has multiple assignments; resolve those through group management first. Do not rerun the destructive clean baseline on the live demo.
+
+`list_group_deacons` exposes active deacons' email and linked, non-archived member phone only to readers authorized for that group. Link a deacon account to their member record through account administration to provide a phone number; otherwise email is available. Inactive deacons' contacts are omitted. `list_member_groups` exposes only non-archived members' assigned group names to approved directory readers, not group rosters or account identities. Full-profile RLS remains unchanged.
 
 ## Architecture and security
 
