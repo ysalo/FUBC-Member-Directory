@@ -21,7 +21,7 @@ await writeFile(
   resolve(dir, "entry.tsx"),
   `import React,{useState,useEffect} from 'react';import{createRoot}from'react-dom/client';import VisitForm from ${JSON.stringify(resolve(root, "src/components/visit-form.tsx"))};import VisitControls from ${JSON.stringify(resolve(root, "src/components/visit-controls.tsx"))};import VisitDetails from ${JSON.stringify(resolve(root, "src/components/visit-details.tsx"))};import BottomNavigation from ${JSON.stringify(resolve(root, "src/components/bottom-navigation.tsx"))};
 window.actions=[];window.pending=2;window.demo={id:'visit',pastor_id:'pastor',pastor_name:'Fictional Pastor',person_id:'member',member_name:'A very long fictional member name for accessibility testing',member_address:'123 Example Street, Seattle, WA',location:'Church meeting room',scheduled_at:'2099-12-15T19:30:00Z',notes:'Discuss the upcoming visit',status:'open',revision:2,updated_fields:['location'],visit_recipients:[{deacon_id:'d1',deacon_name:'First Deacon',response:'accepted',decline_reason:'',last_viewed_revision:1},{deacon_id:'d2',deacon_name:'Second Deacon',response:'pending',decline_reason:'',last_viewed_revision:0}]};
-function App(){const[version,setVersion]=useState(0);useEffect(()=>{const update=()=>setVersion(v=>v+1);window.addEventListener('refresh-fixture',update);return()=>window.removeEventListener('refresh-fixture',update);},[]);const p=new URLSearchParams(location.search),mode=p.get('mode'),locale=p.get('locale')||'en',detail=mode==='deacon'||mode==='pastor',userId=mode==='deacon'?'d1':'pastor';return <><main className="mx-auto max-w-xl p-5 pb-28 bg-[var(--app-surface)] text-[var(--app-ink)]">{detail?<><VisitDetails visit={window.demo} locale={locale} userId={userId}/><p data-testid="response" className="sr-only">{window.demo.visit_recipients[0].response}</p><VisitControls visit={{...window.demo}} userId={userId} locale={locale} /></>:<><h1 className="mb-5 text-2xl font-semibold">{mode==='edit'?'Edit request':'Request visit'}</h1><VisitForm member={mode==='new'?undefined:{id:'member',name:window.demo.member_name,address:window.demo.member_address,groupId:p.get('missing')?null:'group'}} members={mode==='new'?[{id:'member',name:'First member',photoPath:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jX1sAAAAASUVORK5CYII=',address:'First home',groupId:'group'},{id:'other',name:'Other member',photoPath:'/missing-photo.png',address:'Other home',groupId:null}]:[]} deacons={[{id:'d1',name:'First Deacon',group_id:'group'},{id:'d2',name:'Second Deacon',group_id:'group'},{id:'d3',name:'Other Deacon',group_id:null}]} visit={mode==='edit'?window.demo:undefined} locale={locale} submission="fixture-submission"/></>}</main><BottomNavigation role="member" isDeacon={mode==='deacon'} isPastor={mode!=='deacon'} locale={locale} fixed/></>};createRoot(document.getElementById('root')).render(<App/>);`,
+function App(){const[version,setVersion]=useState(0);useEffect(()=>{const update=()=>setVersion(v=>v+1);window.addEventListener('refresh-fixture',update);return()=>window.removeEventListener('refresh-fixture',update);},[]);const p=new URLSearchParams(location.search),mode=p.get('mode'),locale=p.get('locale')||'en',detail=mode==='deacon'||mode==='pastor',userId=mode==='deacon'?'d1':'pastor';return <><main className="mx-auto max-w-xl p-5 pb-28 bg-[var(--app-surface)] text-[var(--app-ink)]">{detail?<><VisitDetails visit={window.demo} locale={locale} userId={userId}/><p data-testid="response" className="sr-only">{window.demo.visit_recipients[0].response}</p><VisitControls visit={{...window.demo}} userId={userId} locale={locale} /></>:<><h1 className="mb-5 text-2xl font-semibold">{mode==='edit'?'Edit planned visit':'Plan a visit'}</h1><VisitForm member={mode==='new'?undefined:{id:'member',name:window.demo.member_name,address:window.demo.member_address,groupId:p.get('missing')?null:'group'}} members={mode==='new'?[{id:'member',name:'First member',photoPath:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jX1sAAAAASUVORK5CYII=',address:'First home',groupId:'group'},{id:'other',name:'Other member',photoPath:'/missing-photo.png',address:'Other home',groupId:null}]:[]} deacons={[{id:'d1',name:'First Deacon',group_id:'group'},{id:'d2',name:'Second Deacon',group_id:'group'},{id:'d3',name:'Other Deacon',group_id:null}]} visit={mode==='edit'?window.demo:undefined} locale={locale} submission="fixture-submission"/></>}</main><BottomNavigation role="member" isDeacon={mode==='deacon'} isPastor={mode!=='deacon'} locale={locale} fixed/></>};createRoot(document.getElementById('root')).render(<App/>);`,
 );
 await new Promise((res, rej) => {
   const compiler = webpack({
@@ -95,10 +95,10 @@ try {
   await page.getByLabel("Date and time").fill("2099-09-15T12:30");
   await page.getByLabel("Visit notes").fill("Retain this draft");
   await page.evaluate(() => (window.failNext = true));
-  await page.getByRole("button", { name: "Submit request" }).click();
+  await page.getByRole("button", { name: "Schedule visit" }).click();
   await expect(page.getByRole("alert")).toContainText("retained");
   await expect(page.getByLabel("Visit notes")).toHaveValue("Retain this draft");
-  await page.getByRole("button", { name: "Submit request" }).click();
+  await page.getByRole("button", { name: "Schedule visit" }).click();
   await expect
     .poll(() => page.evaluate(() => window.destination))
     .toBe("/visitation/saved-fixture");
@@ -109,7 +109,7 @@ try {
   await page.goto(url + "/?mode=new");
   await expect(page.getByLabel("Date and time")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Submit request" }),
+    page.getByRole("button", { name: "Schedule visit" }),
   ).toBeDisabled();
   await page.getByLabel("Date and time").fill("2099-12-15T12:30");
   await page.getByLabel("Search people").fill("zzzz");
@@ -153,7 +153,7 @@ try {
   expect((await page.evaluate(() => window.actions.at(-1))).revision).toBe("2");
   await page.goto(url + "/?mode=deacon");
   await expect(
-    page.getByRole("link", { name: "Visitation, 2 pending requests" }),
+    page.getByRole("link", { name: "Visitation, 2 visits awaiting response" }),
   ).toBeVisible();
   await expect(
     page.getByText("123 Example Street, Seattle, WA", { exact: true }),
@@ -179,7 +179,7 @@ try {
     page.getByRole("button", { name: "Accept", exact: true }),
   ).not.toHaveClass(/bg-\[var\(--app-brand\)\]/);
   await expect(
-    page.getByRole("link", { name: "Visitation, 1 pending requests" }),
+    page.getByRole("link", { name: "Visitation, 1 visits awaiting response" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Accept", exact: true }).click();
   await expect(page.getByTestId("response")).toHaveText("accepted");
@@ -200,18 +200,18 @@ try {
   ).toBe("");
   await page.goto(url + "/?mode=pastor");
   await expect(
-    page.getByRole("link", { name: "Edit request", exact: true }),
+    page.getByRole("link", { name: "Edit planned visit", exact: true }),
   ).toHaveAttribute("href", "/visitation/visit/edit");
   await expect(
     page.getByRole("button", { name: "Mark completed" }),
   ).toBeEnabled();
   page.once("dialog", (d) => d.accept());
-  await page.getByRole("button", { name: "Cancel request" }).click();
+  await page.getByRole("button", { name: "Cancel planned visit" }).click();
   await expect(
     page.getByRole("link", { name: "Visitation", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Cancel request" }),
+    page.getByRole("button", { name: "Cancel planned visit" }),
   ).toHaveCount(0);
   await page.goto(url + "/?mode=pastor&complete=1");
   await page.getByRole("button", { name: "Mark completed" }).click();
@@ -228,7 +228,7 @@ try {
         document.documentElement.dataset.textSize = "large";
       }, theme);
       await expect(
-        page.getByRole("button", { name: "Надіслати запит" }),
+        page.getByRole("button", { name: "Запланувати відвідування" }),
       ).toBeDisabled();
       expect(
         await page.evaluate(

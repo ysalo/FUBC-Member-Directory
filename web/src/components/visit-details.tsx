@@ -1,6 +1,7 @@
 import { CalendarDays, MapPin, FileText, Check, Clock, X } from "lucide-react";
 import { formatVisitDate, visitCopy, type Visit } from "@/lib/visitation";
 import type { Locale } from "@/lib/i18n";
+import MemberPhoto from "@/components/member-photo";
 
 export default function VisitDetails({
   visit: v,
@@ -24,9 +25,12 @@ export default function VisitDetails({
         <p className="mb-1 text-sm text-[var(--app-muted)]">
           {c.requester}: {v.pastor_name}
         </p>
-        <h1 className="break-words text-2xl font-semibold tracking-tight">
-          {v.member_name}
-        </h1>
+        <div className="flex items-center gap-3">
+          <MemberPhoto name={v.member_name} photoPath={v.member_photo} />
+          <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight">
+            {v.member_name}
+          </h1>
+        </div>
         <span className="mt-3 inline-flex rounded-full bg-[var(--app-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--app-muted)]">
           {c[v.status]}
         </span>

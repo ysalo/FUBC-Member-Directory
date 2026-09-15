@@ -99,8 +99,16 @@ export default function VisitForm({
               onClick={() => setChoosing(!choosing)}
               className={`${input} flex items-center justify-between gap-3 text-left`}
             >
-              <span className="break-words">
-                {person?.name ?? c.choosePerson}
+              <span className="flex min-w-0 items-center gap-3">
+                {person && (
+                  <MemberPhoto
+                    name={person.name}
+                    photoPath={person.photoPath}
+                  />
+                )}
+                <span className="min-w-0 break-words">
+                  {person?.name ?? c.choosePerson}
+                </span>
               </span>
               <span className="shrink-0 text-sm text-[var(--app-brand)]">
                 {person ? c.change : "⌄"}
@@ -187,8 +195,11 @@ export default function VisitForm({
             )}
           </section>
         ) : (
-          <section className="rounded-2xl bg-[var(--app-surface-muted)] p-4">
-            <h2 className="text-xl font-semibold break-words">
+          <section className="flex items-center gap-3 rounded-2xl bg-[var(--app-surface-muted)] p-4">
+            {person && (
+              <MemberPhoto name={person.name} photoPath={person.photoPath} />
+            )}
+            <h2 className="min-w-0 text-xl font-semibold break-words">
               {person?.name}
             </h2>
           </section>

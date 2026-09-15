@@ -4,6 +4,7 @@ import { getLocale } from "@/lib/locale";
 import { visitCopy, type Visit } from "@/lib/visitation";
 import VisitForm from "@/components/visit-form";
 import VisitBack from "@/components/visit-back";
+import { loadVisitPhotos } from "@/lib/visit-photos";
 export default async function EditVisit({
   params,
 }: {
@@ -22,6 +23,9 @@ export default async function EditVisit({
   const v = data as Visit;
   if (v.status !== "open") redirect("/visitation/" + id);
   const locale = await getLocale();
+  const photo = (await loadVisitPhotos(supabase, [v.person_id])).get(
+    v.person_id,
+  );
   return (
     <>
       <VisitBack locale={locale} href={`/visitation/${id}`} />
@@ -34,6 +38,7 @@ export default async function EditVisit({
           name: v.member_name,
           address: v.member_address,
           groupId: null,
+          photoPath: photo,
         }}
         visit={v}
         deacons={[]}

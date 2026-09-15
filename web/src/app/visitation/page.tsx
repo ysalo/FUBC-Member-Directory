@@ -3,6 +3,8 @@ import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { visitCopy, formatVisitDate, type Visit } from "@/lib/visitation";
 import { CalendarDays, ChevronRight, Search, X } from "lucide-react";
+import MemberPhoto from "@/components/member-photo";
+import { loadVisitPhotos } from "@/lib/visit-photos";
 export default async function VisitationPage({
   searchParams,
 }: {
@@ -28,6 +30,10 @@ export default async function VisitationPage({
       .join(" ")
       .toLocaleLowerCase(locale)
       .includes(query.toLocaleLowerCase(locale)),
+  );
+  const photos = await loadVisitPhotos(
+    supabase,
+    visits.map((v) => v.person_id),
   );
   return (
     <>
@@ -104,8 +110,14 @@ export default async function VisitationPage({
                     href={"/visitation/" + v.id}
                     className="relative block rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-4 pr-9 hover:bg-[var(--app-brand-soft)]"
                   >
-                    <span className="block break-words text-lg font-semibold">
-                      {v.member_name}
+                    <span className="flex items-center gap-3">
+                      <MemberPhoto
+                        name={v.member_name}
+                        photoPath={photos.get(v.person_id)}
+                      />
+                      <span className="min-w-0 break-words text-lg font-semibold">
+                        {v.member_name}
+                      </span>
                     </span>
                     <span className="my-2 flex items-center gap-2 text-sm font-medium">
                       <CalendarDays

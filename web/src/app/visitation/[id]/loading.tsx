@@ -1,4 +1,4 @@
 import AppLoading from "@/components/app-loading";
 export default function Loading() {
-  return <AppLoading inset layout="visits" />;
+  return <AppLoading inset layout="visit-detail" />;
 }
