@@ -394,6 +394,38 @@ assert.equal(
   "editor",
   "demo preserves access roles",
 );
+const statusSeed = await readFile(
+  new URL("../supabase/seed_member_statuses.sql", import.meta.url),
+  "utf8",
+);
+await db.query(
+  "insert into public.people(id,first_name,last_name,marital_status) values($1,'Untouched','Member','single')",
+  [person(99)],
+);
+await db.exec(statusSeed);
+await db.exec(statusSeed);
+assert.equal(
+  await scalar(
+    "select count(*)::int from public.people where marital_status='married'",
+  ),
+  8,
+);
+assert.equal(
+  await scalar(
+    "select count(*)::int from public.people where marital_status='widowed'",
+  ),
+  4,
+);
+assert.equal(
+  await scalar("select count(*)::int from public.people where is_orphan"),
+  4,
+);
+assert.equal(
+  await scalar("select marital_status from public.people where id=$1", [
+    person(99),
+  ]),
+  "single",
+);
 await db.close();
 console.log(
   "Deacon Group migration, RPC, RLS, transitions, safeguards, and atomic-audit checks passed.",

@@ -6,6 +6,7 @@ import {
   MapPin,
   Phone,
   Search,
+  ListFilter,
   UserRound,
   X,
 } from "lucide-react";
@@ -95,9 +96,34 @@ export default function DirectoryClient({
   const [selected, setSelected] = useState<DirectoryPerson | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [view, setView] = useState<"members" | "birthdays">("members");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "widowed" | "orphan"
-  >("all");
+  const [badgeFilters, setBadgeFilters] = useState({
+    widowed: false,
+    orphan: false,
+  });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+  const activeFilterCount =
+    Number(badgeFilters.widowed) + Number(badgeFilters.orphan);
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (!filterRef.current?.contains(event.target as Node))
+        setFiltersOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setFiltersOpen(false);
+        filterButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [filtersOpen]);
   const listRef = useRef<HTMLDivElement>(null);
   const savedScroll = useRef(0);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
@@ -142,10 +168,9 @@ export default function DirectoryClient({
     const sorted = scopedMembers
       .filter(
         (person) =>
-          statusFilter === "all" ||
-          (statusFilter === "widowed"
-            ? person.maritalStatus === "widowed"
-            : person.isOrphan),
+          !activeFilterCount ||
+          (badgeFilters.widowed && person.maritalStatus === "widowed") ||
+          (badgeFilters.orphan && person.isOrphan),
       )
       .sort(
         (a, b) =>
@@ -165,7 +190,7 @@ export default function DirectoryClient({
           ].some((field) => field.toLocaleLowerCase(nameLocale).includes(term)),
         )
       : sorted;
-  }, [scopedMembers, nameLocale, query, statusFilter]);
+  }, [scopedMembers, nameLocale, query, badgeFilters, activeFilterCount]);
   const visibleBirthdays = birthdays.filter((birthday) =>
     results.some((person) => person.id === birthday.id),
   );
@@ -337,14 +362,22 @@ export default function DirectoryClient({
                 <UserRound className="size-5 shrink-0 text-slate-400" />
                 <span>
                   <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                    {copy.dateOfBirth}
+                    {ageOn(selected.dateOfBirth, today) !== null
+                      ? labels.age
+                      : copy.dateOfBirth}
                   </span>
                   <span className="mt-0.5 block text-[17px] text-[var(--app-ink)]">
-                    {formatDate(selected.dateOfBirth)}
-                    {ageOn(selected.dateOfBirth, today) !== null && (
-                      <span className="block text-sm text-[var(--app-muted)]">
-                        {labels.age}: {ageOn(selected.dateOfBirth, today)}
-                      </span>
+                    {ageOn(selected.dateOfBirth, today) !== null ? (
+                      <>
+                        <span className="text-xl font-semibold">
+                          {ageOn(selected.dateOfBirth, today)}
+                        </span>
+                        <span className="mt-0.5 block text-sm text-[var(--app-muted)]">
+                          {formatDate(selected.dateOfBirth)}
+                        </span>
+                      </>
+                    ) : (
+                      formatDate(selected.dateOfBirth)
                     )}
                   </span>
                 </span>
@@ -414,12 +447,13 @@ export default function DirectoryClient({
           )}
         </div>
         <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 backdrop-blur-xl">
-          <label className="directory-search flex min-h-11 items-center gap-3 px-1">
+          <div className="directory-search flex min-h-11 items-center gap-3 px-1">
             <Search className="size-5 shrink-0 text-slate-400" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={copy.searchPlaceholder}
+              aria-label={copy.searchPlaceholder}
               className="min-h-11 min-w-0 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-slate-400"
             />
             {query && (
@@ -431,18 +465,65 @@ export default function DirectoryClient({
                 <X className="size-5" />
               </button>
             )}
-          </label>
-          <div className="flex gap-4" aria-label={labels.maritalStatus}>
-            {(["all", "widowed", "orphan"] as const).map((filter) => (
+            <div ref={filterRef} className="relative shrink-0">
               <button
-                key={filter}
-                aria-pressed={statusFilter === filter}
-                onClick={() => setStatusFilter(filter)}
-                className={`min-h-11 text-sm ${statusFilter === filter ? "font-semibold text-[var(--app-brand)]" : "text-[var(--app-muted)]"}`}
+                ref={filterButtonRef}
+                aria-label={`${labels.filters}${activeFilterCount ? ` (${activeFilterCount})` : ""}`}
+                aria-expanded={filtersOpen}
+                aria-controls="badge-filters"
+                onClick={() => setFiltersOpen(!filtersOpen)}
+                className={`relative grid size-11 place-items-center ${activeFilterCount ? "text-[var(--app-brand)]" : "text-slate-400"}`}
               >
-                {filter === "all" ? labels.allPeople : labels[filter]}
+                <ListFilter className="size-5" />
+                {!!activeFilterCount && (
+                  <span
+                    aria-hidden
+                    className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-[var(--app-brand)] text-[10px] text-white"
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
-            ))}
+              {filtersOpen && (
+                <section
+                  id="badge-filters"
+                  aria-label={labels.filters}
+                  className="absolute right-0 top-full z-40 mt-1 w-[min(17rem,calc(100vw-2rem))] rounded-2xl border border-[var(--app-line)] bg-white p-4 shadow-xl"
+                >
+                  <h2 className="text-sm font-semibold">{labels.filters}</h2>
+                  <p className="mt-1 text-xs text-[var(--app-muted)]">
+                    {labels.filterHint}
+                  </p>
+                  {(["widowed", "orphan"] as const).map((badge) => (
+                    <label
+                      key={badge}
+                      className="flex min-h-11 items-center gap-3 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={badgeFilters[badge]}
+                        onChange={(event) =>
+                          setBadgeFilters({
+                            ...badgeFilters,
+                            [badge]: event.target.checked,
+                          })
+                        }
+                        className="size-5 accent-[var(--app-brand)]"
+                      />
+                      {labels[badge]}
+                    </label>
+                  ))}
+                  <button
+                    onClick={() =>
+                      setBadgeFilters({ widowed: false, orphan: false })
+                    }
+                    className="min-h-11 text-sm text-[var(--app-muted)]"
+                  >
+                    {labels.clearFilters}
+                  </button>
+                </section>
+              )}
+            </div>
           </div>
         </div>
         <div
