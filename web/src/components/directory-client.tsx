@@ -314,9 +314,6 @@ export default function DirectoryClient({
         <header className="safe-top z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 pb-3 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--app-accent)]">
-                {copy.privateAccess}
-              </p>
               <h1 className="mt-0.5 text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--app-ink)] min-[375px]:text-[26px]">
                 {copy.memberDirectory}
               </h1>
