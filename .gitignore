@@ -1,0 +1,4 @@
+.yarn-cache/
+work/
+web/test-results/
+web/playwright-report/
