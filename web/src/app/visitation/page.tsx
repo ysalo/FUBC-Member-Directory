@@ -15,7 +15,17 @@ export default async function VisitationPage() {
   const visits = (data ?? []) as Visit[];
   return (
     <>
-      <h1 className="py-5 text-2xl font-semibold">{c.title}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 py-5">
+        <h1 className="text-2xl font-semibold">{c.title}</h1>
+        {profile.ministry_roles.includes("pastor") && (
+          <Link
+            href="/visitation/new"
+            className="inline-flex min-h-11 items-center rounded-xl bg-[var(--app-brand)] px-4 py-2 text-sm font-semibold text-white"
+          >
+            {c.request}
+          </Link>
+        )}
+      </div>
       {[
         {
           title: c.mine,

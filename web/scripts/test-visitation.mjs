@@ -16,6 +16,15 @@ const migration = await readFile(
   "utf8",
 );
 const id = (n) => `20000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const lifecycle = (
+  await readFile(
+    new URL(
+      "../supabase/migrations/20260915181500_visitation_lifecycle.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+).split("-- Hosted scheduler")[0];
 for (const upgrade of [true, false]) {
   const db = new PGlite();
   await db.exec(`create role authenticated;create role anon;create schema auth;create schema storage;
@@ -27,6 +36,7 @@ for (const upgrade of [true, false]) {
     upgrade ? baseline.split("-- Visitation foundation.")[0] : baseline,
   );
   if (upgrade) await db.exec(migration);
+  await db.exec(lifecycle);
   for (let n = 1; n <= 6; n++)
     await db.query("insert into auth.users(id,email) values($1,$2)", [
       id(n),
@@ -202,11 +212,7 @@ for (const upgrade of [true, false]) {
     /Deacon/,
   );
   await as(1);
-  await assert.rejects(
-    db.query("select public.close_visit($1,$2,$3)", [v, "completed", 2]),
-    /Completion/,
-  );
-  await db.query("select public.close_visit($1,$2,$3)", [v, "cancelled", 2]);
+  await db.query("select public.close_visit($1,$2,$3)", [v, "completed", 2]);
   await as(2);
   await assert.rejects(
     db.query("select public.respond_visit($1,$2,$3,$4)", [
@@ -253,6 +259,36 @@ for (const upgrade of [true, false]) {
     /unavailable/,
   );
   await db.exec("reset role");
+  await assert.rejects(
+    db.query(
+      "update public.profiles set ministry_roles=array['pastor','deacon'] where id=$1",
+      [id(1)],
+    ),
+    /profiles_ministry_roles_check/,
+  );
+  await db.query(
+    "update public.visit_requests set scheduled_at=now()-interval '5 hours 59 minutes',status='open' where id=$1",
+    [v],
+  );
+  assert.equal(await scalar("select public.auto_complete_visits()"), 0);
+  await db.query(
+    "update public.visit_requests set scheduled_at=now()-interval '6 hours' where id=$1",
+    [v],
+  );
+  await as(2);
+  await assert.rejects(
+    db.query("select public.auto_complete_visits()"),
+    /permission denied/,
+  );
+  await db.exec("reset role");
+  assert.equal(await scalar("select public.auto_complete_visits()"), 1);
+  assert.equal(await scalar("select public.auto_complete_visits()"), 0);
+  assert.equal(
+    await scalar(
+      "select count(*)::int from public.audit_events where event_type='visit.auto_completed'",
+    ),
+    1,
+  );
   await db.exec(baseline);
   await db.close();
   console.log(

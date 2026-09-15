@@ -69,7 +69,18 @@ export default function VisitDetails({
                 )}
               </dt>
               <dd className="select-text break-words font-medium leading-relaxed">
-                {value}
+                {field === "location" ? (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--app-brand)] underline decoration-[var(--app-line)] underline-offset-4"
+                  >
+                    {value}
+                  </a>
+                ) : (
+                  value
+                )}
               </dd>
             </div>
           </div>

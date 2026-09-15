@@ -84,3 +84,5 @@ Deacon Groups implementation: see `docs/DEACON_GROUPS.md`. Apply `web/supabase/m
 3. Complete a real iPhone Safari/add-to-home-screen test of the bilingual Contacts-style directory.
 4. Add richer success/error states and authenticated end-to-end test fixtures.
 5. Build the SwiftUI client once the web workflows are validated.
+
+Visitation follow-up: response buttons show only the saved selection; meeting locations link to Google Maps. Pastors can create from Visitation with date/time then person and group deacons, and complete requests at any time. Migration 20260915181500_visitation_lifecycle.sql is applied live: exclusive pastor/deacon ministries (legacy dual profiles retain pastor) and database-only cron auto-completion six hours after visit time, checked every minute. Verification: zero dual profiles, one active named job, clients denied worker execution, 34 members preserved.

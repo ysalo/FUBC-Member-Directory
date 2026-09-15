@@ -10,12 +10,10 @@ export default function VisitControls({
   visit,
   userId,
   locale,
-  canComplete,
 }: {
   visit: Visit;
   userId: string;
   locale: Locale;
-  canComplete: boolean;
 }) {
   const c = visitCopy(locale),
     router = useRouter(),
@@ -85,7 +83,7 @@ export default function VisitControls({
             <button
               type="button"
               aria-pressed={recipient.response === "accepted"}
-              className={`${button} bg-[var(--app-brand)] text-white ${recipient.response === "accepted" ? "ring-2 ring-[var(--app-brand)] ring-offset-2 ring-offset-[var(--app-surface)]" : ""}`}
+              className={`${button} border ${recipient.response === "accepted" ? "border-[var(--app-brand)] bg-[var(--app-brand)] text-white ring-2 ring-[var(--app-brand)] ring-offset-2 ring-offset-[var(--app-surface)]" : "border-[var(--app-line)] text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)]"}`}
               onClick={() => run("respond", "accepted")}
             >
               <Check aria-hidden="true" className="size-4 shrink-0" />
@@ -94,7 +92,7 @@ export default function VisitControls({
             <button
               type="button"
               aria-pressed={recipient.response === "declined"}
-              className={`${button} border border-[var(--app-line)] ${recipient.response === "declined" ? "bg-red-50 text-red-700" : "text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)]"}`}
+              className={`${button} border ${recipient.response === "declined" ? "border-[var(--app-danger)] bg-red-50 text-red-700 ring-2 ring-[var(--app-danger)] ring-offset-2 ring-offset-[var(--app-surface)]" : "border-[var(--app-line)] text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)]"}`}
               onClick={() => run("respond", "declined")}
             >
               <X aria-hidden="true" className="size-4 shrink-0" />
@@ -130,22 +128,13 @@ export default function VisitControls({
             {c.edit}
           </Link>
           <button
-            disabled={busy || !canComplete}
-            aria-describedby={!canComplete ? "visit-complete-hint" : undefined}
+            disabled={busy}
             className={`${button} w-full border border-[var(--app-line)] bg-[var(--app-surface-muted)] text-[var(--app-ink)]`}
             onClick={() => run("close", "completed")}
           >
             <CheckCircle2 aria-hidden="true" className="size-4" />
             {c.complete}
           </button>
-          {!canComplete && (
-            <p
-              id="visit-complete-hint"
-              className="text-center text-xs leading-relaxed text-[var(--app-muted)]"
-            >
-              {c.completeHint}
-            </p>
-          )}
           <button
             disabled={busy}
             className={`${button} w-full text-[var(--app-danger)] hover:bg-red-50`}

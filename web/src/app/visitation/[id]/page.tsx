@@ -23,9 +23,6 @@ export default async function VisitPage({
   if (error) throw new Error("Unable to load visit");
   if (!data) notFound();
   const v = data as Visit;
-  // PostgreSQL enforces completion eligibility atomically; this is a request-time UI hint.
-  // eslint-disable-next-line react-hooks/purity
-  const now = Date.now();
   return (
     <>
       <Link
@@ -35,15 +32,7 @@ export default async function VisitPage({
         {visitCopy(locale).back}
       </Link>
       <VisitDetails visit={v} locale={locale} userId={profile.id} />
-      <VisitControls
-        visit={v}
-        userId={profile.id}
-        locale={locale}
-        canComplete={
-          new Date(v.scheduled_at).getTime() <= now &&
-          v.visit_recipients.some((r) => r.response === "accepted")
-        }
-      />
+      <VisitControls visit={v} userId={profile.id} locale={locale} />
     </>
   );
 }

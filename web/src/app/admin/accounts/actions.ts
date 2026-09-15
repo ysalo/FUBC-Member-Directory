@@ -11,6 +11,9 @@ export async function reviewAccount(targetId: string, formData: FormData) {
   const status = String(formData.get("intent") ?? "active") as AccountStatus;
   const personId = String(formData.get("personId") ?? "").trim() || null;
   const note = String(formData.get("note") ?? "").trim() || null;
+  const ministry = String(formData.get("ministry") ?? "");
+  if (!["", "deacon", "pastor"].includes(ministry))
+    throw new Error("Invalid ministry.");
   if (!roles.includes(role) || !statuses.includes(status))
     throw new Error("Invalid account review request.");
   const { error } = await supabase.rpc("review_account_designations", {
@@ -19,8 +22,8 @@ export async function reviewAccount(targetId: string, formData: FormData) {
     new_role: role,
     new_person_id: personId,
     note,
-    is_deacon: formData.get("isDeacon") === "on",
-    is_pastor: formData.get("isPastor") === "on",
+    is_deacon: ministry === "deacon",
+    is_pastor: ministry === "pastor",
   });
   if (error) throw new Error(error.message || "Unable to update this account.");
   revalidatePath("/admin");
