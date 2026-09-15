@@ -2,6 +2,7 @@
 
 import {
   CalendarDays,
+  ChevronRight,
   MapPin,
   Phone,
   Search,
@@ -210,19 +211,18 @@ export default function DirectoryClient({
               {selected.photoPath && (
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 scale-105 bg-cover bg-center blur-xl"
+                  className="pointer-events-none absolute inset-0 backdrop-blur-[10px]"
                   style={{
-                    backgroundImage: `url(${selected.photoPath})`,
                     maskImage:
-                      "linear-gradient(to bottom, transparent 66%, rgba(0, 0, 0, 0.18) 76%, black 100%)",
+                      "linear-gradient(to bottom, transparent 52%, rgba(0, 0, 0, 0.03) 60%, rgba(0, 0, 0, 0.12) 69%, rgba(0, 0, 0, 0.3) 78%, rgba(0, 0, 0, 0.62) 89%, black 100%)",
                     WebkitMaskImage:
-                      "linear-gradient(to bottom, transparent 66%, rgba(0, 0, 0, 0.18) 76%, black 100%)",
+                      "linear-gradient(to bottom, transparent 52%, rgba(0, 0, 0, 0.03) 60%, rgba(0, 0, 0, 0.12) 69%, rgba(0, 0, 0, 0.3) 78%, rgba(0, 0, 0, 0.62) 89%, black 100%)",
                   }}
                 />
               )}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(7,19,29,0.16)_0%,transparent_24%,transparent_68%,rgba(7,19,29,0.82)_100%)]"
+                className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(7,19,29,0.14)_0%,transparent_22%,transparent_60%,rgba(7,19,29,0.04)_68%,rgba(7,19,29,0.14)_76%,rgba(7,19,29,0.36)_86%,rgba(7,19,29,0.78)_100%)]"
               />
               <div className="safe-top absolute inset-x-0 top-0 z-10 flex items-start justify-between px-4">
                 <button
@@ -243,10 +243,10 @@ export default function DirectoryClient({
               {selected.phone && (
                 <a
                   href={`tel:${selected.phone.replace(/[^\d+]/g, "")}`}
-                  className="flex min-h-14 items-start gap-4 py-1"
+                  className="flex min-h-14 items-center gap-4 py-1"
                 >
-                  <Phone className="mt-1 size-5 shrink-0 text-slate-400" />
-                  <span className="min-w-0">
+                  <Phone className="size-5 shrink-0 text-slate-400" />
+                  <span className="min-w-0 flex-1">
                     <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       {copy.phone}
                     </span>
@@ -254,6 +254,7 @@ export default function DirectoryClient({
                       {selected.phone}
                     </span>
                   </span>
+                  <ChevronRight className="size-5 shrink-0 text-slate-300" />
                 </a>
               )}
               {selected.address && (
@@ -261,21 +262,22 @@ export default function DirectoryClient({
                   href={`https://maps.apple.com/?q=${encodeURIComponent(selected.address)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex min-h-14 items-start gap-4 py-1"
+                  className="flex min-h-14 items-center gap-4 py-1"
                 >
-                  <MapPin className="mt-1 size-5 shrink-0 text-slate-400" />
-                  <span className="min-w-0">
+                  <MapPin className="size-5 shrink-0 text-slate-400" />
+                  <span className="min-w-0 flex-1">
                     <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       {copy.address}
                     </span>
-                    <span className="mt-0.5 block text-[17px] leading-6 text-[var(--app-ink)]">
+                    <span className="mt-0.5 block text-[17px] leading-6 text-[var(--app-brand)]">
                       {selected.address}
                     </span>
                   </span>
+                  <ChevronRight className="size-5 shrink-0 text-slate-300" />
                 </a>
               )}
-              <div className="flex min-h-14 items-start gap-4 py-1">
-                <UserRound className="mt-1 size-5 shrink-0 text-slate-400" />
+              <div className="flex min-h-14 items-center gap-4 py-1">
+                <UserRound className="size-5 shrink-0 text-slate-400" />
                 <span>
                   <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                     {copy.dateOfBirth}
@@ -285,8 +287,8 @@ export default function DirectoryClient({
                   </span>
                 </span>
               </div>
-              <div className="flex min-h-14 items-start gap-4 py-1">
-                <CalendarDays className="mt-1 size-5 shrink-0 text-slate-400" />
+              <div className="flex min-h-14 items-center gap-4 py-1">
+                <CalendarDays className="size-5 shrink-0 text-slate-400" />
                 <span>
                   <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                     {copy.membershipDate}
@@ -328,7 +330,7 @@ export default function DirectoryClient({
   return (
     <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
       <section className="native-enter native-shadow relative mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]">
-        <header className="safe-top z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 pb-3 backdrop-blur-xl">
+        <header className="safe-top z-30 flex-none bg-white/92 px-4 pb-1 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="mt-0.5 text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--app-ink)] min-[375px]:text-[26px]">
@@ -346,7 +348,7 @@ export default function DirectoryClient({
             </button>
           </div>
         </header>
-        <div className="z-30 flex-none bg-white/92 px-4 py-2 backdrop-blur-xl">
+        <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 backdrop-blur-xl">
           <label className="flex min-h-11 items-center gap-3 px-1">
             <Search className="size-5 shrink-0 text-slate-400" />
             <input
