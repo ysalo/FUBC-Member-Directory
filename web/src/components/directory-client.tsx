@@ -6,7 +6,7 @@ import {
   MapPin,
   Phone,
   Search,
-  Settings,
+  Menu,
   UserRound,
   X,
 } from "lucide-react";
@@ -344,7 +344,7 @@ export default function DirectoryClient({
               aria-expanded={settingsOpen}
               className="grid size-11 shrink-0 place-items-center text-[var(--app-muted)] hover:text-[var(--app-ink)]"
             >
-              <Settings className="size-5" />
+              <Menu className="size-5" />
             </button>
           </div>
         </header>
