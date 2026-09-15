@@ -236,14 +236,14 @@ export default function DirectoryClient({
   const visibleBirthdays = birthdays.filter((birthday) =>
     results.some((person) => person.id === birthday.id),
   );
-  const ministryBadges = (person: DirectoryPerson, overPhoto = false) => (
+  const ministryBadges = (person: DirectoryPerson) => (
     <span className="inline-flex shrink-0 self-center flex-wrap items-center gap-1 text-[11px] font-semibold leading-none tracking-normal">
       {(["deacon", "pastor"] as const)
         .filter((role) => person.ministryRoles?.includes(role))
         .map((role) => (
           <span
             key={role}
-            className={`inline-flex min-h-5 items-center justify-center rounded-full px-2 py-1 ${overPhoto ? "bg-black/30 text-white backdrop-blur-md" : "bg-[var(--app-brand-soft)] text-[var(--app-brand)]"}`}
+            className="inline-flex min-h-5 items-center justify-center rounded-full bg-[var(--app-brand-soft)] px-2 py-1 text-[var(--app-brand)]"
           >
             {labels[role]}
           </span>
@@ -344,18 +344,18 @@ export default function DirectoryClient({
               {selected.photoPath && (
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 backdrop-blur-[10px]"
+                  className="pointer-events-none absolute inset-0 backdrop-blur-[24px]"
                   style={{
                     maskImage:
-                      "linear-gradient(to bottom, transparent 52%, rgba(0, 0, 0, 0.03) 60%, rgba(0, 0, 0, 0.12) 69%, rgba(0, 0, 0, 0.3) 78%, rgba(0, 0, 0, 0.62) 89%, black 100%)",
+                      "linear-gradient(to bottom, transparent 45%, rgba(0, 0, 0, 0.015) 53%, rgba(0, 0, 0, 0.055) 60%, rgba(0, 0, 0, 0.14) 67%, rgba(0, 0, 0, 0.28) 74%, rgba(0, 0, 0, 0.48) 81%, rgba(0, 0, 0, 0.72) 88%, rgba(0, 0, 0, 0.93) 95%, black 100%)",
                     WebkitMaskImage:
-                      "linear-gradient(to bottom, transparent 52%, rgba(0, 0, 0, 0.03) 60%, rgba(0, 0, 0, 0.12) 69%, rgba(0, 0, 0, 0.3) 78%, rgba(0, 0, 0, 0.62) 89%, black 100%)",
+                      "linear-gradient(to bottom, transparent 45%, rgba(0, 0, 0, 0.015) 53%, rgba(0, 0, 0, 0.055) 60%, rgba(0, 0, 0, 0.14) 67%, rgba(0, 0, 0, 0.28) 74%, rgba(0, 0, 0, 0.48) 81%, rgba(0, 0, 0, 0.72) 88%, rgba(0, 0, 0, 0.93) 95%, black 100%)",
                   }}
                 />
               )}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(7,19,29,0.14)_0%,transparent_22%,transparent_60%,rgba(7,19,29,0.04)_68%,rgba(7,19,29,0.14)_76%,rgba(7,19,29,0.36)_86%,rgba(7,19,29,0.78)_100%)]"
+                className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(7,19,29,0.12)_0%,transparent_22%,transparent_48%,rgba(7,19,29,0.01)_56%,rgba(7,19,29,0.04)_64%,rgba(7,19,29,0.10)_72%,rgba(7,19,29,0.22)_80%,rgba(7,19,29,0.42)_88%,rgba(7,19,29,0.65)_95%,rgba(7,19,29,0.82)_100%)]"
               />
               <div className="safe-top absolute inset-x-0 top-0 z-10 flex items-start justify-between px-4">
                 <button
@@ -369,7 +369,7 @@ export default function DirectoryClient({
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-5 pb-6 pt-14 text-left">
                 <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[30px] font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-md min-[375px]:text-[34px]">
                   <span>{selected.name}</span>
-                  {ministryBadges(selected, true)}
+                  {ministryBadges(selected)}
                 </h1>
               </div>
             </div>
