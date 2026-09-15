@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Link from "@/components/navigation-link";
 import LanguageSwitcher from "@/components/language-switcher";
 import SignOutButton from "@/components/sign-out-button";
+import AppearanceSettings from "@/components/appearance-settings";
 import { dictionaries, type Locale } from "@/lib/i18n";
 import { groupCopy } from "@/lib/group-copy";
 import type { AppRole } from "@/lib/auth";
@@ -159,6 +160,7 @@ export default function BottomNavigation({
               <h3 className="mb-3 font-medium">{copy.language}</h3>
               <LanguageSwitcher locale={locale} />
             </section>
+            <AppearanceSettings locale={locale} />
             <section className="py-5">
               <h3 className="mb-3 font-medium">{copy.textSize}</h3>
               <div className="grid grid-cols-2 gap-2">

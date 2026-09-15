@@ -2,6 +2,8 @@
 
 ## Purpose
 
+Appearance and Groups UI update: Settings offers System/Light/Dark, persisted on this device and applied before page paint. System mode follows OS changes. Groups shows a prominent My Group heading and large linked group card without redundant Open group text; other groups have a localized name search that does not hide the led group. No database migration. Expo/SwiftUI skills were not available; changes use the existing responsive Next.js UI.
+
 Directory follow-up release: profiles link membership group names to `/groups/[id]`, Members/Birthdays tabs have people/cake icons, and the directory and group detail pages show total/orphan/widowed counters. Counts use the full active roster, independent of search/badge filters; group counts exclude deacons who belong elsewhere. English and Ukrainian labels are included. No database migration is required. Production webpack build, TypeScript, targeted lint (existing image warnings only), and group database/security suite passed before publishing.
 
 Stock portrait update (September 15, 2026): all 34 current live directory members received name-matched male/female placeholder portraits through the authenticated admin editor. Images were uploaded to private Supabase Storage; no deployment or SQL execution was needed for the live update. Verified all 34 directory images loaded from signed private Storage URLs and the admin member list remained unchanged. Bundled assets and updated seeds cover the 32 Ukrainian-named fictional members; the two linked demo deacon members use women-14 (Alina) and men-13 (Yaroslav). `web/supabase/seed_stock_portraits.sql` is an optional repeatable seed update, not a migration and was not applied live.

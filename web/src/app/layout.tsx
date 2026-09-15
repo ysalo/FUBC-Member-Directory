@@ -21,7 +21,14 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var r=document.documentElement,p='system';try{p=localStorage.getItem('directory-theme')||'system'}catch(e){}if(!['system','light','dark'].includes(p))p='system';r.dataset.themePreference=p;var m=matchMedia('(prefers-color-scheme: dark)');function apply(){r.dataset.theme=r.dataset.themePreference==='system'?(m.matches?'dark':'light'):r.dataset.themePreference}apply();m.addEventListener('change',apply)})()`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
