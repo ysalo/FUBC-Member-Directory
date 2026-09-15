@@ -1,5 +1,25 @@
 export type UpcomingBirthday = { id: string; date: string; daysAway: number };
 
+export function membershipDuration(
+  joined: string,
+  today: string,
+): { years: number; months: number } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(joined) || !today || joined > today)
+    return null;
+  const [year, month, day] = joined.split("-").map(Number);
+  const [currentYear, currentMonth, currentDay] = today.split("-").map(Number);
+  const anniversaryDay = Math.min(
+    day,
+    new Date(Date.UTC(currentYear, currentMonth, 0)).getUTCDate(),
+  );
+  const totalMonths =
+    (currentYear - year) * 12 +
+    currentMonth -
+    month -
+    (currentDay < anniversaryDay ? 1 : 0);
+  return { years: Math.floor(totalMonths / 12), months: totalMonths % 12 };
+}
+
 export function ageOn(dateOfBirth: string, today: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) || !today || dateOfBirth > today)
     return null;

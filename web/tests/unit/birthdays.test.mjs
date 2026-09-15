@@ -4,7 +4,33 @@ import {
   ageOn,
   churchToday,
   upcomingBirthdays,
+  membershipDuration,
 } from "../../src/lib/birthdays.ts";
+
+test("membership duration counts completed calendar months including month-end anniversaries", () => {
+  assert.deepEqual(membershipDuration("2023-07-15", "2026-09-15"), {
+    years: 3,
+    months: 2,
+  });
+  assert.deepEqual(membershipDuration("2023-07-16", "2026-09-15"), {
+    years: 3,
+    months: 1,
+  });
+  assert.deepEqual(membershipDuration("2026-09-01", "2026-09-15"), {
+    years: 0,
+    months: 0,
+  });
+  assert.deepEqual(membershipDuration("2026-01-31", "2026-02-28"), {
+    years: 0,
+    months: 1,
+  });
+  assert.deepEqual(membershipDuration("2024-02-29", "2025-02-28"), {
+    years: 1,
+    months: 0,
+  });
+  assert.equal(membershipDuration("", "2026-09-15"), null);
+  assert.equal(membershipDuration("2027-01-01", "2026-09-15"), null);
+});
 
 test("age changes on birthdays, handles leap days, and omits unknown/future dates", () => {
   assert.equal(ageOn("1990-09-15", "2026-09-14"), 35);

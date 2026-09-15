@@ -13,7 +13,7 @@ import {
 import BottomNavigation from "@/components/bottom-navigation";
 import Link from "@/components/navigation-link";
 import { groupCopy, type DeaconGroup } from "@/lib/group-copy";
-import { upcomingBirthdays, ageOn } from "@/lib/birthdays";
+import { upcomingBirthdays, ageOn, membershipDuration } from "@/lib/birthdays";
 import type { AppRole } from "@/lib/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dictionaries, type Locale } from "@/lib/i18n";
@@ -152,6 +152,29 @@ export default function DirectoryClient({
   }, [selected, unlinkedDeacon]);
 
   const dateLocale = locale === "uk" ? "uk-UA" : "en-US";
+  const tenure = selected
+    ? membershipDuration(selected.membershipJoinedAt, today)
+    : null;
+  const tenureLabel = tenure
+    ? [
+        tenure.years
+          ? new Intl.NumberFormat(dateLocale, {
+              style: "unit",
+              unit: "year",
+              unitDisplay: "long",
+            }).format(tenure.years)
+          : "",
+        tenure.months
+          ? new Intl.NumberFormat(dateLocale, {
+              style: "unit",
+              unit: "month",
+              unitDisplay: "long",
+            }).format(tenure.months)
+          : "",
+      ]
+        .filter(Boolean)
+        .join(", ") || labels.lessThanMonth
+    : "";
   const nameLocale = members.some((person) =>
     /[А-Яа-яІіЇїЄєҐґ]/u.test(person.lastName),
   )
@@ -421,10 +444,21 @@ export default function DirectoryClient({
                 <CalendarDays className="size-5 shrink-0 text-slate-400" />
                 <span>
                   <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                    {copy.membershipDate}
+                    {tenure ? labels.memberFor : copy.membershipDate}
                   </span>
                   <span className="mt-0.5 block text-[17px] text-[var(--app-ink)]">
-                    {formatDate(selected.membershipJoinedAt)}
+                    {tenure ? (
+                      <>
+                        <span className="text-xl font-semibold">
+                          {tenureLabel}
+                        </span>
+                        <span className="mt-0.5 block text-sm text-[var(--app-muted)]">
+                          {formatDate(selected.membershipJoinedAt)}
+                        </span>
+                      </>
+                    ) : (
+                      formatDate(selected.membershipJoinedAt)
+                    )}
                   </span>
                 </span>
               </div>
