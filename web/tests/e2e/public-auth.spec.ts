@@ -9,6 +9,25 @@ test("group routes require authentication", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
+for (const id of ["60000000-0000-4000-8000-000000000001", "not-a-uuid"]) {
+  test(`member route ${id} requires authentication before revealing profile or validation results`, async ({
+    page,
+  }) => {
+    await page.goto(`/members/${id}`);
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Continue with Google" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Member profile" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("This page could not be found.", { exact: true }),
+    ).toHaveCount(0);
+  });
+}
+
 test("shows SSO-only login without Apple by default", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();

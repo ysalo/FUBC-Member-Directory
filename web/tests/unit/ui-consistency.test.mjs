@@ -20,10 +20,11 @@ async function load(path, overrides = {}) {
     },
   }).outputText;
   const compiled = { exports: {} };
-  new Function("require", "module", "exports", code)(
+  new Function("require", "module", "exports", "document", code)(
     (name) => overrides[name] ?? require(name),
     compiled,
     compiled.exports,
+    { body: {} },
   );
   return compiled.exports;
 }
@@ -156,6 +157,7 @@ test("all loading layouts use localized accessible status and themed skeletons",
       "groups",
       "group-detail",
       "member",
+      "member-edit",
       "login",
       "visits",
       "visit-detail",
@@ -233,4 +235,54 @@ test("menu identity prefers the linked member photo and falls back for unlinked 
   );
   assert.equal(unlinked.personId, null);
   assert.equal(unlinked.photoPath, null);
+});
+
+test("Menu shows identity and photo and stays available on member-edit pages", async () => {
+  const react = require("react");
+  const navigation = await load("components/bottom-navigation.tsx", {
+    react: {
+      ...react,
+      useState: (initial) => react.useState(initial === false ? true : initial),
+    },
+    "react-dom": { createPortal: (children) => children },
+    "next/navigation": { usePathname: () => `/admin/${person.id}` },
+    "@/components/navigation-link": link,
+    "@/components/member-photo": photo,
+    "@/components/language-switcher": { default: () => null },
+    "@/components/appearance-settings": { default: () => null },
+    "@/components/sign-out-button": {
+      default: ({ label }) => createElement("button", {}, label),
+    },
+    "@/app/visitation/actions": { pendingVisitCount: async () => 0 },
+    "@/lib/group-copy": groups,
+    "@/lib/i18n": i18n,
+    "@/lib/visitation": await load("lib/visitation.ts"),
+  });
+  for (const personId of [person.id, null]) {
+    const html = renderToStaticMarkup(
+      createElement(navigation.default, {
+        role: "admin",
+        isDeacon: false,
+        locale: "en",
+        currentUser: {
+          personId,
+          name: person.name,
+          email: "member@example.invalid",
+          photoPath: "/portrait.png",
+        },
+      }),
+    );
+    assert.match(html, /aria-label="Main navigation"/);
+    assert.match(html, /role="dialog"/);
+    assert.match(html, /aria-modal="true"/);
+    assert.match(html, /Close menu/);
+    assert.match(html, /Signed in as/);
+    assert.match(html, /Test Member/);
+    assert.match(html, /src="\/portrait.png"/);
+    if (personId) assert.match(html, new RegExp(`href="/members/${personId}"`));
+    else {
+      assert.match(html, /Not linked/);
+      assert.doesNotMatch(html, /href="\/members\//);
+    }
+  }
 });

@@ -266,6 +266,9 @@ export default function BottomNavigation({
                     />
                     <span className="min-w-0 break-words font-semibold">
                       {currentUser.name}
+                      <span className="block text-xs font-normal text-[var(--app-muted)]">
+                        {copy.notLinked}
+                      </span>
                     </span>
                   </div>
                 )}

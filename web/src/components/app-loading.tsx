@@ -8,6 +8,7 @@ type Layout =
   | "groups"
   | "group-detail"
   | "member"
+  | "member-edit"
   | "login"
   | "management";
 function Bar({ className = "" }: { className?: string }) {
@@ -104,7 +105,11 @@ function Content({ layout }: { layout: Layout }) {
         ))}
       </>
     );
-  if (layout === "visit-form" || layout === "visit-edit")
+  if (
+    layout === "visit-form" ||
+    layout === "visit-edit" ||
+    layout === "member-edit"
+  )
     return (
       <>
         <Bar className="mb-4 size-11" />
@@ -116,7 +121,7 @@ function Content({ layout }: { layout: Layout }) {
               <Bar className="h-12 rounded-xl" />
             </div>
           ))}
-          {layout === "visit-edit" && (
+          {(layout === "visit-edit" || layout === "member-edit") && (
             <>
               <div>
                 <Bar className="mb-2 h-5 w-1/3" />
