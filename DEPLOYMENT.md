@@ -50,15 +50,15 @@ Add these under the project's **Environment Variables** section:
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | your `sb_publishable_...` key from Supabase |
 | `NEXT_PUBLIC_ENABLE_APPLE_AUTH` | `false` |
 
-Select **Production**, **Preview**, and **Development** for each variable. The publishable key is designed to be used by browser applications; Row Level Security remains the actual data boundary.
+Select **Production and Preview** for each variable. Local development already uses `web/.env.local`, so the Vercel Development environment is not required. The publishable key is designed to be used by browser applications; Row Level Security remains the actual data boundary.
 
-Click **Deploy**. When it finishes, open the deployment and copy its stable production origin, for example:
+The deployed production origin is:
 
 ```text
 https://fubc-member-directory.vercel.app
 ```
 
-Use your actual Vercel origin everywhere that `<production-origin>` appears below. Do not include a trailing slash.
+Use this exact origin without a trailing slash in the provider settings below.
 
 ## 3. Configure Supabase redirect URLs
 
@@ -66,14 +66,14 @@ In **Supabase → Authentication → URL Configuration** set:
 
 ```text
 Site URL
-<production-origin>
+https://fubc-member-directory.vercel.app
 ```
 
 Add these exact redirect URLs:
 
 ```text
 http://localhost:3000/auth/callback
-<production-origin>/auth/callback
+https://fubc-member-directory.vercel.app/auth/callback
 ```
 
 Keep the localhost entry so local development continues to work. Use an exact production callback rather than a wildcard.
@@ -88,7 +88,7 @@ Under **Authorized JavaScript origins**, include:
 
 ```text
 http://localhost:3000
-<production-origin>
+https://fubc-member-directory.vercel.app
 ```
 
 Under **Authorized redirect URIs**, keep this exact Supabase callback:
@@ -111,7 +111,7 @@ Google settings can take a few minutes to propagate.
 
 Use a private/incognito window and work through this checklist:
 
-1. Open `<production-origin>` and confirm it redirects to `/login`.
+1. Open `https://fubc-member-directory.vercel.app` and confirm it redirects to `/login`.
 2. Sign in with the existing administrator's Google account.
 3. Confirm the administrator can open the directory and `/admin/accounts`.
 4. Sign out.
@@ -162,7 +162,7 @@ Check scheme, project reference, path, and trailing slash.
 
 ### Sign-in returns to localhost or the wrong site
 
-Set the Supabase Site URL to the production origin and make sure `<production-origin>/auth/callback` is in the redirect allowlist. Then try again in a new private window.
+Set the Supabase Site URL to `https://fubc-member-directory.vercel.app` and make sure `https://fubc-member-directory.vercel.app/auth/callback` is in the redirect allowlist. Then try again in a new private window.
 
 ### Google says the app is not available to this user
 
