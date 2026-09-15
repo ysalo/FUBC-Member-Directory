@@ -1,6 +1,13 @@
 "use client";
 
-import { BookUser, UsersRound, SlidersHorizontal, Menu, X } from "lucide-react";
+import {
+  BookUser,
+  UsersRound,
+  SlidersHorizontal,
+  Menu,
+  X,
+  CalendarDays,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "@/components/navigation-link";
@@ -13,11 +20,14 @@ import type { AppRole } from "@/lib/auth";
 
 export default function BottomNavigation({
   role,
+  isDeacon,
+  isPastor = false,
   locale,
   fixed = false,
 }: {
   role: AppRole;
   isDeacon: boolean;
+  isPastor?: boolean;
   locale: Locale;
   fixed?: boolean;
 }) {
@@ -83,6 +93,16 @@ export default function BottomNavigation({
       Icon: UsersRound,
       active: pathname.startsWith("/groups"),
     },
+    ...(isDeacon || isPastor
+      ? [
+          {
+            href: "/visitation",
+            label: locale === "uk" ? "Відвідування" : "Visitation",
+            Icon: CalendarDays,
+            active: pathname.startsWith("/visitation"),
+          },
+        ]
+      : []),
     ...(role !== "member"
       ? [
           {

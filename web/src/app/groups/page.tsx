@@ -35,6 +35,7 @@ export default async function GroupsPage() {
         />
         <BottomNavigation
           role={profile.role}
+          isPastor={profile.ministry_roles.includes("pastor")}
           isDeacon={isDeacon}
           locale={locale}
         />

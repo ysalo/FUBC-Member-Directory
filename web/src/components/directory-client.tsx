@@ -85,6 +85,7 @@ export default function DirectoryClient({
   role,
   locale,
   isDeacon = false,
+  isPastor = false,
   deaconGroups,
   today = "",
   showBirthdays = false,
@@ -94,6 +95,7 @@ export default function DirectoryClient({
   role: AppRole;
   locale: Locale;
   isDeacon?: boolean;
+  isPastor?: boolean;
   deaconGroups?: DeaconGroup[];
   today?: string;
   showBirthdays?: boolean;
@@ -378,6 +380,14 @@ export default function DirectoryClient({
             </div>
             <div className="mx-5 mb-10 mt-7 space-y-7 sm:mx-7">
               {badges(selected)}
+              {isPastor && (
+                <Link
+                  href={`/visitation/new?person=${selected.id}`}
+                  className="flex min-h-12 items-center justify-center rounded-xl bg-[var(--app-brand)] px-4 py-3 font-semibold text-white"
+                >
+                  {locale === "uk" ? "Запросити відвідування" : "Request visit"}
+                </Link>
+              )}
               <div className="flex min-h-14 items-center gap-4 py-1">
                 <UserRound className="size-5 shrink-0 text-slate-400" />
                 <span>
@@ -843,7 +853,12 @@ export default function DirectoryClient({
             ))}
           </dl>
         </div>
-        <BottomNavigation role={role} isDeacon={isDeacon} locale={locale} />
+        <BottomNavigation
+          role={role}
+          isDeacon={isDeacon}
+          isPastor={isPastor}
+          locale={locale}
+        />
       </section>
     </main>
   );

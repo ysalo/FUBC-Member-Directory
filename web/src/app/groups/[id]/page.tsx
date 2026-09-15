@@ -39,6 +39,7 @@ export default async function GroupPage({
       role={profile.role}
       locale={locale}
       isDeacon={isDeacon}
+      isPastor={profile.ministry_roles.includes("pastor")}
       deaconGroups={[
         {
           ...group,

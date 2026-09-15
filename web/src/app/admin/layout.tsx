@@ -15,6 +15,7 @@ export default async function AdminLayout({
       <BottomNavigation
         role={profile.role}
         isDeacon={profile.ministry_roles.includes("deacon")}
+        isPastor={profile.ministry_roles.includes("pastor")}
         locale={locale}
         fixed
       />
