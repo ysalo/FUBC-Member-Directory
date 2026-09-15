@@ -13,13 +13,14 @@ export async function reviewAccount(targetId: string, formData: FormData) {
   const note = String(formData.get("note") ?? "").trim() || null;
   if (!roles.includes(role) || !statuses.includes(status))
     throw new Error("Invalid account review request.");
-  const { error } = await supabase.rpc("review_account_ministry", {
+  const { error } = await supabase.rpc("review_account_designations", {
     target_id: targetId,
     new_status: status,
     new_role: role,
     new_person_id: personId,
     note,
     is_deacon: formData.get("isDeacon") === "on",
+    is_pastor: formData.get("isPastor") === "on",
   });
   if (error) throw new Error(error.message || "Unable to update this account.");
   revalidatePath("/admin");

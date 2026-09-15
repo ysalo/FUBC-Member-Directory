@@ -32,6 +32,7 @@ export type DirectoryPerson = {
   photoPath: string | null;
   maritalStatus: "single" | "married" | "widowed" | null;
   isOrphan: boolean;
+  ministryRoles?: ("deacon" | "pastor")[];
   groupName: string;
   groupId: string | null;
 };
@@ -148,8 +149,9 @@ export default function DirectoryClient({
     },
     {
       label: labels.widowedCount,
-      count: scopedMembers.filter((person) => person.maritalStatus === "widowed")
-        .length,
+      count: scopedMembers.filter(
+        (person) => person.maritalStatus === "widowed",
+      ).length,
     },
   ];
   const birthdays = today ? upcomingBirthdays(scopedMembers, today) : [];
@@ -233,6 +235,20 @@ export default function DirectoryClient({
   }, [scopedMembers, nameLocale, query, badgeFilters, activeFilterCount]);
   const visibleBirthdays = birthdays.filter((birthday) =>
     results.some((person) => person.id === birthday.id),
+  );
+  const ministryBadges = (person: DirectoryPerson, overPhoto = false) => (
+    <span className="inline-flex shrink-0 flex-wrap items-center gap-1 text-[11px] font-semibold leading-5 tracking-normal">
+      {(["deacon", "pastor"] as const)
+        .filter((role) => person.ministryRoles?.includes(role))
+        .map((role) => (
+          <span
+            key={role}
+            className={`rounded-full px-2 py-0.5 ${overPhoto ? "bg-black/30 text-white backdrop-blur-md" : "bg-[var(--app-brand-soft)] text-[var(--app-brand)]"}`}
+          >
+            {labels[role]}
+          </span>
+        ))}
+    </span>
   );
   const badges = (person: DirectoryPerson) => (
     <span className="flex flex-wrap gap-2 text-xs font-medium text-[var(--app-muted)]">
@@ -351,8 +367,9 @@ export default function DirectoryClient({
                 </button>
               </div>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-5 pb-6 pt-14 text-left">
-                <h1 className="text-[30px] font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-md min-[375px]:text-[34px]">
-                  {selected.name}
+                <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[30px] font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-md min-[375px]:text-[34px]">
+                  <span>{selected.name}</span>
+                  {ministryBadges(selected, true)}
                 </h1>
               </div>
             </div>
@@ -383,7 +400,10 @@ export default function DirectoryClient({
                       className="mt-0.5 inline-flex min-h-11 items-center gap-1 text-[17px] text-[var(--app-accent)] hover:underline"
                     >
                       {selected.groupName}
-                      <ChevronRight aria-hidden="true" className="size-4 shrink-0" />
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="size-4 shrink-0"
+                      />
                     </Link>
                   ) : (
                     <span className="mt-0.5 block text-[17px]">
@@ -695,9 +715,15 @@ export default function DirectoryClient({
                           className={`flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-2 transition-colors ${view === tab ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
                         >
                           {tab === "members" ? (
-                            <UsersRound aria-hidden="true" className="size-4 shrink-0" />
+                            <UsersRound
+                              aria-hidden="true"
+                              className="size-4 shrink-0"
+                            />
                           ) : (
-                            <Cake aria-hidden="true" className="size-4 shrink-0" />
+                            <Cake
+                              aria-hidden="true"
+                              className="size-4 shrink-0"
+                            />
                           )}
                           <span className="text-sm font-medium">
                             {tab === "members"
@@ -730,7 +756,10 @@ export default function DirectoryClient({
                           className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm"
                         >
                           <span>
-                            {person.name}
+                            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              {person.name}
+                              {ministryBadges(person)}
+                            </span>
                             {badges(person)}
                           </span>
                           <span className="shrink-0 text-[var(--app-muted)]">
@@ -768,11 +797,14 @@ export default function DirectoryClient({
                       >
                         <Avatar person={person} />
                         <span className="min-w-0 flex-1 text-[17px] font-medium text-[var(--app-ink)]">
-                          <span className="block truncate">
-                            {person.firstName}{" "}
-                            <span className="font-semibold">
-                              {person.lastName}
+                          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span>
+                              {person.firstName}{" "}
+                              <span className="font-semibold">
+                                {person.lastName}
+                              </span>
                             </span>
+                            {ministryBadges(person)}
                           </span>
                           {badges(person)}
                         </span>

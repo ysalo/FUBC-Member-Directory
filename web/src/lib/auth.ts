@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export type AppRole = "member" | "editor" | "admin";
-export type MinistryRole = "deacon";
+export type MinistryRole = "deacon" | "pastor";
 export type AccountStatus = "pending" | "active" | "denied" | "revoked";
 export type AccountProfile = {
   id: string;

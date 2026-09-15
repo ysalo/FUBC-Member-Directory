@@ -2,6 +2,8 @@
 
 ## Purpose
 
+Ministry badges: member names display localized Deacon/Pastor badges in directory, group rosters, birthdays, and profile headers, based on active linked account designations. Admin approval forms allow both independent ministry roles. `web/supabase/migrations/20260915040000_ministry_badges.sql` was applied successfully to the live Supabase project on September 15, 2026 with explicit user approval. Approved readers get only member IDs and ministry roles through a secured RPC, never other profiles' private account fields. TypeScript, production build, database upgrade/baseline/security tests passed; lint reports only the three existing image warnings.
+
 Appearance and Groups UI update: Settings offers System/Light/Dark, persisted on this device and applied before page paint. System mode follows OS changes. Groups shows a prominent My Group heading and large linked group card without redundant Open group text; other groups have a localized name search that does not hide the led group. No database migration. Expo/SwiftUI skills were not available; changes use the existing responsive Next.js UI.
 
 Directory follow-up release: profiles link membership group names to `/groups/[id]`, Members/Birthdays tabs have people/cake icons, and the directory and group detail pages show total/orphan/widowed counters. Counts use the full active roster, independent of search/badge filters; group counts exclude deacons who belong elsewhere. English and Ukrainian labels are included. No database migration is required. Production webpack build, TypeScript, targeted lint (existing image warnings only), and group database/security suite passed before publishing.

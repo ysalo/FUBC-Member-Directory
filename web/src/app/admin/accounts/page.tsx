@@ -165,6 +165,19 @@ export default async function AccountsPage() {
                           ? "Диякон (незалежно від ролі доступу)"
                           : "Deacon (independent of access role)"}
                       </label>
+                      <label className="mt-3 flex min-h-11 items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          name="isPastor"
+                          className="size-5"
+                          defaultChecked={account.ministry_roles.includes(
+                            "pastor",
+                          )}
+                        />
+                        {locale === "uk"
+                          ? "Пастор (незалежно від ролі доступу)"
+                          : "Pastor (independent of access role)"}
+                      </label>
                       <label className="mt-3 block text-sm font-medium text-slate-700">
                         {t(locale, "internalNote")}
                         <input

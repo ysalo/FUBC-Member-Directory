@@ -417,6 +417,15 @@ for (const status of ["pending", "denied", "revoked"]) {
   );
 }
 await db.exec("reset role");
+await db.exec(
+  await readFile(
+    new URL(
+      "../supabase/migrations/20260915040000_ministry_badges.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 await db.exec(baseline);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 0);
 await db.exec(`update public.profiles set status='active' where id in ('${uid(3)}','${uid(4)}');
@@ -534,6 +543,65 @@ assert.equal(
     person(99),
   ]),
   "single",
+);
+// The new ministry projection never exposes account fields or inactive identities.
+await db.exec("reset role");
+await db.exec(`
+  update public.profiles set status='active', role='admin' where id='${uid(1)}';
+  insert into public.people(id,first_name,last_name) values('${person(100)}','Test','Pastor');
+  update public.profiles set status='active', person_id='${person(100)}' where id='${uid(5)}';
+`);
+await as(1);
+await db.query(
+  "select public.review_account_designations($1,'active','member',$2,null,true,true)",
+  [uid(5), person(100)],
+);
+let ministryRows = (
+  await db.query(
+    "select * from public.list_member_ministries() where person_id=$1",
+    [person(100)],
+  )
+).rows;
+assert.deepEqual(ministryRows[0].ministry_roles, ["deacon", "pastor"]);
+assert.deepEqual(Object.keys(ministryRows[0]).sort(), [
+  "ministry_roles",
+  "person_id",
+]);
+await db.query(
+  "select public.review_account_ministry($1,'active','member',$2,null,false)",
+  [uid(5), person(100)],
+);
+assert.deepEqual(
+  (
+    await db.query(
+      "select * from public.list_member_ministries() where person_id=$1",
+      [person(100)],
+    )
+  ).rows[0].ministry_roles,
+  ["pastor"],
+);
+await as(5);
+await fails(
+  "select public.review_account_designations($1,'active','member',$2,null,true,true)",
+  [uid(5), person(100)],
+  /Administrator/,
+);
+await db.exec("reset role");
+await db.exec(
+  `update public.profiles set status='pending' where id='${uid(5)}'`,
+);
+await as(5);
+assert.equal(
+  await scalar("select count(*) from public.list_member_ministries()"),
+  0,
+);
+await as(1);
+assert.equal(
+  await scalar(
+    "select count(*) from public.list_member_ministries() where person_id=$1",
+    [person(100)],
+  ),
+  0,
 );
 await db.close();
 console.log(

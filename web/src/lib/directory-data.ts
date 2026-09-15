@@ -23,17 +23,28 @@ export async function loadDirectory(
   const [
     { data: memberGroups, error: groupError },
     { data: memberships, error: membershipError },
+    { data: ministries, error: ministryError },
   ] = await Promise.all([
     supabase.rpc("list_member_groups"),
     supabase.from("deacon_group_members").select("person_id, group_id"),
+    supabase.rpc("list_member_ministries"),
   ]);
-  if (groupError || membershipError)
+  if (groupError || membershipError || ministryError)
     throw new Error("Unable to load member groups.");
   const groupIds = new Map<string, string>(
-    (memberships ?? []).map(
-      (row: { person_id: string; group_id: string }) => [
+    (memberships ?? []).map((row: { person_id: string; group_id: string }) => [
+      row.person_id,
+      row.group_id,
+    ]),
+  );
+  const ministryRoles = new Map<string, ("deacon" | "pastor")[]>(
+    (ministries ?? []).map(
+      (row: { person_id: string; ministry_roles: string[] }) => [
         row.person_id,
-        row.group_id,
+        row.ministry_roles.filter(
+          (role): role is "deacon" | "pastor" =>
+            role === "deacon" || role === "pastor",
+        ),
       ],
     ),
   );
@@ -72,6 +83,7 @@ export async function loadDirectory(
     membershipJoinedAt: person.membership_joined_at ?? "",
     maritalStatus: person.marital_status,
     isOrphan: person.is_orphan,
+    ministryRoles: ministryRoles.get(person.id) ?? [],
     groupName: groupNames.get(person.id) ?? "",
     groupId: groupIds.get(person.id) ?? null,
     address: [
