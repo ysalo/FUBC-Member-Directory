@@ -15,10 +15,7 @@ export async function mutateVisit(
     if (operation === "save") {
       let time: string;
       try {
-        time = visitTimeToIso(
-          value("time"),
-          process.env.CHURCH_TIMEZONE || "America/Los_Angeles",
-        );
+        time = visitTimeToIso(value("time"));
       } catch {
         return { error: copy.future };
       }
@@ -50,10 +47,54 @@ export async function mutateVisit(
         target: value("id"),
         seen_revision: Number(value("revision")),
       });
-    if (result.error) return { error: copy.failed };
+    if (result.error)
+      return {
+        error: result.error.message.includes("future visit time")
+          ? copy.future
+          : copy.failed,
+      };
   } catch {
     return { error: copy.failed };
   }
   revalidatePath("/visitation", "layout");
   return { id: typeof result.data === "string" ? result.data : undefined };
+}
+
+export async function pendingVisitCount(): Promise<number | null> {
+  const { supabase, profile } = await requireActiveProfile();
+  const pastor = profile.ministry_roles.includes("pastor");
+  const deacon = profile.ministry_roles.includes("deacon");
+  try {
+    const queries = [];
+    if (pastor)
+      queries.push(
+        supabase
+          .from("visit_requests")
+          .select("id,visit_recipients!inner(response)", {
+            count: "exact",
+            head: true,
+          })
+          .eq("status", "open")
+          .eq("pastor_id", profile.id)
+          .eq("visit_recipients.response", "pending"),
+      );
+    if (deacon) {
+      let query = supabase
+        .from("visit_recipients")
+        .select("request_id,visit_requests!inner(status,pastor_id)", {
+          count: "exact",
+          head: true,
+        })
+        .eq("deacon_id", profile.id)
+        .eq("response", "pending")
+        .eq("visit_requests.status", "open");
+      if (pastor) query = query.neq("visit_requests.pastor_id", profile.id);
+      queries.push(query);
+    }
+    const results = await Promise.all(queries);
+    if (results.some((r) => r.error || r.count === null)) return null;
+    return results.reduce((total, r) => total + (r.count ?? 0), 0);
+  } catch {
+    return null;
+  }
 }

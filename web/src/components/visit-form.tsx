@@ -15,14 +15,12 @@ export default function VisitForm({
   deacons,
   visit,
   locale,
-  zone,
   submission,
 }: {
   member: { id: string; name: string; address: string; groupId: string | null };
   deacons: VisitDeacon[];
   visit?: Visit;
   locale: Locale;
-  zone: string;
   submission: string;
 }) {
   const c = visitCopy(locale),
@@ -50,6 +48,7 @@ export default function VisitForm({
           const result = await mutateVisit("save", data);
           if (result.error) setError(result.error);
           else {
+            window.dispatchEvent(new Event("visitation-updated"));
             router.push("/visitation/" + (result.id || visit?.id));
             router.refresh();
           }
@@ -66,8 +65,6 @@ export default function VisitForm({
       <input type="hidden" name="submission" value={submission} />
       <section className="rounded-2xl bg-[var(--app-surface-muted)] p-4">
         <h2 className="text-xl font-semibold break-words">{member.name}</h2>
-        <p className="mt-3 text-sm text-[var(--app-muted)]">{c.address}</p>
-        <p className="select-text break-words">{member.address || c.missing}</p>
       </section>
       <fieldset disabled={busy} className="space-y-5">
         <label className="block font-medium">
@@ -82,14 +79,11 @@ export default function VisitForm({
         </label>
         <label className="block font-medium">
           {c.time}
-          <span className="block text-sm font-normal text-[var(--app-muted)]">
-            {zone}
-          </span>
           <input
             type="datetime-local"
             name="time"
             required
-            defaultValue={visit ? localVisitTime(visit.scheduled_at, zone) : ""}
+            defaultValue={visit ? localVisitTime(visit.scheduled_at) : ""}
             className={input}
           />
         </label>

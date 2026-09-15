@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { mutateVisit } from "@/app/visitation/actions";
 import { visitCopy, type Visit } from "@/lib/visitation";
 import type { Locale } from "@/lib/i18n";
+import Link from "@/components/navigation-link";
+import { Check, X, Pencil, CheckCircle2, RefreshCw } from "lucide-react";
 export default function VisitControls({
   visit,
   userId,
@@ -44,7 +46,11 @@ export default function VisitControls({
     try {
       const r = await mutateVisit(op, f);
       if (r.error) setError(r.error);
-      else router.refresh();
+      else {
+        if (decision === "accepted") setReason("");
+        window.dispatchEvent(new Event("visitation-updated"));
+        router.refresh();
+      }
     } catch {
       setError(c.failed);
     } finally {
@@ -53,65 +59,111 @@ export default function VisitControls({
   }
   if (visit.status !== "open") return null;
   const button =
-    "min-h-12 rounded-xl border border-[var(--app-line)] px-4 py-3 font-semibold disabled:opacity-50";
+    "flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50";
   return (
-    <div className="space-y-3">
+    <div className="mt-6 space-y-5 border-t border-[var(--app-line)] pt-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold">
+          {recipient ? c.yourResponse : c.manageVisit}
+        </h2>
+        <button
+          title={c.refresh}
+          aria-label={c.refresh}
+          disabled={busy}
+          className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)] disabled:opacity-50"
+          onClick={() => {
+            window.dispatchEvent(new Event("visitation-updated"));
+            router.refresh();
+          }}
+        >
+          <RefreshCw aria-hidden="true" className="size-4" />
+        </button>
+      </div>
       {recipient && (
-        <fieldset disabled={busy} className="space-y-3">
-          <label className="block">
-            {c.reason}
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              maxLength={1000}
-              className="mt-2 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-3"
-            />
-          </label>
-          <div className="flex flex-wrap gap-3">
+        <fieldset disabled={busy} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
             <button
+              type="button"
               aria-pressed={recipient.response === "accepted"}
-              className={button}
+              className={`${button} bg-[var(--app-brand)] text-white ${recipient.response === "accepted" ? "ring-2 ring-[var(--app-brand)] ring-offset-2 ring-offset-[var(--app-surface)]" : ""}`}
               onClick={() => run("respond", "accepted")}
             >
+              <Check aria-hidden="true" className="size-4 shrink-0" />
               {c.accept}
             </button>
             <button
+              type="button"
               aria-pressed={recipient.response === "declined"}
-              className={button}
+              className={`${button} border border-[var(--app-line)] ${recipient.response === "declined" ? "bg-red-50 text-red-700" : "text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)]"}`}
               onClick={() => run("respond", "declined")}
             >
+              <X aria-hidden="true" className="size-4 shrink-0" />
               {c.decline}
             </button>
           </div>
+          <details open={recipient.response === "declined"} className="text-sm">
+            <summary className="cursor-pointer py-2 text-[var(--app-muted)]">
+              {c.reason}
+            </summary>
+            <label className="block">
+              <span className="sr-only">{c.reason}</span>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                maxLength={1000}
+                className="mt-2 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-3"
+              />
+            </label>
+          </details>
         </fieldset>
       )}
       {visit.pastor_id === userId && (
-        <div className="flex flex-wrap gap-3">
+        <section className="space-y-3">
+          {recipient && (
+            <h2 className="text-sm font-semibold">{c.manageVisit}</h2>
+          )}
+          <Link
+            href={`/visitation/${visit.id}/edit`}
+            className={`${button} bg-[var(--app-brand)] text-white`}
+          >
+            <Pencil aria-hidden="true" className="size-4" />
+            {c.edit}
+          </Link>
+          <button
+            disabled={busy || !canComplete}
+            aria-describedby={!canComplete ? "visit-complete-hint" : undefined}
+            className={`${button} w-full border border-[var(--app-line)] bg-[var(--app-surface-muted)] text-[var(--app-ink)]`}
+            onClick={() => run("close", "completed")}
+          >
+            <CheckCircle2 aria-hidden="true" className="size-4" />
+            {c.complete}
+          </button>
+          {!canComplete && (
+            <p
+              id="visit-complete-hint"
+              className="text-center text-xs leading-relaxed text-[var(--app-muted)]"
+            >
+              {c.completeHint}
+            </p>
+          )}
           <button
             disabled={busy}
-            className={button}
+            className={`${button} w-full text-[var(--app-danger)] hover:bg-red-50`}
             onClick={() => run("close", "cancelled")}
           >
             {c.cancel}
           </button>
-          <button
-            disabled={busy || !canComplete}
-            className={button}
-            onClick={() => run("close", "completed")}
-          >
-            {c.complete}
-          </button>
-        </div>
+        </section>
       )}
       {busy && <p role="status">{c.saving}</p>}
-      {error && <p role="alert">{error}</p>}
-      <button
-        className={button}
-        disabled={busy}
-        onClick={() => router.refresh()}
-      >
-        {c.refresh}
-      </button>
+      {error && (
+        <p
+          role="alert"
+          className="rounded-xl bg-red-50 p-3 text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }

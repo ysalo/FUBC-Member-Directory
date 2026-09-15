@@ -1,10 +1,14 @@
 # Visitation
 
-Active accounts designated as pastors can select **Request visit** from directory or group member profiles. Date/time is required and uses `CHURCH_TIMEZONE` (default `America/Los_Angeles`), independently of the browser timezone. Nonexistent or ambiguous daylight-saving times must be replaced with another time.
+Active accounts designated as pastors can select **Request visit** from directory or group member profiles. Date/time is required and uses fixed PDT (UTC−07:00) year-round, independently of browser timezone and `CHURCH_TIMEZONE`. The UI shows dates/times without timezone labels. Existing scheduled timestamps remain unchanged; their display follows fixed PDT, including winter dates. Directory birthday calculations still use the configured church timezone.
 
-The form displays the member address and defaults the separate visit location to it. Pastors select one or two active deacons; the member's group deacons are preselected when available. Recipients can belong to other groups or have no group assignment. Missing group assignments do not prevent manual selection.
+The form defaults the visit location to the member address. Only the actual meeting location appears on visitation screens; the member address snapshot is retained in storage. Pastors select one or two active deacons; the member's group deacons are preselected when available. Recipients can belong to other groups or have no group assignment. Missing group assignments do not prevent manual selection.
 
 Pastors and deacons have a Visitation tab. Pastors see their own requests; selected deacons see invitations. Accounts with both designations see both sections. Acceptance and decline are independent, reversible responses while the request is open. One acceptance confirms a companion. Completion requires an accepted companion and the scheduled time to have arrived. Cancelled/completed requests are read-only.
+
+The Visitation tab has a red numeric badge for open requests awaiting a response: a deacon's own pending invitations and a pastor's requests with any pending deacon response. Dual-role accounts count each request once. The badge hides at zero (and when unavailable), caps the visual label at 99+, and refreshes on navigation, successful visit mutations, window focus, and every 60 seconds while visible. It uses protected count-only queries, not notification delivery or cached private request data.
+
+Details use grouped meeting rows and deacon response pills. Accept/Decline share a response row with an optional decline-reason disclosure. Pastor Edit/Complete controls form a separate management section, with Cancel separated below and a compact refresh icon. Disabled completion explains when the action becomes available.
 
 Pastors may edit time, location, and notes. Edits preserve recipient responses and increment the revision. Unseen revisions show an Updated details indicator. Viewing details records the deacon's seen revision. Member and recipients stay fixed; use cancellation and a new request to change them.
 
@@ -25,7 +29,7 @@ The additive visitation migration was applied successfully to the live Supabase 
 ## Verification
 
 - `node scripts/test-visitation.mjs`: fresh baseline, additive upgrade, RLS, mutation permissions, response changes, revisions, revocation, notification/audit rollback, cancellation, and duplicate creation.
-- `node --test tests/unit/*.test.mjs`: timezone/DST conversion and existing birthday calculations.
+- `node --test tests/unit/*.test.mjs`: fixed PDT conversion across summer/winter/year boundaries, pending count role/duplicate/error scenarios, and existing birthday calculations.
 - `node scripts/test-visitation-ui.mjs`: isolated fictional fixtures rendering real form/control components, recipient defaults/overrides, failure/recovery, editing, response changes, Ukrainian, light/dark, large text, and 320/375/460px widths. Uses the latest build's generated CSS and writes screenshots only into ignored `work/visitation-ui`.
 - Run TypeScript, lint, production build, and existing group regression checks.
 

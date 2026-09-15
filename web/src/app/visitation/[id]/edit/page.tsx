@@ -34,7 +34,6 @@ export default async function EditVisit({
         visit={v}
         deacons={[]}
         locale={locale}
-        zone={process.env.CHURCH_TIMEZONE || "America/Los_Angeles"}
         submission=""
       />
     </>

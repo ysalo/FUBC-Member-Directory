@@ -1,7 +1,8 @@
 import Link from "@/components/navigation-link";
 import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
-import { visitCopy, type Visit } from "@/lib/visitation";
+import { visitCopy, formatVisitDate, type Visit } from "@/lib/visitation";
+import { CalendarDays, ChevronRight } from "lucide-react";
 export default async function VisitationPage() {
   const { supabase, profile } = await requireActiveProfile(),
     locale = await getLocale(),
@@ -12,7 +13,6 @@ export default async function VisitationPage() {
     .order("scheduled_at");
   if (error) throw new Error("Unable to load visitation");
   const visits = (data ?? []) as Visit[];
-  const zone = process.env.CHURCH_TIMEZONE || "America/Los_Angeles";
   return (
     <>
       <h1 className="py-5 text-2xl font-semibold">{c.title}</h1>
@@ -46,18 +46,22 @@ export default async function VisitationPage() {
                   <Link
                     key={v.id}
                     href={"/visitation/" + v.id}
-                    className="block rounded-2xl border border-[var(--app-line)] p-4"
+                    className="relative block rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-4 pr-9 hover:bg-[var(--app-brand-soft)]"
                   >
                     <span className="block break-words text-lg font-semibold">
                       {v.member_name}
                     </span>
-                    <span className="mt-1 block">
-                      {new Intl.DateTimeFormat(locale, {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                        timeZone: zone,
-                      }).format(new Date(v.scheduled_at))}
+                    <span className="my-2 flex items-center gap-2 text-sm font-medium">
+                      <CalendarDays
+                        aria-hidden="true"
+                        className="size-4 shrink-0 text-[var(--app-brand)]"
+                      />
+                      {formatVisitDate(v.scheduled_at, locale)}
                     </span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="absolute right-3 top-5 size-4 text-[var(--app-muted)]"
+                    />
                     <span className="block break-words text-sm text-[var(--app-muted)]">
                       {c[v.status]} ·{" "}
                       {v.visit_recipients

@@ -34,6 +34,10 @@ const en = {
   time: "Date and time",
   notes: "Visit notes",
   recipients: "Deacons",
+  yourResponse: "Your response",
+  manageVisit: "Manage visit",
+  completeHint: "Available after the visit time, with a confirmed companion.",
+  pendingRequests: "pending requests",
   save: "Save changes",
   submit: "Submit request",
   accept: "Accept",
@@ -57,8 +61,7 @@ const en = {
   missing: "Not provided",
   noGroup: "No active group deacons. Select companions below.",
   optional: "Optional",
-  future:
-    "Choose a valid future time. For a repeated daylight-saving hour, choose another time.",
+  future: "Choose a valid future date and time.",
   confirmCancel: "Cancel this visit request?",
   noDeacons:
     "No active deacons are available. Ask an administrator to designate a deacon.",
@@ -78,6 +81,10 @@ const uk: typeof en = {
   time: "Дата й час",
   notes: "Примітки до відвідування",
   recipients: "Диякони",
+  yourResponse: "Ваша відповідь",
+  manageVisit: "Керування відвідуванням",
+  completeHint: "Доступно після часу відвідування, якщо супровід підтверджено.",
+  pendingRequests: "запитів очікують відповіді",
   save: "Зберегти зміни",
   submit: "Надіслати запит",
   accept: "Прийняти",
@@ -101,8 +108,7 @@ const uk: typeof en = {
   missing: "Не вказано",
   noGroup: "Немає активних дияконів групи. Оберіть супровід нижче.",
   optional: "Необов’язково",
-  future:
-    "Оберіть коректний майбутній час. Для повторюваної години переходу на зимовий час оберіть інший час.",
+  future: "Оберіть коректні майбутні дату й час.",
   confirmCancel: "Скасувати цей запит на відвідування?",
   noDeacons:
     "Немає активних дияконів. Попросіть адміністратора призначити диякона.",
@@ -111,10 +117,24 @@ const uk: typeof en = {
     "Пастор оновив запит. Перегляньте поточні час, місце та примітки нижче.",
 };
 export const visitCopy = (locale: Locale) => (locale === "uk" ? uk : en);
-export function localVisitTime(iso: string, zone: string) {
+// PDT is deliberately fixed at UTC−07:00 throughout the year for visitation.
+export const VISIT_TIME_ZONE = "Etc/GMT+7";
+export function formatVisitDate(
+  iso: string,
+  locale: Locale,
+  dateStyle: "medium" | "full" = "medium",
+) {
+  return new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", {
+    dateStyle,
+    timeStyle: "short",
+    hour12: true,
+    timeZone: VISIT_TIME_ZONE,
+  }).format(new Date(iso));
+}
+export function localVisitTime(iso: string) {
   const p = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {
-      timeZone: zone,
+      timeZone: VISIT_TIME_ZONE,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -127,17 +147,12 @@ export function localVisitTime(iso: string, zone: string) {
   );
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
-// Match the wall-clock time against possible zone offsets. Reject gaps and ambiguous hours.
-export function visitTimeToIso(local: string, zone: string) {
+export function visitTimeToIso(local: string) {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local))
     throw new Error("Invalid time");
-  const wall = Date.parse(local + "Z");
+  const wall = Date.parse(local + "-07:00");
   if (!Number.isFinite(wall)) throw new Error("Invalid time");
-  const matches = new Set<string>();
-  for (let offset = -840; offset <= 840; offset += 15) {
-    const iso = new Date(wall + offset * 60000).toISOString();
-    if (localVisitTime(iso, zone) === local) matches.add(iso);
-  }
-  if (matches.size !== 1) throw new Error("Invalid or ambiguous time");
-  return [...matches][0];
+  const iso = new Date(wall).toISOString();
+  if (localVisitTime(iso) !== local) throw new Error("Invalid time");
+  return iso;
 }

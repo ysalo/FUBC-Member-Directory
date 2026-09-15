@@ -17,6 +17,8 @@ import AppearanceSettings from "@/components/appearance-settings";
 import { dictionaries, type Locale } from "@/lib/i18n";
 import { groupCopy } from "@/lib/group-copy";
 import type { AppRole } from "@/lib/auth";
+import { pendingVisitCount } from "@/app/visitation/actions";
+import { visitCopy } from "@/lib/visitation";
 
 export default function BottomNavigation({
   role,
@@ -36,6 +38,35 @@ export default function BottomNavigation({
   const labels = groupCopy(locale);
   const [open, setOpen] = useState(false);
   const [textSize, setTextSize] = useState("standard");
+  const [pending, setPending] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isDeacon && !isPastor) return;
+    let mounted = true,
+      sequence = 0;
+    const update = () => {
+      if (document.visibilityState === "hidden") return;
+      const current = ++sequence;
+      void pendingVisitCount()
+        .then((count) => {
+          if (mounted && current === sequence) setPending(count);
+        })
+        .catch(() => {
+          if (mounted && current === sequence) setPending(null);
+        });
+    };
+    update();
+    const interval = window.setInterval(update, 60000);
+    window.addEventListener("visitation-updated", update);
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+      window.removeEventListener("visitation-updated", update);
+      window.removeEventListener("focus", update);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [isDeacon, isPastor, pathname]);
   const dialog = useRef<HTMLElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -126,9 +157,24 @@ export default function BottomNavigation({
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
+              aria-label={
+                href === "/visitation" && pending
+                  ? `${label}, ${pending} ${visitCopy(locale).pendingRequests}`
+                  : undefined
+              }
               className={`bottom-navigation-item flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 font-medium ${active ? "text-[var(--app-ink)]" : "text-[var(--app-muted)]"}`}
             >
-              <Icon className="bottom-navigation-icon" strokeWidth={1.75} />
+              <span className="relative">
+                <Icon className="bottom-navigation-icon" strokeWidth={1.75} />
+                {href === "/visitation" && pending !== null && pending > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-3 -top-2 grid min-h-4 min-w-4 place-items-center rounded-full bg-[#c43232] px-1 text-[10px] font-bold leading-4 text-white ring-2 ring-[var(--app-surface)]"
+                  >
+                    {pending > 99 ? "99+" : pending}
+                  </span>
+                )}
+              </span>
               <span className="max-w-full truncate">{label}</span>
             </Link>
           ))}

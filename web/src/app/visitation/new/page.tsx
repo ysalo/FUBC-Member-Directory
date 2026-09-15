@@ -31,7 +31,6 @@ export default async function NewVisit({
         member={member}
         deacons={(result.data ?? []) as VisitDeacon[]}
         locale={locale}
-        zone={process.env.CHURCH_TIMEZONE || "America/Los_Angeles"}
         submission={randomUUID()}
       />
     </>
