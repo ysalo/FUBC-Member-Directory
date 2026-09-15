@@ -10,10 +10,24 @@ export default defineConfig({
   projects: [
     { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "iphone-13", use: { ...devices["iPhone 13"] } },
+    {
+      name: "iphone-17-pro-max",
+      use: { ...devices["iPhone 17 Pro Max"] },
+    },
+    {
+      name: "future-large-iphone",
+      use: {
+        ...devices["iPhone 17 Pro Max"],
+        viewport: { width: 460, height: 1000 },
+      },
+    },
     { name: "iphone-se", use: { ...devices["iPhone SE"] } },
   ],
   webServer: {
-    command: process.platform === "win32" ? "node_modules\\.bin\\next.cmd dev" : "pnpm dev",
+    command:
+      process.platform === "win32"
+        ? "node_modules\\.bin\\next.cmd dev"
+        : "pnpm dev",
     url: "http://127.0.0.1:3000/login",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
