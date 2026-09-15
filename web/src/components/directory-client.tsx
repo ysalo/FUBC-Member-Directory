@@ -5,11 +5,12 @@ import {
   MapPin,
   Phone,
   Search,
+  Settings,
   UserRound,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/language-switcher";
 import SignOutButton from "@/components/sign-out-button";
 import {
@@ -86,6 +87,32 @@ export default function DirectoryClient({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<DirectoryPerson | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [textSize, setTextSize] = useState<"standard" | "large">("standard");
+  const [appearanceReady, setAppearanceReady] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("directory-text-size");
+    const initialSize = saved === "large" ? "large" : "standard";
+    setTextSize(initialSize);
+    document.documentElement.dataset.textSize = initialSize;
+    setAppearanceReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!appearanceReady) return;
+    document.documentElement.dataset.textSize = textSize;
+    window.localStorage.setItem("directory-text-size", textSize);
+  }, [appearanceReady, textSize]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSettingsOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [settingsOpen]);
   const dateLocale = locale === "uk" ? "uk-UA" : "en-US";
   const nameLocale = members.some((person) =>
     /[А-Яа-яІіЇїЄєҐґ]/u.test(person.lastName),
@@ -187,7 +214,6 @@ export default function DirectoryClient({
                 >
                   ←
                 </button>
-                <LanguageSwitcher locale={locale} overlay />
               </div>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-5 pb-6 pt-14 text-left">
                 <h1 className="text-[30px] font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-md min-[375px]:text-[34px]">
@@ -302,22 +328,15 @@ export default function DirectoryClient({
                 {copy.memberDirectory}
               </h1>
             </div>
-            <LanguageSwitcher locale={locale} />
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            {role !== "member" && (
-              <Link
-                href="/admin"
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[var(--app-brand-soft)] px-3 py-2 text-sm font-semibold text-[var(--app-brand)] hover:bg-[#d9e9f3]"
-              >
-                {copy.manage}
-              </Link>
-            )}
-            <SignOutButton
-              compact
-              label={copy.signOut}
-              loadingLabel={copy.signingOut}
-            />
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label={copy.settings}
+              aria-expanded={settingsOpen}
+              className="grid size-11 shrink-0 place-items-center rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] text-[var(--app-brand)] hover:bg-[var(--app-brand-soft)]"
+            >
+              <Settings className="size-5" />
+            </button>
           </div>
         </header>
         <div className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -401,6 +420,88 @@ export default function DirectoryClient({
             )}
           </label>
         </div>
+        {settingsOpen && (
+          <div
+            className="native-fade absolute inset-0 z-50 flex justify-end bg-[#07131d]/45 backdrop-blur-[2px]"
+            role="presentation"
+            onClick={() => setSettingsOpen(false)}
+          >
+            <aside
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="settings-title"
+              onClick={(event) => event.stopPropagation()}
+              className="native-enter safe-top safe-bottom native-shadow flex h-full w-[min(88%,22rem)] flex-col bg-white px-5 pb-5"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--app-line)] pb-4">
+                <h2
+                  id="settings-title"
+                  className="text-xl font-bold text-[var(--app-ink)]"
+                >
+                  {copy.settings}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(false)}
+                  aria-label={copy.closeSettings}
+                  className="grid size-11 place-items-center rounded-full bg-[var(--app-surface-muted)] text-[var(--app-muted)] hover:bg-[var(--app-brand-soft)]"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+
+              <section className="border-b border-[var(--app-line)] py-5">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--app-muted)]">
+                  {copy.language}
+                </h3>
+                <div className="mt-3">
+                  <LanguageSwitcher locale={locale} />
+                </div>
+              </section>
+
+              <section className="py-5">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--app-muted)]">
+                  {copy.appearance}
+                </h3>
+                <p className="mt-3 text-sm font-medium text-[var(--app-ink)]">
+                  {copy.textSize}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-[var(--app-surface-muted)] p-1">
+                  {(["standard", "large"] as const).map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setTextSize(size)}
+                      aria-pressed={textSize === size}
+                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold ${textSize === size ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
+                    >
+                      {size === "standard"
+                        ? copy.standardText
+                        : copy.largerText}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="mt-auto border-t border-[var(--app-line)] pt-5">
+                <div className="grid gap-2">
+                  {role !== "member" && (
+                    <Link
+                      href="/admin"
+                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--app-brand-soft)] px-4 py-2 text-sm font-semibold text-[var(--app-brand)] hover:bg-[#d9e9f3]"
+                    >
+                      {copy.manage}
+                    </Link>
+                  )}
+                  <SignOutButton
+                    label={copy.signOut}
+                    loadingLabel={copy.signingOut}
+                  />
+                </div>
+              </section>
+            </aside>
+          </div>
+        )}
       </section>
     </main>
   );

@@ -24,6 +24,9 @@ html {
   scroll-behavior: smooth;
   background: var(--app-bg);
 }
+html[data-text-size="large"] {
+  font-size: 112.5%;
+}
 body {
   min-height: 100dvh;
   margin: 0;

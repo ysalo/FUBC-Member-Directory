@@ -3,6 +3,12 @@ export type Locale = (typeof locales)[number];
 
 const en = {
   language: "Language",
+  settings: "Settings",
+  closeSettings: "Close settings",
+  appearance: "Appearance",
+  textSize: "Text size",
+  standardText: "Standard",
+  largerText: "Larger",
   english: "English",
   ukrainian: "Українська",
   privateDirectory: "Private Directory",
@@ -114,6 +120,12 @@ export type TranslationKey = keyof typeof en;
 
 const uk: Record<TranslationKey, string> = {
   language: "Мова",
+  settings: "Налаштування",
+  closeSettings: "Закрити налаштування",
+  appearance: "Вигляд",
+  textSize: "Розмір тексту",
+  standardText: "Стандартний",
+  largerText: "Збільшений",
   english: "English",
   ukrainian: "Українська",
   privateDirectory: "Приватний довідник",
