@@ -457,6 +457,89 @@ export default function DirectoryClient({
       </main>
     );
 
+  const searchBar = (
+    <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 backdrop-blur-xl">
+      <div className="directory-search flex min-h-11 items-center gap-3 px-1">
+        <Search className="size-5 shrink-0 text-slate-400" />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={copy.searchPlaceholder}
+          aria-label={copy.searchPlaceholder}
+          className="min-h-11 min-w-0 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-slate-400"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            className="grid size-11 shrink-0 place-items-center text-slate-400 hover:text-slate-700"
+            aria-label={copy.clearSearch}
+          >
+            <X className="size-5" />
+          </button>
+        )}
+        <div ref={filterRef} className="relative shrink-0">
+          <button
+            ref={filterButtonRef}
+            aria-label={`${labels.filters}${activeFilterCount ? ` (${activeFilterCount})` : ""}`}
+            aria-expanded={filtersOpen}
+            aria-controls="badge-filters"
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className={`relative grid size-11 place-items-center ${activeFilterCount ? "text-[var(--app-brand)]" : "text-slate-400"}`}
+          >
+            <ListFilter className="size-5" />
+            {!!activeFilterCount && (
+              <span
+                aria-hidden
+                className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-[var(--app-brand)] text-[10px] text-white"
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          {filtersOpen && (
+            <section
+              id="badge-filters"
+              aria-label={labels.filters}
+              className="absolute right-0 top-full z-40 mt-1 w-[min(17rem,calc(100vw-2rem))] rounded-2xl border border-[var(--app-line)] bg-white p-4 shadow-xl"
+            >
+              <h2 className="text-sm font-semibold">{labels.filters}</h2>
+              <p className="mt-1 text-xs text-[var(--app-muted)]">
+                {labels.filterHint}
+              </p>
+              {(["widowed", "orphan"] as const).map((badge) => (
+                <label
+                  key={badge}
+                  className="flex min-h-11 items-center gap-3 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={badgeFilters[badge]}
+                    onChange={(event) =>
+                      setBadgeFilters({
+                        ...badgeFilters,
+                        [badge]: event.target.checked,
+                      })
+                    }
+                    className="size-5 accent-[var(--app-brand)]"
+                  />
+                  {labels[badge]}
+                </label>
+              ))}
+              <button
+                onClick={() =>
+                  setBadgeFilters({ widowed: false, orphan: false })
+                }
+                className="min-h-11 text-sm text-[var(--app-muted)]"
+              >
+                {labels.clearFilters}
+              </button>
+            </section>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
       <section className="native-enter native-shadow relative mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]">
@@ -476,103 +559,8 @@ export default function DirectoryClient({
               {labels.browseGroups}
             </Link>
           )}
-          {deaconGroups && showBirthdays && (
-            <div className="pb-1">
-              <div className="flex w-full" aria-label={labels.myGroups}>
-                {(["members", "birthdays"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    aria-pressed={view === tab}
-                    onClick={() => setView(tab)}
-                    className={`min-h-11 min-w-0 flex-1 px-3 text-sm ${view === tab ? "font-semibold text-[var(--app-brand)] border-b-2 border-current" : "text-[var(--app-muted)]"}`}
-                  >
-                    {tab === "members" ? labels.membersTab : labels.birthdays}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-        <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 backdrop-blur-xl">
-          <div className="directory-search flex min-h-11 items-center gap-3 px-1">
-            <Search className="size-5 shrink-0 text-slate-400" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={copy.searchPlaceholder}
-              aria-label={copy.searchPlaceholder}
-              className="min-h-11 min-w-0 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-slate-400"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="grid size-11 shrink-0 place-items-center text-slate-400 hover:text-slate-700"
-                aria-label={copy.clearSearch}
-              >
-                <X className="size-5" />
-              </button>
-            )}
-            <div ref={filterRef} className="relative shrink-0">
-              <button
-                ref={filterButtonRef}
-                aria-label={`${labels.filters}${activeFilterCount ? ` (${activeFilterCount})` : ""}`}
-                aria-expanded={filtersOpen}
-                aria-controls="badge-filters"
-                onClick={() => setFiltersOpen(!filtersOpen)}
-                className={`relative grid size-11 place-items-center ${activeFilterCount ? "text-[var(--app-brand)]" : "text-slate-400"}`}
-              >
-                <ListFilter className="size-5" />
-                {!!activeFilterCount && (
-                  <span
-                    aria-hidden
-                    className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-[var(--app-brand)] text-[10px] text-white"
-                  >
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-              {filtersOpen && (
-                <section
-                  id="badge-filters"
-                  aria-label={labels.filters}
-                  className="absolute right-0 top-full z-40 mt-1 w-[min(17rem,calc(100vw-2rem))] rounded-2xl border border-[var(--app-line)] bg-white p-4 shadow-xl"
-                >
-                  <h2 className="text-sm font-semibold">{labels.filters}</h2>
-                  <p className="mt-1 text-xs text-[var(--app-muted)]">
-                    {labels.filterHint}
-                  </p>
-                  {(["widowed", "orphan"] as const).map((badge) => (
-                    <label
-                      key={badge}
-                      className="flex min-h-11 items-center gap-3 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={badgeFilters[badge]}
-                        onChange={(event) =>
-                          setBadgeFilters({
-                            ...badgeFilters,
-                            [badge]: event.target.checked,
-                          })
-                        }
-                        className="size-5 accent-[var(--app-brand)]"
-                      />
-                      {labels[badge]}
-                    </label>
-                  ))}
-                  <button
-                    onClick={() =>
-                      setBadgeFilters({ widowed: false, orphan: false })
-                    }
-                    className="min-h-11 text-sm text-[var(--app-muted)]"
-                  >
-                    {labels.clearFilters}
-                  </button>
-                </section>
-              )}
-            </div>
-          </div>
-        </div>
+        {!deaconGroups && searchBar}
         <div
           ref={listRef}
           className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white"
@@ -586,7 +574,9 @@ export default function DirectoryClient({
               )}
               {scopeGroups?.map((group) => (
                 <section key={group.id}>
-                  <h2 className="font-semibold">{group.name}</h2>
+                  <h2 className="break-words text-xl font-semibold leading-tight">
+                    {group.name}
+                  </h2>
                   <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                     {labels.responsibleDeacons}
                   </p>
@@ -631,6 +621,32 @@ export default function DirectoryClient({
                   )}
                 </section>
               ))}
+              <div className="-mx-4">
+                {deaconGroups && showBirthdays && (
+                  <div className="pb-1">
+                    <div
+                      className="mx-4 flex rounded-xl bg-[var(--app-surface-muted)] p-1"
+                      aria-label={labels.myGroups}
+                    >
+                      {(["members", "birthdays"] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          aria-pressed={view === tab}
+                          onClick={() => setView(tab)}
+                          className={`min-h-11 min-w-0 flex-1 rounded-lg px-2 transition-colors ${view === tab ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
+                        >
+                          <span className="text-sm font-medium">
+                            {tab === "members"
+                              ? labels.membersTab
+                              : labels.birthdays}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {searchBar}
+              </div>
               {!!deaconGroups.length &&
                 showBirthdays &&
                 view === "birthdays" && (
