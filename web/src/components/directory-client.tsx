@@ -50,8 +50,8 @@ function Avatar({
   large?: boolean;
 }) {
   const size = large
-    ? "h-36 w-36 text-4xl ring-4 ring-white/70"
-    : "size-12 text-base";
+    ? "size-32 text-3xl ring-4 ring-white shadow-lg"
+    : "size-12 text-base ring-1 ring-slate-200/80";
   const color =
     gradients[
       Number.parseInt(person.id.replace(/\D/g, "").slice(-2) || "0", 10) %
@@ -139,61 +139,61 @@ export default function DirectoryClient({
 
   if (selected)
     return (
-      <main className="safe-page min-h-dvh bg-slate-100 sm:p-6">
-        <section className="mx-auto min-h-dvh max-w-xl overflow-hidden bg-white shadow-xl sm:min-h-0 sm:rounded-3xl">
-          <div className="relative h-72 overflow-hidden bg-gradient-to-br from-sky-500 to-blue-700 sm:h-80">
-            {selected.photoPath ? (
-              <button
-                onClick={() => setPhotoOpen(true)}
-                aria-label={copy.viewPhoto}
-                className="block h-full w-full cursor-zoom-in"
-              >
-                <img
-                  src={selected.photoPath}
-                  alt={selected.name}
-                  className="h-full w-full object-cover"
-                />
-              </button>
-            ) : (
-              <div className="grid h-full place-items-center">
-                <Avatar person={selected} large />
-              </div>
-            )}
+      <main className="h-dvh overflow-hidden bg-[var(--app-bg)] sm:p-6">
+        <section className="native-enter native-shadow mx-auto flex h-dvh max-w-xl flex-col overflow-hidden bg-white sm:h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
+          <header className="safe-top flex flex-none items-center justify-between border-b border-[var(--app-line)] bg-white/92 px-4 pb-3 backdrop-blur-xl">
             <button
               onClick={() => {
                 setPhotoOpen(false);
                 setSelected(null);
               }}
               aria-label={copy.backToDirectory}
-              className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] grid size-11 place-items-center rounded-full bg-black/40 text-2xl font-semibold text-white backdrop-blur hover:bg-black/55"
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-2xl font-medium text-[var(--app-brand)] hover:bg-[#d9e9f3]"
             >
               ←
             </button>
-          </div>
-          <div className="px-6 pb-10 pt-7">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  {copy.memberProfile}
-                </p>
-                <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
-                  {selected.name}
-                </h1>
+            <p className="text-sm font-semibold text-[var(--app-muted)]">
+              {copy.memberProfile}
+            </p>
+            <LanguageSwitcher locale={locale} />
+          </header>
+          <div className="native-scroll min-h-0 flex-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="relative flex flex-col items-center px-5 pb-5 pt-8 text-center">
+              <div
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--app-brand-soft)] to-white"
+              />
+              <div className="relative">
+                {selected.photoPath ? (
+                  <button
+                    onClick={() => setPhotoOpen(true)}
+                    aria-label={copy.viewPhoto}
+                    className="rounded-full"
+                  >
+                    <Avatar person={selected} large />
+                  </button>
+                ) : (
+                  <Avatar person={selected} large />
+                )}
               </div>
-              <LanguageSwitcher locale={locale} />
+              <h1 className="relative mt-4 text-[28px] font-bold tracking-[-0.025em] text-[var(--app-ink)]">
+                {selected.name}
+              </h1>
             </div>
-            <div className="mt-7 divide-y divide-slate-200 border-y border-slate-200">
+            <div className="mx-4 mb-8 overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-sm sm:mx-6">
               {selected.phone && (
                 <a
                   href={`tel:${selected.phone.replace(/[^\d+]/g, "")}`}
-                  className="flex gap-4 py-5 hover:bg-slate-50"
+                  className="flex min-h-[72px] gap-4 border-b border-[var(--app-line)] px-4 py-4 hover:bg-[var(--app-surface-muted)]"
                 >
-                  <Phone className="mt-1 size-5 text-blue-600" />
-                  <span>
-                    <span className="block text-sm text-slate-500">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-[var(--app-brand)]">
+                    <Phone className="size-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       {copy.phone}
                     </span>
-                    <span className="text-lg font-medium text-blue-700">
+                    <span className="mt-0.5 block text-[17px] font-medium text-[var(--app-brand)]">
                       {selected.phone}
                     </span>
                   </span>
@@ -204,37 +204,43 @@ export default function DirectoryClient({
                   href={`https://maps.apple.com/?q=${encodeURIComponent(selected.address)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex gap-4 py-5 hover:bg-slate-50"
+                  className="flex min-h-[72px] gap-4 border-b border-[var(--app-line)] px-4 py-4 hover:bg-[var(--app-surface-muted)]"
                 >
-                  <MapPin className="mt-1 size-5 text-blue-600" />
-                  <span>
-                    <span className="block text-sm text-slate-500">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--app-accent-soft)] text-[var(--app-accent)]">
+                    <MapPin className="size-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       {copy.address}
                     </span>
-                    <span className="text-lg font-medium text-blue-700">
+                    <span className="mt-0.5 block text-[17px] leading-6 text-[var(--app-ink)]">
                       {selected.address}
                     </span>
                   </span>
                 </a>
               )}
-              <div className="flex gap-4 py-5">
-                <UserRound className="mt-1 size-5 text-blue-600" />
+              <div className="flex min-h-[72px] gap-4 border-b border-[var(--app-line)] px-4 py-4">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-[var(--app-brand)]">
+                  <UserRound className="size-5" />
+                </span>
                 <span>
-                  <span className="block text-sm text-slate-500">
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                     {copy.dateOfBirth}
                   </span>
-                  <span className="text-lg font-medium text-slate-900">
+                  <span className="mt-0.5 block text-[17px] text-[var(--app-ink)]">
                     {formatDate(selected.dateOfBirth)}
                   </span>
                 </span>
               </div>
-              <div className="flex gap-4 py-5">
-                <CalendarDays className="mt-1 size-5 text-blue-600" />
+              <div className="flex min-h-[72px] gap-4 px-4 py-4">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--app-accent-soft)] text-[var(--app-accent)]">
+                  <CalendarDays className="size-5" />
+                </span>
                 <span>
-                  <span className="block text-sm text-slate-500">
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                     {copy.membershipDate}
                   </span>
-                  <span className="text-lg font-medium text-slate-900">
+                  <span className="mt-0.5 block text-[17px] text-[var(--app-ink)]">
                     {formatDate(selected.membershipJoinedAt)}
                   </span>
                 </span>
@@ -248,7 +254,7 @@ export default function DirectoryClient({
             aria-modal="true"
             aria-label={`${selected.name} profile photo`}
             onClick={() => setPhotoOpen(false)}
-            className="fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-black/95 p-4"
+            className="native-fade fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-[#07131d]/96 p-4 backdrop-blur-sm"
           >
             <button
               onClick={() => setPhotoOpen(false)}
@@ -269,15 +275,15 @@ export default function DirectoryClient({
     );
 
   return (
-    <main className="safe-page min-h-dvh bg-slate-100 sm:p-6">
-      <section className="relative mx-auto min-h-dvh max-w-xl bg-white shadow-xl sm:min-h-0 sm:overflow-hidden sm:rounded-3xl">
-        <header className="safe-top sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-5 backdrop-blur">
+    <main className="h-dvh overflow-hidden bg-[var(--app-bg)] sm:p-6">
+      <section className="native-enter native-shadow relative mx-auto flex h-dvh max-w-xl flex-col overflow-hidden bg-white sm:h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
+        <header className="safe-top z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 pb-3 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--app-accent)]">
                 {copy.privateAccess}
               </p>
-              <h1 className="mt-0.5 text-[26px] font-bold tracking-tight text-slate-950">
+              <h1 className="mt-0.5 text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--app-ink)] min-[375px]:text-[26px]">
                 {copy.memberDirectory}
               </h1>
             </div>
@@ -287,7 +293,7 @@ export default function DirectoryClient({
             {role !== "member" && (
               <Link
                 href="/admin"
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[var(--app-brand-soft)] px-3 py-2 text-sm font-semibold text-[var(--app-brand)] hover:bg-[#d9e9f3]"
               >
                 {copy.manage}
               </Link>
@@ -299,55 +305,57 @@ export default function DirectoryClient({
             />
           </div>
         </header>
-        <p className="px-4 py-3 pr-9 text-sm text-slate-500">
-          {query
-            ? `${results.length} ${results.length === 1 ? copy.result : copy.results}`
-            : `${members.length} ${members.length === 1 ? copy.member : copy.members}`}
-        </p>
-        <div className="pb-24 pr-7">
-          {groups.map(([letter, people]) => (
-            <section key={letter} id={`letter-${letter}`}>
-              <h2 className="border-b border-slate-200 bg-slate-50 px-4 py-1.5 text-sm font-bold text-slate-500">
-                {letter}
-              </h2>
-              <div className="divide-y divide-slate-100 pl-4">
-                {people.map((person) => (
-                  <button
-                    key={person.id}
-                    onClick={() => setSelected(person)}
-                    className="flex min-h-[68px] w-full items-center gap-3 py-2.5 pr-2 text-left hover:bg-blue-50"
-                  >
-                    <Avatar person={person} />
-                    <span className="min-w-0 flex-1 truncate text-[17px] font-medium text-slate-950">
-                      {person.firstName}{" "}
-                      <span className="font-semibold">{person.lastName}</span>
-                    </span>
-                    <span aria-hidden className="text-xl text-slate-300">
-                      ›
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-        {!results.length && (
-          <div className="px-5 py-16 text-center text-slate-500">
-            {copy.noMembers}
+        <div className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <p className="px-4 py-3 pr-9 text-sm font-medium text-[var(--app-muted)]">
+            {query
+              ? `${results.length} ${results.length === 1 ? copy.result : copy.results}`
+              : `${members.length} ${members.length === 1 ? copy.member : copy.members}`}
+          </p>
+          <div className="pr-8">
+            {groups.map(([letter, people]) => (
+              <section key={letter} id={`letter-${letter}`}>
+                <h2 className="sticky top-0 z-10 border-y border-[var(--app-line)] bg-[var(--app-surface-muted)]/95 px-4 py-1.5 text-sm font-bold text-[var(--app-brand)] backdrop-blur">
+                  {letter}
+                </h2>
+                <div className="divide-y divide-[var(--app-line)] pl-4">
+                  {people.map((person) => (
+                    <button
+                      key={person.id}
+                      onClick={() => setSelected(person)}
+                      className="flex min-h-[68px] w-full items-center gap-3 py-2.5 pr-2 text-left hover:bg-[var(--app-brand-soft)] active:bg-[#d9e9f3]"
+                    >
+                      <Avatar person={person} />
+                      <span className="min-w-0 flex-1 truncate text-[17px] font-medium text-[var(--app-ink)]">
+                        {person.firstName}{" "}
+                        <span className="font-semibold">{person.lastName}</span>
+                      </span>
+                      <span aria-hidden className="text-xl text-slate-300">
+                        ›
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
-        )}
+          {!results.length && (
+            <div className="px-5 py-16 text-center text-[var(--app-muted)]">
+              {copy.noMembers}
+            </div>
+          )}
+        </div>
         <nav
           aria-label={
             locale === "uk" ? "Алфавітний покажчик" : "Alphabetical index"
           }
-          className="fixed right-[max(0.2rem,calc((100vw-36rem)/2+0.2rem))] top-1/2 z-20 flex -translate-y-1/2 flex-col items-center text-[8px] font-bold leading-[9px] sm:absolute sm:right-1"
+          className="absolute right-1 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center text-[8px] font-bold leading-[9px] max-[600px]:text-[7px] max-[600px]:leading-[7px]"
         >
           {alphabet.map((letter) =>
             visibleLetters.has(letter) ? (
               <a
                 key={letter}
                 href={`#letter-${letter}`}
-                className="min-w-5 text-center text-blue-600 hover:underline"
+                className="min-w-5 text-center text-[var(--app-brand)] hover:underline"
               >
                 {letter}
               </a>
@@ -358,14 +366,14 @@ export default function DirectoryClient({
             ),
           )}
         </nav>
-        <div className="safe-bottom sticky bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 pb-4 pt-3 backdrop-blur">
+        <div className="safe-bottom z-30 flex-none border-t border-[var(--app-line)] bg-white/92 px-4 pb-4 pt-3 backdrop-blur-xl">
           <label className="relative block">
             <Search className="absolute left-3 top-3 size-5 text-slate-400" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={copy.searchPlaceholder}
-              className="min-h-11 w-full rounded-2xl border border-transparent bg-slate-100 py-2.5 pl-10 pr-11 text-base outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              className="min-h-11 w-full rounded-2xl border border-transparent bg-[var(--app-surface-muted)] py-2.5 pl-10 pr-11 text-base outline-none placeholder:text-slate-400 focus:border-[var(--app-brand)] focus:bg-white focus:ring-4 focus:ring-[#d9e9f3]"
             />
             {query && (
               <button
@@ -377,7 +385,7 @@ export default function DirectoryClient({
               </button>
             )}
           </label>
-          <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+          <p className="mt-2 hidden items-center justify-center gap-1.5 text-[11px] text-slate-400 min-[375px]:flex">
             <ShieldCheck className="size-3.5" />
             {copy.approvedOnly}
           </p>

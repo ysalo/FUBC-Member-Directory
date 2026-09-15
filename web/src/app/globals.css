@@ -1,9 +1,134 @@
 @import "tailwindcss";
-:root { color-scheme: light; }
-* { box-sizing: border-box; }
-body { margin: 0; background: #f1f5f9; color: #0f172a; font-family: Arial, Helvetica, sans-serif; }
-button, input, select, textarea { font: inherit; }
-button, a, select { touch-action: manipulation; }
-.safe-page { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
-.safe-top { padding-top: max(1.5rem, env(safe-area-inset-top)); }
-.safe-bottom { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+
+:root {
+  color-scheme: light;
+  --app-bg: #edf2f7;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f6f8fb;
+  --app-ink: #172033;
+  --app-muted: #697386;
+  --app-line: #dfe5ec;
+  --app-brand: #194a70;
+  --app-brand-strong: #123752;
+  --app-brand-soft: #e7f0f6;
+  --app-accent: #c7922f;
+  --app-accent-soft: #fbf2df;
+  --app-danger: #b42318;
+  --app-shadow: 0 18px 60px rgb(23 32 51 / 10%);
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  background: var(--app-bg);
+}
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 8% 0%, rgb(199 146 47 / 10%), transparent 28rem),
+    linear-gradient(180deg, #f7f9fb 0%, var(--app-bg) 100%);
+  color: var(--app-ink);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button,
+a,
+select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a {
+  transition-property:
+    color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+button:not(:disabled):active,
+a:active {
+  transform: scale(0.975);
+}
+input,
+select,
+textarea {
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+:focus-visible {
+  outline: 3px solid rgb(25 74 112 / 24%);
+  outline-offset: 2px;
+}
+
+.safe-page {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+.safe-top {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+.native-scroll {
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(105 115 134 / 25%) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.native-enter {
+  animation: native-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.native-fade {
+  animation: native-fade 160ms ease-out both;
+}
+.native-shadow {
+  box-shadow: var(--app-shadow);
+}
+
+@keyframes native-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes native-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

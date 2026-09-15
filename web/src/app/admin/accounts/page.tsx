@@ -52,8 +52,8 @@ export default async function AccountsPage() {
   const profiles = (profileRows ?? []) as AccountProfile[];
 
   return (
-    <main className="safe-page min-h-dvh bg-slate-100 p-4 sm:p-8">
-      <section className="mx-auto max-w-5xl">
+    <main className="safe-page min-h-dvh p-4 sm:p-8">
+      <section className="native-enter mx-auto max-w-5xl">
         <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 min-[430px]:flex-row min-[430px]:items-center">
           <Link
             href="/admin"
@@ -63,7 +63,7 @@ export default async function AccountsPage() {
             ←
           </Link>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-blue-700">
+            <p className="font-medium text-[var(--app-accent)]">
               {t(locale, "administratorOnly")}
             </p>
             <h1 className="text-3xl font-bold tracking-tight text-slate-950">
@@ -185,7 +185,7 @@ export default async function AccountsPage() {
                         <button
                           name="intent"
                           value="active"
-                          className="min-h-11 rounded-xl bg-blue-700 px-4 font-semibold text-white hover:bg-blue-800"
+                          className="min-h-11 rounded-xl bg-[var(--app-brand)] px-4 font-semibold text-white shadow-sm hover:bg-[var(--app-brand-strong)]"
                         >
                           {section.status === "active"
                             ? t(locale, "saveAccess")

@@ -26,11 +26,11 @@ export default async function AdminPage() {
       : { count: 0 };
 
   return (
-    <main className="safe-page min-h-dvh bg-slate-100 p-4 sm:p-8">
-      <section className="mx-auto max-w-6xl">
+    <main className="safe-page min-h-dvh p-4 sm:p-8">
+      <section className="native-enter mx-auto max-w-6xl">
         <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center">
           <div>
-            <p className="font-medium text-blue-700">
+            <p className="font-medium text-[var(--app-accent)]">
               {t(locale, "privateDirectory")}
             </p>
             <h1 className="text-3xl font-bold tracking-tight text-slate-950">
@@ -39,12 +39,12 @@ export default async function AdminPage() {
                 : t(locale, "editorPortal")}
             </h1>
           </div>
-          <div className="flex flex-col gap-2 min-[380px]:flex-row">
+          <div className="flex flex-wrap items-center gap-2">
             <LanguageSwitcher locale={locale} />
             {profile.role === "admin" && (
               <Link
                 href="/admin/accounts"
-                className="min-h-11 rounded-xl bg-blue-50 px-4 py-2.5 text-center font-semibold text-blue-700 hover:bg-blue-100"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[var(--app-brand-soft)] px-4 py-2.5 text-center font-semibold text-[var(--app-brand)] hover:bg-[#d9e9f3] sm:flex-none"
               >
                 {t(locale, "accountRequests")}
                 {pendingCount ? ` (${pendingCount})` : ""}
@@ -52,7 +52,7 @@ export default async function AdminPage() {
             )}
             <Link
               href="/"
-              className="min-h-11 rounded-xl bg-slate-900 px-4 py-2.5 text-center font-semibold text-white hover:bg-slate-800"
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[var(--app-brand)] px-4 py-2.5 text-center font-semibold text-white shadow-sm hover:bg-[var(--app-brand-strong)] sm:flex-none"
             >
               {t(locale, "viewDirectory")}
             </Link>
@@ -69,7 +69,7 @@ export default async function AdminPage() {
                   {activePeople.length}
                 </h2>
               </div>
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
+              <span className="rounded-full bg-[var(--app-accent-soft)] px-3 py-1 text-sm font-semibold text-[#8a641f]">
                 {t(locale, "liveData")}
               </span>
             </div>
@@ -95,7 +95,7 @@ export default async function AdminPage() {
                   <div className="flex shrink-0 items-center gap-2">
                     <Link
                       href={`/admin/${person.id}`}
-                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[var(--app-brand-soft)] px-3 py-2 text-sm font-semibold text-[var(--app-brand)] hover:bg-[#d9e9f3]"
                     >
                       {t(locale, "edit")}
                     </Link>
@@ -134,7 +134,7 @@ export default async function AdminPage() {
                         {person.first_name} {person.last_name}
                       </Link>
                       <form action={restoreMember.bind(null, person.id)}>
-                        <button className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">
+                        <button className="min-h-11 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">
                           {t(locale, "restore")}
                         </button>
                       </form>
@@ -145,7 +145,7 @@ export default async function AdminPage() {
             )}
           </article>
           <aside className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-blue-700">
+            <p className="text-sm font-semibold text-[var(--app-accent)]">
               {t(locale, "directoryRecord")}
             </p>
             <h2 className="mt-1 text-xl font-bold text-slate-950">
@@ -243,7 +243,7 @@ export default async function AdminPage() {
                   className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
                 />
               </label>
-              <button className="mt-2 w-full rounded-xl bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800">
+              <button className="mt-2 w-full rounded-xl bg-[var(--app-brand)] px-4 py-3 font-semibold text-white shadow-sm hover:bg-[var(--app-brand-strong)]">
                 {t(locale, "addMember")}
               </button>
             </form>

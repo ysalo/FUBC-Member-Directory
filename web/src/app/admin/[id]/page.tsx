@@ -26,8 +26,8 @@ export default async function EditMemberPage({
     "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600";
 
   return (
-    <main className="safe-page min-h-dvh bg-slate-100 p-4 sm:p-8">
-      <section className="mx-auto max-w-2xl">
+    <main className="safe-page min-h-dvh p-4 sm:p-8">
+      <section className="native-enter mx-auto max-w-2xl">
         <header className="flex items-start gap-3 border-b border-slate-200 pb-6 sm:items-center sm:gap-4">
           <Link
             href="/admin"
@@ -37,7 +37,7 @@ export default async function EditMemberPage({
             ←
           </Link>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-blue-700">
+            <p className="font-medium text-[var(--app-accent)]">
               {t(locale, "directoryRecord")}
             </p>
             <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
@@ -173,7 +173,7 @@ export default async function EditMemberPage({
             >
               {t(locale, "cancel")}
             </Link>
-            <button className="min-h-11 rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800">
+            <button className="min-h-11 rounded-xl bg-[var(--app-brand)] px-5 py-3 font-semibold text-white shadow-sm hover:bg-[var(--app-brand-strong)]">
               {t(locale, "saveChanges")}
             </button>
           </div>

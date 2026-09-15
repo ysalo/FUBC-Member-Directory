@@ -27,7 +27,7 @@ export default function SignOutButton({
       onClick={signOut}
       disabled={loading}
       aria-label={label}
-      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-60"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--app-muted)] hover:bg-[var(--app-brand-soft)] hover:text-[var(--app-brand)] disabled:opacity-60"
     >
       <LogOut className="size-4" />
       {compact ? (

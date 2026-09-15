@@ -5,7 +5,7 @@ import { getLocale } from "@/lib/locale";
 export default async function LoginPage() {
   const locale = await getLocale();
   return (
-    <Suspense fallback={<main className="min-h-dvh bg-slate-100" />}>
+    <Suspense fallback={<main className="min-h-dvh" />}>
       <LoginClient locale={locale} />
     </Suspense>
   );

@@ -11,7 +11,7 @@ export default function LanguageSwitcher({ locale }: { locale: Locale }) {
 
   return (
     <div
-      className="inline-flex min-h-11 rounded-xl bg-slate-100 p-1"
+      className="inline-flex shrink-0 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-1"
       role="group"
       aria-label={locale === "uk" ? "Мова" : "Language"}
     >
@@ -19,7 +19,7 @@ export default function LanguageSwitcher({ locale }: { locale: Locale }) {
         type="button"
         onClick={() => select("en")}
         aria-pressed={locale === "en"}
-        className={`min-w-11 rounded-lg px-2 text-sm font-semibold ${locale === "en" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}
+        className={`min-h-11 min-w-11 rounded-lg px-2 text-sm font-semibold ${locale === "en" ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
       >
         EN
       </button>
@@ -27,7 +27,7 @@ export default function LanguageSwitcher({ locale }: { locale: Locale }) {
         type="button"
         onClick={() => select("uk")}
         aria-pressed={locale === "uk"}
-        className={`min-w-11 rounded-lg px-2 text-sm font-semibold ${locale === "uk" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}
+        className={`min-h-11 min-w-11 rounded-lg px-2 text-sm font-semibold ${locale === "uk" ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
       >
         УКР
       </button>

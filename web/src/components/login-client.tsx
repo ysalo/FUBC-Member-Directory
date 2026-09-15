@@ -43,21 +43,21 @@ export default function LoginClient({ locale }: { locale: Locale }) {
     }
   }
   return (
-    <main className="safe-page grid min-h-dvh place-items-center bg-slate-100 p-5">
-      <section className="w-full max-w-sm rounded-3xl bg-white p-7 shadow-xl">
+    <main className="safe-page grid min-h-dvh place-items-center p-5">
+      <section className="native-enter native-shadow w-full max-w-sm rounded-[2rem] border border-white/80 bg-white/95 p-7 backdrop-blur">
         <div className="flex items-start justify-between gap-4">
-          <div className="grid size-12 place-items-center rounded-2xl bg-blue-700 text-xl font-bold text-white">
+          <div className="grid size-12 place-items-center rounded-2xl bg-[var(--app-brand)] text-xl font-bold text-white shadow-sm">
             PD
           </div>
           <LanguageSwitcher locale={locale} />
         </div>
-        <p className="mt-6 text-sm font-semibold text-blue-700">
+        <p className="mt-6 text-sm font-semibold text-[var(--app-accent)]">
           {copy.privateDirectory}
         </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
+        <h1 className="mt-1 text-3xl font-bold tracking-[-0.025em] text-[var(--app-ink)]">
           {copy.welcome}
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
           {copy.loginHelp}
         </p>
         <div className="mt-7 space-y-3">

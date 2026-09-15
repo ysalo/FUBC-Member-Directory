@@ -29,15 +29,15 @@ export default async function AccessStatusPage({
   const message = content[status as Exclude<AccountStatus, "active">];
   if (!message) redirect(accessPath(profile.status));
   return (
-    <main className="safe-page grid min-h-dvh place-items-center bg-slate-100 p-5">
-      <section className="w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-xl">
+    <main className="safe-page grid min-h-dvh place-items-center p-5">
+      <section className="native-enter native-shadow w-full max-w-md rounded-[2rem] border border-white/80 bg-white/95 p-7 text-center backdrop-blur">
         <div className="flex justify-end">
           <LanguageSwitcher locale={locale} />
         </div>
-        <div className="mx-auto mt-2 grid size-14 place-items-center rounded-full bg-blue-50 text-2xl text-blue-700">
+        <div className="mx-auto mt-2 grid size-14 place-items-center rounded-full bg-[var(--app-brand-soft)] text-2xl text-[var(--app-brand)]">
           ✓
         </div>
-        <p className="mt-6 text-sm font-semibold text-blue-700">
+        <p className="mt-6 text-sm font-semibold text-[var(--app-accent)]">
           {copy.privateDirectory}
         </p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
