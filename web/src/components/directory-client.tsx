@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import BottomNavigation from "@/components/bottom-navigation";
+import Link from "@/components/navigation-link";
 import { groupCopy, type DeaconGroup } from "@/lib/group-copy";
 import { upcomingBirthdays, ageOn } from "@/lib/birthdays";
 import type { AppRole } from "@/lib/auth";
@@ -81,7 +82,7 @@ export default function DirectoryClient({
   isDeacon = false,
   deaconGroups,
   today = "",
-  viewerId,
+  showBirthdays = false,
 }: {
   members: DirectoryPerson[];
   role: AppRole;
@@ -89,12 +90,13 @@ export default function DirectoryClient({
   isDeacon?: boolean;
   deaconGroups?: DeaconGroup[];
   today?: string;
-  viewerId?: string;
+  showBirthdays?: boolean;
 }) {
   const copy = dictionaries[locale];
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<DirectoryPerson | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [unlinkedDeacon, setUnlinkedDeacon] = useState<string | null>(null);
   const [view, setView] = useState<"members" | "birthdays">("members");
   const [badgeFilters, setBadgeFilters] = useState({
     widowed: false,
@@ -145,9 +147,9 @@ export default function DirectoryClient({
     setSelected(null);
   };
   useEffect(() => {
-    if (!selected && listRef.current)
+    if (!selected && !unlinkedDeacon && listRef.current)
       listRef.current.scrollTop = savedScroll.current;
-  }, [selected]);
+  }, [selected, unlinkedDeacon]);
 
   const dateLocale = locale === "uk" ? "uk-UA" : "en-US";
   const nameLocale = members.some((person) =>
@@ -219,6 +221,26 @@ export default function DirectoryClient({
     }
     return [...grouped.entries()];
   }, [nameLocale, results]);
+
+  if (unlinkedDeacon)
+    return (
+      <main className="fixed inset-0 h-dvh bg-[var(--app-bg)] sm:p-6">
+        <section className="safe-top native-enter mx-auto h-full max-w-xl bg-white px-5 sm:rounded-[2rem]">
+          <button
+            onClick={() => setUnlinkedDeacon(null)}
+            aria-label={labels.backToGroups}
+            className="grid size-11 place-items-center text-2xl"
+          >
+            ←
+          </button>
+          <h1 className="mt-5 text-2xl font-semibold">{unlinkedDeacon}</h1>
+          <p className="mt-6 flex items-center gap-3 text-[var(--app-muted)]">
+            <Phone className="size-5" />
+            {copy.phone}: {copy.notProvided}
+          </p>
+        </section>
+      </main>
+    );
 
   if (selected)
     return (
@@ -358,6 +380,19 @@ export default function DirectoryClient({
                   <ChevronRight className="size-5 shrink-0 text-slate-300" />
                 </a>
               )}
+              {!selected.phone && (
+                <div className="flex min-h-14 items-center gap-4 py-1">
+                  <Phone className="size-5 shrink-0 text-slate-400" />
+                  <span>
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
+                      {copy.phone}
+                    </span>
+                    <span className="mt-0.5 block text-[17px]">
+                      {copy.notProvided}
+                    </span>
+                  </span>
+                </div>
+              )}
               <div className="flex min-h-14 items-center gap-4 py-1">
                 <UserRound className="size-5 shrink-0 text-slate-400" />
                 <span>
@@ -430,6 +465,18 @@ export default function DirectoryClient({
             {deaconGroups ? labels.myGroups : copy.memberDirectory}
           </h1>
           {deaconGroups && (
+            <Link
+              href="/groups"
+              aria-label={labels.backToGroups}
+              className="flex min-h-11 w-fit items-center gap-2 text-sm text-[var(--app-brand)]"
+            >
+              <span aria-hidden className="text-xl">
+                ←
+              </span>
+              {labels.browseGroups}
+            </Link>
+          )}
+          {deaconGroups && showBirthdays && (
             <div className="pb-1">
               <div className="flex w-full" aria-label={labels.myGroups}>
                 {(["members", "birthdays"] as const).map((tab) => (
@@ -541,83 +588,88 @@ export default function DirectoryClient({
                 <section key={group.id}>
                   <h2 className="font-semibold">{group.name}</h2>
                   <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                    {labels.otherDeacon}
+                    {labels.responsibleDeacons}
                   </p>
-                  {group.deacons
-                    .filter((deacon) => deacon.id !== viewerId)
-                    .map((deacon) => (
-                      <div
-                        key={deacon.id}
-                        className="mt-1 text-sm text-[var(--app-muted)]"
-                      >
+                  {group.deacons.map((deacon) => (
+                    <button
+                      key={deacon.id}
+                      disabled={deacon.status !== "active"}
+                      onClick={() => {
+                        const person = members.find(
+                          (person) => person.id === deacon.personId,
+                        );
+                        if (person) openMember(person);
+                        else {
+                          savedScroll.current = listRef.current?.scrollTop ?? 0;
+                          setUnlinkedDeacon(deacon.name);
+                        }
+                      }}
+                      className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left text-sm disabled:text-[var(--app-muted)]"
+                    >
+                      <span>
                         {deacon.name}
                         {deacon.status !== "active" && (
                           <span> — {labels.inactive}</span>
                         )}
-                        {deacon.phone && (
-                          <a
-                            className="flex min-h-11 items-center gap-2 text-[var(--app-brand)]"
-                            href={`tel:${deacon.phone.replace(/[^\d+]/g, "")}`}
-                          >
-                            <Phone className="size-4" />
-                            {deacon.phone}
-                            <ChevronRight className="size-4" />
-                          </a>
-                        )}
-                        {!deacon.phone && (
-                          <p className="flex min-h-11 items-center gap-2">
-                            <Phone className="size-4 shrink-0" />
-                            <span>
-                              {copy.phone}: {copy.notProvided}
-                            </span>
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      </span>
+                      {deacon.status === "active" && (
+                        <ChevronRight className="size-5 shrink-0 text-slate-300" />
+                      )}
+                    </button>
+                  ))}
                   {group.deacons.length < 2 && (
-                    <p className="mt-2 text-sm text-[var(--app-muted)]">
-                      {labels.incomplete}
-                    </p>
+                    <div className="text-sm text-[var(--app-muted)]">
+                      {Array.from(
+                        { length: 2 - group.deacons.length },
+                        (_, index) => (
+                          <p key={index} className="flex min-h-11 items-center">
+                            {labels.deacon}: {labels.none}
+                          </p>
+                        ),
+                      )}
+                    </div>
                   )}
                 </section>
               ))}
-              {!!deaconGroups.length && view === "birthdays" && (
-                <section>
-                  <h2 className="font-semibold">{labels.upcoming}</h2>
-                  <p className="mt-1 text-xs text-[var(--app-muted)]">
-                    {labels.next30}
-                  </p>
-                  {visibleBirthdays.map((birthday) => {
-                    const person = members.find(
-                      (member) => member.id === birthday.id,
-                    )!;
-                    return (
-                      <button
-                        key={birthday.id}
-                        onClick={() => openMember(person)}
-                        className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm"
-                      >
-                        <span>
-                          {person.name}
-                          {badges(person)}
-                        </span>
-                        <span className="shrink-0 text-[var(--app-muted)]">
-                          {new Intl.DateTimeFormat(dateLocale, {
-                            month: "short",
-                            day: "numeric",
-                            timeZone: "UTC",
-                          }).format(new Date(birthday.date + "T00:00:00Z"))}
-                        </span>
-                      </button>
-                    );
-                  })}
-                  {!visibleBirthdays.length && (
-                    <p className="mt-3 text-sm text-[var(--app-muted)]">
-                      {labels.noBirthdays}
+              {!!deaconGroups.length &&
+                showBirthdays &&
+                view === "birthdays" && (
+                  <section>
+                    <h2 className="font-semibold">{labels.upcoming}</h2>
+                    <p className="mt-1 text-xs text-[var(--app-muted)]">
+                      {labels.next30}
                     </p>
-                  )}
-                </section>
-              )}
+                    {visibleBirthdays.map((birthday) => {
+                      const person = members.find(
+                        (member) => member.id === birthday.id,
+                      )!;
+                      return (
+                        <button
+                          key={birthday.id}
+                          onClick={() => openMember(person)}
+                          className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm"
+                        >
+                          <span>
+                            {person.name}
+                            {badges(person)}
+                          </span>
+                          <span className="shrink-0 text-[var(--app-muted)]">
+                            {new Intl.DateTimeFormat(dateLocale, {
+                              month: "short",
+                              day: "numeric",
+                              timeZone: "UTC",
+                            }).format(new Date(birthday.date + "T00:00:00Z"))}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {!visibleBirthdays.length && (
+                      <p className="mt-3 text-sm text-[var(--app-muted)]">
+                        {labels.noBirthdays}
+                      </p>
+                    )}
+                  </section>
+                )}
             </div>
           )}
           {view === "members" && (

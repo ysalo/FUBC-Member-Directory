@@ -2,6 +2,8 @@
 
 ## Purpose
 
+Group-browser release implemented locally: Groups is available to all active approved accounts, with a Group I lead shortcut for deacons and `/groups/[id]` rosters/deacon member profiles. Apply `web/supabase/migrations/20260915030000_group_browser.sql` before pushing the dependent UI. Broad group-read access awaits action-time user confirmation. `web/supabase/seed_deacon_members.sql` was applied to the live demo on September 15, 2026: both confirmed deacon accounts are linked to member records with fictional 555 phones; they remain responsible for the 20-member original group but belong to a separate two-member group with no assigned deacons. No new Auth accounts or access-role changes were made.
+
 Follow-up release: badge filters now open from a filter icon beside Search (multi-select, matching either badge), and profiles emphasize age above the birth date. Live fictional demo members were updated using `web/supabase/seed_member_statuses.sql`: eight married, eight single, four widowed, four orphan flags. Real members/accounts were untouched.
 
 Latest release: member marital status and orphan badges/filters, singular My Group, separate Birthdays view, fellow-deacon contacts, profile age/group, and hamburger Settings. The user confirmed `web/supabase/migrations/20260915020000_member_status_and_single_group.sql` succeeded on September 15, 2026. See `docs/DEACON_GROUPS.md` for the access model and phone-linking requirement.

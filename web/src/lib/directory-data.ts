@@ -115,7 +115,7 @@ export async function loadDeaconGroups(
         profile_id: string;
         display_name: string;
         status: string;
-        email: string | null;
+        person_id: string | null;
         phone: string | null;
       }[]
     )
@@ -124,7 +124,7 @@ export async function loadDeaconGroups(
         id: row.profile_id,
         name: row.display_name,
         status: row.status,
-        email: row.email,
+        personId: row.person_id,
         phone: row.phone,
       })),
   }));

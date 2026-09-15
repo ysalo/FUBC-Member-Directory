@@ -366,6 +366,57 @@ await db.query("select public.save_deacon_group($1,'Група 1','{}')", [g1]);
 await db.query("select public.delete_deacon_group($1)", [g1]);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 1);
 await db.exec("reset role");
+await db.exec(
+  await readFile(
+    new URL(
+      "../supabase/migrations/20260915030000_group_browser.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
+await as(5);
+assert.equal(
+  await scalar("select count(*)::int from public.deacon_groups"),
+  1,
+  "ordinary approved members browse groups",
+);
+const publicDeacons = (
+  await db.query("select * from public.list_group_deacons()")
+).rows;
+assert.equal(publicDeacons.length, 1);
+assert.ok(!("email" in publicDeacons[0]), "group RPC never exposes email");
+await fails(
+  "select public.save_deacon_group(null,'Forbidden','{}')",
+  [],
+  /Editor access/,
+);
+await fails(
+  "select * from public.list_eligible_deacons()",
+  [],
+  /Editor access/,
+);
+for (const status of ["pending", "denied", "revoked"]) {
+  await db.exec("reset role");
+  await db.query("update public.profiles set status=$1 where id=$2", [
+    status,
+    uid(6),
+  ]);
+  await as(6);
+  assert.equal(
+    await scalar("select count(*)::int from public.deacon_groups"),
+    0,
+  );
+  assert.equal(
+    await scalar("select count(*)::int from public.deacon_group_members"),
+    0,
+  );
+  assert.equal(
+    (await db.query("select * from public.list_group_deacons()")).rows.length,
+    0,
+  );
+}
+await db.exec("reset role");
 await db.exec(baseline);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 0);
 await db.exec(`update public.profiles set status='active' where id in ('${uid(3)}','${uid(4)}');
@@ -394,6 +445,64 @@ assert.equal(
   "editor",
   "demo preserves access roles",
 );
+await db.query(
+  "update public.profiles set display_name=case when id=$1 then 'Demo First' else 'Demo Second' end where id in ($1,$2)",
+  [uid(3), uid(4)],
+);
+const memberSeed = (
+  await readFile(
+    new URL("../supabase/seed_deacon_members.sql", import.meta.url),
+    "utf8",
+  )
+)
+  .replaceAll("FIRST_DEACON_EMAIL", "test3@example.test")
+  .replaceAll("SECOND_DEACON_EMAIL", "test4@example.test");
+await db.exec(memberSeed);
+await db.exec(memberSeed);
+assert.equal(await scalar("select count(*)::int from public.people"), 22);
+assert.equal(
+  await scalar(
+    "select count(*)::int from public.deacon_group_members where group_id='60000000-0000-4000-8000-000000000001'",
+  ),
+  20,
+);
+assert.equal(
+  await scalar(
+    "select count(*)::int from public.deacon_group_members where group_id='60000000-0000-4000-8000-000000000002'",
+  ),
+  2,
+);
+assert.equal(
+  await scalar(
+    "select count(*)::int from public.deacon_group_deacons where group_id='60000000-0000-4000-8000-000000000002'",
+  ),
+  0,
+);
+assert.equal(
+  await scalar(
+    "select d.group_id <> m.group_id from public.profiles p join public.deacon_group_deacons d on d.profile_id=p.id join public.deacon_group_members m on m.person_id=p.person_id where p.id=$1",
+    [uid(3)],
+  ),
+  true,
+);
+await db.query("update public.profiles set status='active' where id=$1", [
+  uid(5),
+]);
+await as(5);
+const linkedDeacon = (
+  await db.query(
+    "select * from public.list_group_deacons() where profile_id=$1",
+    [uid(3)],
+  )
+).rows[0];
+assert.equal(linkedDeacon.phone, "(253) 555-0121");
+assert.ok(linkedDeacon.person_id);
+assert.equal(
+  await scalar("select count(*)::int from public.profiles"),
+  1,
+  "public browsing does not reveal full account profiles",
+);
+await db.exec("reset role");
 const statusSeed = await readFile(
   new URL("../supabase/seed_member_statuses.sql", import.meta.url),
   "utf8",

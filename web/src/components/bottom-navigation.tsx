@@ -12,7 +12,6 @@ import type { AppRole } from "@/lib/auth";
 
 export default function BottomNavigation({
   role,
-  isDeacon,
   locale,
   fixed = false,
 }: {
@@ -77,16 +76,12 @@ export default function BottomNavigation({
       Icon: BookUser,
       active: pathname === "/",
     },
-    ...(isDeacon
-      ? [
-          {
-            href: "/groups",
-            label: labels.myGroups,
-            Icon: UsersRound,
-            active: pathname === "/groups",
-          },
-        ]
-      : []),
+    {
+      href: "/groups",
+      label: labels.browseGroups,
+      Icon: UsersRound,
+      active: pathname.startsWith("/groups"),
+    },
     ...(role !== "member"
       ? [
           {

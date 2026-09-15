@@ -59,6 +59,7 @@ export async function mutateGroup(
     return { error };
   }
   revalidatePath("/admin/groups");
-  revalidatePath("/groups");
+  revalidatePath("/groups", "layout");
+  revalidatePath("/");
   return {};
 }

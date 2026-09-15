@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 test("group routes require authentication", async ({ page }) => {
   await page.goto("/groups");
   await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/groups/60000000-0000-4000-8000-000000000001");
+  await expect(page).toHaveURL(/\/login$/);
   await page.goto("/admin/groups");
   await expect(page).toHaveURL(/\/login$/);
 });
