@@ -237,13 +237,13 @@ export default function DirectoryClient({
     results.some((person) => person.id === birthday.id),
   );
   const ministryBadges = (person: DirectoryPerson, overPhoto = false) => (
-    <span className="inline-flex shrink-0 flex-wrap items-center gap-1 text-[11px] font-semibold leading-5 tracking-normal">
+    <span className="inline-flex shrink-0 self-center flex-wrap items-center gap-1 text-[11px] font-semibold leading-none tracking-normal">
       {(["deacon", "pastor"] as const)
         .filter((role) => person.ministryRoles?.includes(role))
         .map((role) => (
           <span
             key={role}
-            className={`rounded-full px-2 py-0.5 ${overPhoto ? "bg-black/30 text-white backdrop-blur-md" : "bg-[var(--app-brand-soft)] text-[var(--app-brand)]"}`}
+            className={`inline-flex min-h-5 items-center justify-center rounded-full px-2 py-1 ${overPhoto ? "bg-black/30 text-white backdrop-blur-md" : "bg-[var(--app-brand-soft)] text-[var(--app-brand)]"}`}
           >
             {labels[role]}
           </span>
@@ -388,30 +388,6 @@ export default function DirectoryClient({
                   </span>
                 </span>
               </div>
-              <div className="flex min-h-14 items-center gap-4 py-1">
-                <UserRound className="size-5 shrink-0 text-slate-400" />
-                <span>
-                  <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                    {labels.assignedGroup}
-                  </span>
-                  {selected.groupId && selected.groupName ? (
-                    <Link
-                      href={`/groups/${selected.groupId}`}
-                      className="mt-0.5 inline-flex min-h-11 items-center gap-1 text-[17px] text-[var(--app-accent)] hover:underline"
-                    >
-                      {selected.groupName}
-                      <ChevronRight
-                        aria-hidden="true"
-                        className="size-4 shrink-0"
-                      />
-                    </Link>
-                  ) : (
-                    <span className="mt-0.5 block text-[17px]">
-                      {selected.groupName || labels.unassigned}
-                    </span>
-                  )}
-                </span>
-              </div>
               {selected.phone && (
                 <a
                   href={`tel:${selected.phone.replace(/[^\d+]/g, "")}`}
@@ -505,6 +481,30 @@ export default function DirectoryClient({
                       formatDate(selected.membershipJoinedAt)
                     )}
                   </span>
+                </span>
+              </div>
+              <div className="flex min-h-14 items-center gap-4 py-1">
+                <UserRound className="size-5 shrink-0 text-slate-400" />
+                <span>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
+                    {labels.assignedGroup}
+                  </span>
+                  {selected.groupId && selected.groupName ? (
+                    <Link
+                      href={`/groups/${selected.groupId}`}
+                      className="mt-0.5 inline-flex min-h-11 items-center gap-1 text-[17px] text-[var(--app-accent)] hover:underline"
+                    >
+                      {selected.groupName}
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="size-4 shrink-0"
+                      />
+                    </Link>
+                  ) : (
+                    <span className="mt-0.5 block text-[17px]">
+                      {selected.groupName || labels.unassigned}
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
