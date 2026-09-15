@@ -118,6 +118,7 @@ test("member page preserves navigation and group back destination", async () => 
     "@/lib/group-copy": groups,
     "@/lib/i18n": i18n,
     "@/lib/birthdays": await load("lib/birthdays.ts"),
+    "@/lib/directory-view": await load("lib/directory-view.ts"),
     "@/lib/visitation": await load("lib/visitation.ts"),
   });
   const html = renderToStaticMarkup(
@@ -258,6 +259,7 @@ test("Menu shows identity and photo and stays available on member-edit pages", a
     "@/lib/i18n": i18n,
     "@/lib/visitation": await load("lib/visitation.ts"),
   });
+
   for (const personId of [person.id, null]) {
     const html = renderToStaticMarkup(
       createElement(navigation.default, {
@@ -285,4 +287,31 @@ test("Menu shows identity and photo and stays available on member-edit pages", a
       assert.doesNotMatch(html, /href="\/members\//);
     }
   }
+});
+
+test("directory browsing state and scroll survive profile navigation and remain account/group scoped", async () => {
+  const state = await load("lib/directory-view.ts");
+  const key = "viewer:group-one";
+  state.updateDirectoryView(key, {
+    query: "Member",
+    view: "birthdays",
+    badgeFilters: { widowed: true, orphan: false },
+  });
+  state.rememberDirectoryScroll(key, 420);
+  assert.deepEqual(state.getDirectoryView(key), {
+    query: "Member",
+    view: "birthdays",
+    badgeFilters: { widowed: true, orphan: false },
+  });
+  assert.equal(state.getDirectoryScroll(key), 420);
+  for (const other of ["viewer:group-two", "other-viewer:group-one"]) {
+    assert.equal(state.getDirectoryView(other).query, "");
+    assert.equal(state.getDirectoryScroll(other), 0);
+  }
+  state.updateDirectoryView(key, { query: "Another" });
+  assert.equal(state.getDirectoryScroll(key), 0);
+  assert.equal(state.getDirectoryView(key).view, "birthdays");
+  state.clearDirectoryViews();
+  assert.equal(state.getDirectoryView(key).query, "");
+  assert.equal(state.getDirectoryScroll(key), 0);
 });

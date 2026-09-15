@@ -18,13 +18,14 @@ import Link from "@/components/navigation-link";
 import { groupCopy, type DeaconGroup } from "@/lib/group-copy";
 import { upcomingBirthdays, ageOn, membershipDuration } from "@/lib/birthdays";
 import type { AppRole } from "@/lib/auth";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { dictionaries, type Locale } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import BackButton from "@/components/back-button";
 import MemberPhoto from "@/components/member-photo";
 import type { NavigationUser } from "@/lib/navigation-user";
 import { visitCopy } from "@/lib/visitation";
+import { useDirectoryView } from "@/lib/directory-view";
 
 export type DirectoryPerson = {
   id: string;
@@ -114,14 +115,23 @@ export default function DirectoryClient({
 }) {
   const copy = dictionaries[locale];
   const router = useRouter();
-  const [query, setQuery] = useState("");
+  const {
+    state: { query, view: savedView, badgeFilters },
+    update,
+    getScroll,
+    rememberScroll,
+  } = useDirectoryView(
+    `${currentUser.email}:${deaconGroups?.[0]?.id ?? "directory"}`,
+  );
+  const view = showBirthdays ? savedView : "members";
+  const setQuery = (query: string) => update({ query });
+  const setView = (view: "members" | "birthdays") => update({ view });
+  const setBadgeFilters = (badgeFilters: {
+    widowed: boolean;
+    orphan: boolean;
+  }) => update({ badgeFilters });
   const selected = initialMember;
   const [photoOpen, setPhotoOpen] = useState(false);
-  const [view, setView] = useState<"members" | "birthdays">("members");
-  const [badgeFilters, setBadgeFilters] = useState({
-    widowed: false,
-    orphan: false,
-  });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -147,6 +157,9 @@ export default function DirectoryClient({
     };
   }, [filtersOpen]);
   const listRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = getScroll();
+  }, [getScroll, query, view, badgeFilters]);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const labels = groupCopy(locale);
   const scopeGroups = deaconGroups;
@@ -639,6 +652,7 @@ export default function DirectoryClient({
         {!deaconGroups && searchBar}
         <div
           ref={listRef}
+          onScroll={(event) => rememberScroll(event.currentTarget.scrollTop)}
           className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white"
         >
           {deaconGroups && (
