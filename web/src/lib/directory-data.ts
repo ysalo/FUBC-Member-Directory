@@ -20,9 +20,23 @@ export async function loadDirectory(
   if (ids) query = query.in("id", ids);
   const { data: people, error } = await query;
   if (error) throw new Error("Unable to load the directory.");
-  const { data: memberGroups, error: groupError } =
-    await supabase.rpc("list_member_groups");
-  if (groupError) throw new Error("Unable to load member groups.");
+  const [
+    { data: memberGroups, error: groupError },
+    { data: memberships, error: membershipError },
+  ] = await Promise.all([
+    supabase.rpc("list_member_groups"),
+    supabase.from("deacon_group_members").select("person_id, group_id"),
+  ]);
+  if (groupError || membershipError)
+    throw new Error("Unable to load member groups.");
+  const groupIds = new Map<string, string>(
+    (memberships ?? []).map(
+      (row: { person_id: string; group_id: string }) => [
+        row.person_id,
+        row.group_id,
+      ],
+    ),
+  );
   const groupNames = new Map<string, string>(
     (memberGroups ?? []).map(
       (row: { person_id: string; group_name: string }) => [
@@ -59,6 +73,7 @@ export async function loadDirectory(
     maritalStatus: person.marital_status,
     isOrphan: person.is_orphan,
     groupName: groupNames.get(person.id) ?? "",
+    groupId: groupIds.get(person.id) ?? null,
     address: [
       person.address_line_1,
       person.address_line_2,

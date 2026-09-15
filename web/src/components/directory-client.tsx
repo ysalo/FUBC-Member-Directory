@@ -2,12 +2,14 @@
 
 import {
   CalendarDays,
+  Cake,
   ChevronRight,
   MapPin,
   Phone,
   Search,
   ListFilter,
   UserRound,
+  UsersRound,
   X,
 } from "lucide-react";
 import BottomNavigation from "@/components/bottom-navigation";
@@ -31,6 +33,7 @@ export type DirectoryPerson = {
   maritalStatus: "single" | "married" | "widowed" | null;
   isOrphan: boolean;
   groupName: string;
+  groupId: string | null;
 };
 
 const gradients = [
@@ -137,6 +140,18 @@ export default function DirectoryClient({
       ? members.filter((person) => scopeIds.has(person.id))
       : members;
   }, [scopeGroups, deaconGroups, members]);
+  const memberCounts = [
+    { label: labels.totalMembers, count: scopedMembers.length },
+    {
+      label: labels.orphanCount,
+      count: scopedMembers.filter((person) => person.isOrphan).length,
+    },
+    {
+      label: labels.widowedCount,
+      count: scopedMembers.filter((person) => person.maritalStatus === "widowed")
+        .length,
+    },
+  ];
   const birthdays = today ? upcomingBirthdays(scopedMembers, today) : [];
   const openMember = (person: DirectoryPerson) => {
     savedScroll.current = listRef.current?.scrollTop ?? 0;
@@ -362,9 +377,19 @@ export default function DirectoryClient({
                   <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                     {labels.assignedGroup}
                   </span>
-                  <span className="mt-0.5 block text-[17px]">
-                    {selected.groupName || labels.unassigned}
-                  </span>
+                  {selected.groupId && selected.groupName ? (
+                    <Link
+                      href={`/groups/${selected.groupId}`}
+                      className="mt-0.5 inline-flex min-h-11 items-center gap-1 text-[17px] text-[var(--app-accent)] hover:underline"
+                    >
+                      {selected.groupName}
+                      <ChevronRight aria-hidden="true" className="size-4 shrink-0" />
+                    </Link>
+                  ) : (
+                    <span className="mt-0.5 block text-[17px]">
+                      {selected.groupName || labels.unassigned}
+                    </span>
+                  )}
                 </span>
               </div>
               {selected.phone && (
@@ -667,8 +692,13 @@ export default function DirectoryClient({
                           key={tab}
                           aria-pressed={view === tab}
                           onClick={() => setView(tab)}
-                          className={`min-h-11 min-w-0 flex-1 rounded-lg px-2 transition-colors ${view === tab ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
+                          className={`flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-2 transition-colors ${view === tab ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
                         >
+                          {tab === "members" ? (
+                            <UsersRound aria-hidden="true" className="size-4 shrink-0" />
+                          ) : (
+                            <Cake aria-hidden="true" className="size-4 shrink-0" />
+                          )}
                           <span className="text-sm font-medium">
                             {tab === "members"
                               ? labels.membersTab
@@ -761,9 +791,16 @@ export default function DirectoryClient({
               {copy.noMembers}
             </div>
           )}
-          <p className="px-4 py-5 text-center text-sm text-[var(--app-muted)]">
-            {scopedMembers.length} {copy.members}
-          </p>
+          <dl className="mx-4 my-5 grid grid-cols-3 gap-2 rounded-xl bg-[var(--app-surface-muted)] px-2 py-4 text-center">
+            {memberCounts.map(({ label, count }) => (
+              <div key={label} className="flex min-w-0 flex-col gap-1">
+                <dt className="text-xs text-[var(--app-muted)]">{label}</dt>
+                <dd className="order-first text-lg font-semibold tabular-nums text-[var(--app-ink)]">
+                  {count}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
         <BottomNavigation role={role} isDeacon={isDeacon} locale={locale} />
       </section>

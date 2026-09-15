@@ -57,7 +57,7 @@ begin
     make_date(2010 + (n % 15), 1 + (n % 12), 1 + (n % 27)),
     '(253) 555-01' || lpad(n::text,2,'0'), (100 + n)::text || ' Example Lane',
     'Demo City','WA','98402',
-    '/member-photos/' || (array['avery-chen.jpg','jordan-lee.jpg','david-williams.jpg'])[1 + ((n - 1) % 3)],
+    (array['/member-photos/stock/men-7.jpg','/member-photos/stock/women-7.jpg','/member-photos/stock/men-8.jpg','/member-photos/stock/women-8.jpg','/member-photos/stock/men-9.jpg','/member-photos/stock/women-9.jpg','/member-photos/stock/men-10.jpg','/member-photos/stock/women-10.jpg','/member-photos/stock/men-11.jpg','/member-photos/stock/women-11.jpg','/member-photos/stock/men-12.jpg','/member-photos/stock/women-12.jpg','/member-photos/stock/men-13.jpg','/member-photos/stock/women-13.jpg','/member-photos/stock/men-14.jpg','/member-photos/stock/women-14.jpg','/member-photos/stock/men-15.jpg','/member-photos/stock/women-15.jpg','/member-photos/stock/men-16.jpg','/member-photos/stock/women-16.jpg'])[n],
     demo_note
   from generate_series(1,20) n on conflict(id) do nothing;
 
