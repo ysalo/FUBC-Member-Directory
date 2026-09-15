@@ -39,10 +39,6 @@ pnpm test:e2e
 
 ## Vercel test deployment
 
-1. Import this repository in Vercel and set the Root Directory to `web`.
-2. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_ENABLE_APPLE_AUTH=false`.
-3. Deploy and keep the generated production URL stable.
-4. Change the Supabase Site URL to that HTTPS origin and add `https://<your-domain>/auth/callback` to the redirect allowlist. Retain the localhost callback for development.
-5. Verify Google sign-in, pending status, approval, directory access, and revocation on the deployed site.
+Follow the repository's complete [deployment guide](../DEPLOYMENT.md) for the exact Vercel, Supabase, and Google settings plus the production verification checklist.
 
 Provider secrets belong in Supabase/provider settings, never in Vercel browser-visible environment variables. This project intentionally has no service worker, so private directory data and photos are not cached for offline use.

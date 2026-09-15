@@ -12,7 +12,7 @@ async function uploadPhoto(supabase: Awaited<ReturnType<typeof createClient>>, p
   if (!(photo instanceof File) || photo.size === 0) return null;
   const extension = allowedPhotoTypes.get(photo.type);
   if (!extension) throw new Error("Photos must be JPG, PNG, or WebP files.");
-  if (photo.size > 5 * 1024 * 1024) throw new Error("Photos must be 5 MB or smaller.");
+  if (photo.size > 4 * 1024 * 1024) throw new Error("Photos must be 4 MB or smaller.");
 
   const path = `${crypto.randomUUID()}.${extension}`;
   const { error } = await supabase.storage.from("member-photos").upload(path, photo, {
