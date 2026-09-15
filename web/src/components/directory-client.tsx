@@ -6,14 +6,14 @@ import {
   MapPin,
   Phone,
   Search,
-  Menu,
   UserRound,
   X,
 } from "lucide-react";
-import Link from "@/components/navigation-link";
+import BottomNavigation from "@/components/bottom-navigation";
+import { groupCopy, type DeaconGroup } from "@/lib/group-copy";
+import { upcomingBirthdays } from "@/lib/birthdays";
+import type { AppRole } from "@/lib/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
-import LanguageSwitcher from "@/components/language-switcher";
-import SignOutButton from "@/components/sign-out-button";
 import { dictionaries, type Locale } from "@/lib/i18n";
 
 export type DirectoryPerson = {
@@ -74,47 +74,49 @@ export default function DirectoryClient({
   members,
   role,
   locale,
+  isDeacon = false,
+  deaconGroups,
+  today = "",
 }: {
   members: DirectoryPerson[];
-  role: "member" | "editor" | "admin";
+  role: AppRole;
   locale: Locale;
+  isDeacon?: boolean;
+  deaconGroups?: DeaconGroup[];
+  today?: string;
 }) {
   const copy = dictionaries[locale];
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<DirectoryPerson | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [textSize, setTextSize] = useState<"standard" | "large">("standard");
-  const [appearanceReady, setAppearanceReady] = useState(false);
+  const [groupId, setGroupId] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+  const savedScroll = useRef(0);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
-
+  const labels = groupCopy(locale);
+  const scopeGroups = useMemo(
+    () => deaconGroups?.filter((group) => !groupId || group.id === groupId),
+    [deaconGroups, groupId],
+  );
+  const scopedMembers = useMemo(() => {
+    const scopeIds = new Set(scopeGroups?.flatMap((group) => group.memberIds));
+    return deaconGroups
+      ? members.filter((person) => scopeIds.has(person.id))
+      : members;
+  }, [scopeGroups, deaconGroups, members]);
+  const birthdays = today ? upcomingBirthdays(scopedMembers, today) : [];
+  const openMember = (person: DirectoryPerson) => {
+    savedScroll.current = listRef.current?.scrollTop ?? 0;
+    setSelected(person);
+  };
   const returnToDirectory = () => {
     setPhotoOpen(false);
     setSelected(null);
   };
-
   useEffect(() => {
-    const saved = window.localStorage.getItem("directory-text-size");
-    const initialSize = saved === "large" ? "large" : "standard";
-    setTextSize(initialSize);
-    document.documentElement.dataset.textSize = initialSize;
-    setAppearanceReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!appearanceReady) return;
-    document.documentElement.dataset.textSize = textSize;
-    window.localStorage.setItem("directory-text-size", textSize);
-  }, [appearanceReady, textSize]);
-
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSettingsOpen(false);
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [settingsOpen]);
+    if (!selected && listRef.current)
+      listRef.current.scrollTop = savedScroll.current;
+  }, [selected]);
 
   const dateLocale = locale === "uk" ? "uk-UA" : "en-US";
   const nameLocale = members.some((person) =>
@@ -132,7 +134,7 @@ export default function DirectoryClient({
 
   const results = useMemo(() => {
     const collator = new Intl.Collator(nameLocale, { sensitivity: "base" });
-    const sorted = [...members].sort(
+    const sorted = [...scopedMembers].sort(
       (a, b) =>
         collator.compare(a.lastName, b.lastName) ||
         collator.compare(a.firstName, b.firstName),
@@ -150,7 +152,7 @@ export default function DirectoryClient({
           ].some((field) => field.toLocaleLowerCase(nameLocale).includes(term)),
         )
       : sorted;
-  }, [members, nameLocale, query]);
+  }, [scopedMembers, nameLocale, query]);
 
   const groups = useMemo(() => {
     const grouped = new Map<string, DirectoryPerson[]>();
@@ -330,24 +332,29 @@ export default function DirectoryClient({
   return (
     <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
       <section className="native-enter native-shadow relative mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]">
-        <header className="safe-top z-30 flex-none bg-white/92 px-4 pb-1 backdrop-blur-xl">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="mt-0.5 text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--app-ink)] min-[375px]:text-[26px]">
-                {copy.memberDirectory}
-              </h1>
+        <div className="safe-top flex-none bg-white px-4 pb-1">
+          <h1 className="sr-only">
+            {deaconGroups ? labels.myGroups : copy.memberDirectory}
+          </h1>
+          {deaconGroups && (
+            <div className="flex items-center gap-3 pb-2">
+              <span className="text-sm font-semibold">{labels.myGroups}</span>
+              <select
+                aria-label={labels.groups}
+                value={groupId}
+                onChange={(event) => setGroupId(event.target.value)}
+                className="min-h-11 min-w-0 flex-1 bg-transparent text-sm"
+              >
+                <option value="">{labels.all}</option>
+                {deaconGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              aria-label={copy.settings}
-              aria-expanded={settingsOpen}
-              className="grid size-11 shrink-0 place-items-center text-[var(--app-muted)] hover:text-[var(--app-ink)]"
-            >
-              <Menu className="size-5" />
-            </button>
-          </div>
-        </header>
+          )}
+        </div>
         <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 backdrop-blur-xl">
           <label className="directory-search flex min-h-11 items-center gap-3 px-1">
             <Search className="size-5 shrink-0 text-slate-400" />
@@ -368,7 +375,79 @@ export default function DirectoryClient({
             )}
           </label>
         </div>
-        <div className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white">
+        <div
+          ref={listRef}
+          className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white"
+        >
+          {deaconGroups && !query && (
+            <div className="space-y-5 px-4 py-4">
+              {!deaconGroups.length && (
+                <p className="py-6 text-center text-sm text-[var(--app-muted)]">
+                  {labels.noGroups}
+                </p>
+              )}
+              {scopeGroups?.map((group) => (
+                <section key={group.id}>
+                  <h2 className="font-semibold">
+                    {group.name}{" "}
+                    <span className="text-sm font-normal text-[var(--app-muted)]">
+                      · {group.memberIds.length} {copy.members}
+                    </span>
+                  </h2>
+                  {group.deacons.map((deacon) => (
+                    <p
+                      key={deacon.id}
+                      className="mt-1 text-sm text-[var(--app-muted)]"
+                    >
+                      {deacon.name}
+                      {deacon.status !== "active" && (
+                        <span> — {labels.inactive}</span>
+                      )}
+                    </p>
+                  ))}
+                  {group.deacons.length < 2 && (
+                    <p className="mt-2 text-sm text-[var(--app-muted)]">
+                      {labels.incomplete}
+                    </p>
+                  )}
+                </section>
+              ))}
+              {!!deaconGroups.length && (
+                <section>
+                  <h2 className="font-semibold">{labels.upcoming}</h2>
+                  <p className="mt-1 text-xs text-[var(--app-muted)]">
+                    {labels.next30}
+                  </p>
+                  {birthdays.map((birthday) => {
+                    const person = members.find(
+                      (member) => member.id === birthday.id,
+                    )!;
+                    return (
+                      <button
+                        key={birthday.id}
+                        onClick={() => openMember(person)}
+                        className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm"
+                      >
+                        <span>{person.name}</span>
+                        <span className="shrink-0 text-[var(--app-muted)]">
+                          {new Intl.DateTimeFormat(dateLocale, {
+                            month: "short",
+                            day: "numeric",
+                            timeZone: "UTC",
+                          }).format(new Date(birthday.date + "T00:00:00Z"))}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {!birthdays.length && (
+                    <p className="mt-3 text-sm text-[var(--app-muted)]">
+                      {labels.noBirthdays}
+                    </p>
+                  )}
+                </section>
+              )}
+            </div>
+          )}
           <div>
             {groups.map(([letter, people]) => (
               <section key={letter} id={`letter-${letter}`}>
@@ -379,7 +458,7 @@ export default function DirectoryClient({
                   {people.map((person) => (
                     <button
                       key={person.id}
-                      onClick={() => setSelected(person)}
+                      onClick={() => openMember(person)}
                       className="flex min-h-[68px] w-full items-center gap-3 py-2.5 pr-2 text-left hover:bg-[var(--app-brand-soft)] active:bg-[#d9e9f3]"
                     >
                       <Avatar person={person} />
@@ -402,91 +481,10 @@ export default function DirectoryClient({
             </div>
           )}
           <p className="px-4 py-5 text-center text-sm text-[var(--app-muted)]">
-            {members.length} {copy.members}
+            {scopedMembers.length} {copy.members}
           </p>
         </div>
-        {settingsOpen && (
-          <div
-            className="native-fade absolute inset-0 z-50 flex justify-end bg-[#07131d]/45 backdrop-blur-[2px]"
-            role="presentation"
-            onClick={() => setSettingsOpen(false)}
-          >
-            <aside
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="settings-title"
-              onClick={(event) => event.stopPropagation()}
-              className="native-enter safe-top safe-bottom native-shadow flex h-full w-[min(88%,22rem)] flex-col bg-white px-5 pb-5"
-            >
-              <div className="flex items-center justify-between border-b border-[var(--app-line)] pb-4">
-                <h2
-                  id="settings-title"
-                  className="text-xl font-bold text-[var(--app-ink)]"
-                >
-                  {copy.settings}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setSettingsOpen(false)}
-                  aria-label={copy.closeSettings}
-                  className="grid size-11 place-items-center rounded-full bg-[var(--app-surface-muted)] text-[var(--app-muted)] hover:bg-[var(--app-brand-soft)]"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-
-              <section className="border-b border-[var(--app-line)] py-5">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                  {copy.language}
-                </h3>
-                <div className="mt-3">
-                  <LanguageSwitcher locale={locale} />
-                </div>
-              </section>
-
-              <section className="py-5">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                  {copy.appearance}
-                </h3>
-                <p className="mt-3 text-sm font-medium text-[var(--app-ink)]">
-                  {copy.textSize}
-                </p>
-                <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-[var(--app-surface-muted)] p-1">
-                  {(["standard", "large"] as const).map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => setTextSize(size)}
-                      aria-pressed={textSize === size}
-                      className={`min-h-11 rounded-lg px-3 text-sm font-semibold ${textSize === size ? "bg-white text-[var(--app-brand)] shadow-sm" : "text-[var(--app-muted)]"}`}
-                    >
-                      {size === "standard"
-                        ? copy.standardText
-                        : copy.largerText}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="mt-auto border-t border-[var(--app-line)] pt-5">
-                <div className="grid gap-2">
-                  {role !== "member" && (
-                    <Link
-                      href="/admin"
-                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--app-brand-soft)] px-4 py-2 text-sm font-semibold text-[var(--app-brand)] hover:bg-[#d9e9f3]"
-                    >
-                      {copy.manage}
-                    </Link>
-                  )}
-                  <SignOutButton
-                    label={copy.signOut}
-                    loadingLabel={copy.signingOut}
-                  />
-                </div>
-              </section>
-            </aside>
-          </div>
-        )}
+        <BottomNavigation role={role} isDeacon={isDeacon} locale={locale} />
       </section>
     </main>
   );

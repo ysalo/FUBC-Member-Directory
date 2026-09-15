@@ -40,6 +40,8 @@ The application uses the Supabase publishable key and the signed-in user's sessi
 
 ## Core data model
 
+Deacon responsibilities are separate from access roles. `profiles.ministry_roles` adds designation, and `deacon_groups`, `deacon_group_members`, and `deacon_group_deacons` model assignments. Reads use RLS; editor/admin assignment writes and admin designation changes use audited RPCs. Shared directory loading supplies the full directory and assigned-member views. See [Deacon Groups](DEACON_GROUPS.md) for authorization, navigation, rollout, and future notification boundaries.
+
 ### `people`
 
 Directory records are separate from login identities. Fields in the deployed baseline include:

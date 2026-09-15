@@ -8,6 +8,7 @@ import { reviewAccount } from "./actions";
 import LanguageSwitcher from "@/components/language-switcher";
 import { t, type TranslationKey } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import MinistryCheckbox from "@/components/ministry-checkbox";
 
 const sectionKeys: {
   status: AccountStatus;
@@ -155,6 +156,15 @@ export default async function AccountsPage() {
                           </select>
                         </label>
                       </div>
+                      <label className="mt-3 flex min-h-11 items-center gap-3 text-sm font-medium text-slate-700">
+                        <MinistryCheckbox
+                          checked={account.ministry_roles.includes("deacon")}
+                          locale={locale}
+                        />
+                        {locale === "uk"
+                          ? "Диякон (незалежно від ролі доступу)"
+                          : "Deacon (independent of access role)"}
+                      </label>
                       <label className="mt-3 block text-sm font-medium text-slate-700">
                         {t(locale, "internalNote")}
                         <input

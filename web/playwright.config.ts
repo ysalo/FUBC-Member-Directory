@@ -25,9 +25,11 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      process.platform === "win32"
-        ? "node_modules\\.bin\\next.cmd dev"
-        : "pnpm dev",
+      process.env.PLAYWRIGHT_USE_BUILD === "1"
+        ? "node node_modules/next/dist/bin/next start"
+        : process.platform === "win32"
+          ? "node_modules\\.bin\\next.cmd dev"
+          : "pnpm dev",
     url: "http://127.0.0.1:3000/login",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

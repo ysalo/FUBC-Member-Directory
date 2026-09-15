@@ -55,6 +55,8 @@ Private directory for roughly 800 members. Approved accounts can search and view
 
 ## Next priorities
 
+Deacon Groups implementation: see `docs/DEACON_GROUPS.md`. Apply `web/supabase/migrations/20260915010000_deacon_groups.sql` before deploying the dependent UI. It adds separate deacon designation, editor/admin group management, My Groups/upcoming birthdays, and bottom navigation. Existing people/accounts are preserved. The updated clean baseline includes these additions for fresh projects; do not apply the additive group migration again after that baseline.
+
 1. Apply `20260914210000_add_membership_joined_at.sql` to the deployed Supabase project before deploying the dependent application code.
 2. Run the updated repeatable seed if Ukrainian fictional demo records are desired.
 3. Complete a real iPhone Safari/add-to-home-screen test of the bilingual Contacts-style directory.

@@ -4,6 +4,7 @@ import { requireEditor } from "@/lib/auth";
 import LanguageSwitcher from "@/components/language-switcher";
 import { t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { groupCopy } from "@/lib/group-copy";
 
 export default async function AdminPage() {
   const locale = await getLocale();
@@ -40,6 +41,12 @@ export default async function AdminPage() {
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/groups"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2.5 font-semibold text-[var(--app-ink)]"
+            >
+              {groupCopy(locale).groups}
+            </Link>
             <LanguageSwitcher locale={locale} />
             {profile.role === "admin" && (
               <Link

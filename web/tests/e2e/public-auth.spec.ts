@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+test("group routes require authentication", async ({ page }) => {
+  await page.goto("/groups");
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/admin/groups");
+  await expect(page).toHaveURL(/\/login$/);
+});
+
 test("shows SSO-only login without Apple by default", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();

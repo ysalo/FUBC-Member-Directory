@@ -1,0 +1,92 @@
+import type { Locale } from "@/lib/i18n";
+
+const en = {
+  directory: "Directory",
+  myGroups: "My Groups",
+  groups: "Deacon Groups",
+  deacon: "Deacon",
+  upcoming: "Upcoming birthdays",
+  next30: "Next 30 days",
+  noBirthdays: "No upcoming birthdays with known dates.",
+  noGroups: "You have not been assigned to a Deacon Group yet.",
+  incomplete: "Assign two deacons to complete this group.",
+  inactive: "Inactive — replace this deacon",
+  guideline: "About 20 members per group is a guideline, not a limit.",
+  groupName: "Group name",
+  create: "Create group",
+  save: "Save",
+  remove: "Remove",
+  delete: "Delete empty group",
+  firstDeacon: "First deacon",
+  secondDeacon: "Second deacon",
+  none: "Not assigned",
+  assignments: "Member assignments",
+  unassigned: "Unassigned",
+  transfer: "Transfer this member to another group?",
+  removeConfirm: "Remove this member from their group?",
+  deleteConfirm: "Delete this empty group?",
+  designationConfirm:
+    "Removing deacon designation also removes this account from its groups. Continue?",
+  saved: "Saved",
+  saving: "Saving…",
+  failed: "Unable to save. Please try again.",
+  stale: "Assignment changed. Refresh the page before trying again.",
+  invalidDeacons: "Choose up to two different deacons.",
+  activeRequired: "New assignments require active designated deacons.",
+  emptyRequired: "Remove all assignments before deleting this group.",
+  invalidName: "Enter a group name with 1–100 characters.",
+  all: "All groups",
+  member: "Member",
+  archived: "Archived",
+  noMembers: "No members match your search.",
+};
+const uk: typeof en = {
+  directory: "Довідник",
+  myGroups: "Мої групи",
+  groups: "Дияконські групи",
+  deacon: "Диякон",
+  upcoming: "Найближчі дні народження",
+  next30: "Наступні 30 днів",
+  noBirthdays: "Немає найближчих днів народження з відомими датами.",
+  noGroups: "Вас ще не призначено до дияконської групи.",
+  incomplete: "Призначте двох дияконів, щоб завершити налаштування групи.",
+  inactive: "Неактивний — призначте іншого диякона",
+  guideline: "Близько 20 членів у групі — це орієнтир, а не обмеження.",
+  groupName: "Назва групи",
+  create: "Створити групу",
+  save: "Зберегти",
+  remove: "Вилучити",
+  delete: "Видалити порожню групу",
+  firstDeacon: "Перший диякон",
+  secondDeacon: "Другий диякон",
+  none: "Не призначено",
+  assignments: "Призначення членів",
+  unassigned: "Не призначені",
+  transfer: "Перевести цього члена до іншої групи?",
+  removeConfirm: "Вилучити цього члена з групи?",
+  deleteConfirm: "Видалити цю порожню групу?",
+  designationConfirm:
+    "Зняття призначення дияконом також вилучить цей обліковий запис із груп. Продовжити?",
+  saved: "Збережено",
+  saving: "Збереження…",
+  failed: "Не вдалося зберегти. Спробуйте ще раз.",
+  stale: "Призначення змінилося. Оновіть сторінку й повторіть спробу.",
+  invalidDeacons: "Виберіть не більше двох різних дияконів.",
+  activeRequired: "Для нового призначення виберіть активних дияконів.",
+  emptyRequired: "Вилучіть усі призначення перед видаленням групи.",
+  invalidName: "Введіть назву групи від 1 до 100 символів.",
+  all: "Усі групи",
+  member: "Член церкви",
+  archived: "Архівний",
+  noMembers: "За вашим запитом нікого не знайдено.",
+};
+export function groupCopy(locale: Locale) {
+  return locale === "uk" ? uk : en;
+}
+
+export type DeaconGroup = {
+  id: string;
+  name: string;
+  memberIds: string[];
+  deacons: { id: string; name: string; status: string }[];
+};
