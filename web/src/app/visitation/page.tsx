@@ -2,7 +2,7 @@ import Link from "@/components/navigation-link";
 import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { visitCopy, formatVisitDate, type Visit } from "@/lib/visitation";
-import { CalendarDays, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronRight, Search, X } from "lucide-react";
 export default async function VisitationPage({
   searchParams,
 }: {
@@ -42,7 +42,11 @@ export default async function VisitationPage({
           </Link>
         )}
       </div>
-      <form className="mb-6 flex min-w-0 gap-2" role="search">
+      <form
+        className="directory-search mb-6 flex min-h-11 min-w-0 items-center gap-3 border-b border-[var(--app-line)] px-1"
+        role="search"
+      >
+        <Search aria-hidden="true" className="size-5 shrink-0 text-slate-400" />
         <label className="min-w-0 flex-1">
           <span className="sr-only">{c.searchVisits}</span>
           <input
@@ -50,10 +54,19 @@ export default async function VisitationPage({
             name="q"
             defaultValue={query}
             placeholder={c.searchVisits}
-            className="min-h-12 min-w-0 w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] px-3"
+            className="min-h-11 min-w-0 w-full bg-transparent py-2 text-base outline-none placeholder:text-slate-400"
           />
         </label>
-        <button className="min-h-12 rounded-xl bg-[var(--app-brand-soft)] px-3 text-sm font-semibold text-[var(--app-brand)]">
+        {query && (
+          <Link
+            href="/visitation"
+            aria-label={locale === "uk" ? "Очистити пошук" : "Clear search"}
+            className="grid size-11 shrink-0 place-items-center text-slate-400 hover:text-slate-700"
+          >
+            <X aria-hidden="true" className="size-5" />
+          </Link>
+        )}
+        <button className="sr-only">
           {locale === "uk" ? "Пошук" : "Search"}
         </button>
       </form>

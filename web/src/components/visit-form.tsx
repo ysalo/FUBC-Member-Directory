@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { UserRound, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { mutateVisit } from "@/app/visitation/actions";
 import {
@@ -105,15 +106,32 @@ export default function VisitForm({
             </button>
             {choosing && (
               <div className="mt-3 rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-3">
-                <label className="block text-sm font-medium">
-                  {c.searchPeople}
+                <div className="directory-search flex min-h-11 items-center gap-3 border-b border-[var(--app-line)] px-1">
+                  <Search
+                    aria-hidden="true"
+                    className="size-5 shrink-0 text-slate-400"
+                  />
                   <input
                     type="search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className={input}
+                    placeholder={c.searchPeople}
+                    aria-label={c.searchPeople}
+                    className="min-h-11 min-w-0 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-slate-400"
                   />
-                </label>
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      aria-label={
+                        locale === "uk" ? "Очистити пошук" : "Clear search"
+                      }
+                      className="grid size-11 shrink-0 place-items-center text-slate-400 hover:text-slate-700"
+                    >
+                      <X aria-hidden="true" className="size-5" />
+                    </button>
+                  )}
+                </div>
                 <div className="mt-2 max-h-64 overflow-y-auto overscroll-contain">
                   {members
                     .filter((m) =>
@@ -141,7 +159,16 @@ export default function VisitForm({
                           setQuery("");
                         }}
                       >
-                        <span className="break-words">{m.name}</span>
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-[var(--app-brand)]">
+                            <UserRound
+                              aria-hidden="true"
+                              className="size-4"
+                              strokeWidth={1.75}
+                            />
+                          </span>
+                          <span className="break-words">{m.name}</span>
+                        </span>
                         {person?.id === m.id && (
                           <span aria-hidden="true">✓</span>
                         )}
