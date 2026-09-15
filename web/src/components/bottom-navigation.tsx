@@ -116,10 +116,10 @@ export default function BottomNavigation({
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium ${active ? "text-[var(--app-ink)]" : "text-[var(--app-muted)]"}`}
+              className={`bottom-navigation-item flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 font-medium ${active ? "text-[var(--app-ink)]" : "text-[var(--app-muted)]"}`}
             >
-              <Icon className="size-5" strokeWidth={active ? 2.25 : 1.75} />
-              <span>{label}</span>
+              <Icon className="bottom-navigation-icon" strokeWidth={1.75} />
+              <span className="max-w-full truncate">{label}</span>
             </Link>
           ))}
           <button
@@ -134,10 +134,10 @@ export default function BottomNavigation({
               setOpen(true);
             }}
             aria-expanded={open}
-            className="flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium text-[var(--app-muted)]"
+            className="bottom-navigation-item flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 font-medium text-[var(--app-muted)]"
           >
-            <Settings className="size-5" strokeWidth={1.75} />
-            <span>{copy.settings}</span>
+            <Settings className="bottom-navigation-icon" strokeWidth={1.75} />
+            <span className="max-w-full truncate">{copy.settings}</span>
           </button>
         </div>
       </nav>

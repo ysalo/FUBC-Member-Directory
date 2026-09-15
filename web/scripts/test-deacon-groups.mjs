@@ -297,6 +297,32 @@ assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 1);
 await db.exec("reset role");
 await db.exec(baseline);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 0);
+await db.exec(`update public.profiles set status='active' where id in ('${uid(3)}','${uid(4)}');
+  update public.profiles set role='editor' where id='${uid(3)}';`);
+const demoSeed = (
+  await readFile(
+    new URL("../supabase/seed_deacon_group.sql", import.meta.url),
+    "utf8",
+  )
+)
+  .replaceAll("FIRST_DEACON_EMAIL", "test3@example.test")
+  .replaceAll("SECOND_DEACON_EMAIL", "test4@example.test");
+await db.exec(demoSeed);
+await db.exec(demoSeed);
+assert.equal(await scalar("select count(*)::int from public.people"), 20);
+assert.equal(
+  await scalar("select count(*)::int from public.deacon_group_members"),
+  20,
+);
+assert.equal(
+  await scalar("select count(*)::int from public.deacon_group_deacons"),
+  2,
+);
+assert.equal(
+  await scalar("select role from public.profiles where id=$1", [uid(3)]),
+  "editor",
+  "demo preserves access roles",
+);
 await db.close();
 console.log(
   "Deacon Group migration, RPC, RLS, transitions, safeguards, and atomic-audit checks passed.",

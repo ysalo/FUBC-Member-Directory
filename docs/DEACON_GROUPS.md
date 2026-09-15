@@ -8,6 +8,8 @@ The updated clean baseline includes this schema for fresh test databases. Do not
 
 ## Operating the groups
 
+For an optional 20-person demo, run `web/supabase/seed_deacon_group.sql` in SQL Editor after replacing its two email placeholders with existing active accounts. It creates fictional Ukrainian-named directory people with placeholder photos and some upcoming birthdays, adds deacon designation without changing access roles/statuses, and assigns both accounts to one demo group. It does not create Auth identities. Repeating the script does not duplicate records; it refuses to overwrite conflicting records or transfer members moved to another group. Do not commit actual account emails into the template.
+
 Administrators designate deacons from Manage → Account Requests. This is independent of member/editor/admin permissions: a deacon may also be an editor. Linking the account to a directory person remains optional.
 
 Editors and administrators use Manage → Deacon Groups to create and name groups, select up to two deacons, and assign members. Groups can remain incomplete during setup; twenty members is guidance, not a limit. Each member belongs to at most one group, while a deacon may serve multiple groups. Transfers/removals require confirmation. Stale transfers fail instead of overwriting a newer assignment; refresh and retry.

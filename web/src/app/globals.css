@@ -89,6 +89,18 @@ textarea {
   box-shadow: none;
 }
 
+/* Keep link tabs and the settings button identical despite native button fonts. */
+.bottom-navigation-item {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+}
+.bottom-navigation-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
 .safe-page {
   padding-bottom: max(env(safe-area-inset-bottom), 0px);
 }
