@@ -10,15 +10,10 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/language-switcher";
 import SignOutButton from "@/components/sign-out-button";
-import {
-  dictionaries,
-  englishAlphabet,
-  type Locale,
-  ukrainianAlphabet,
-} from "@/lib/i18n";
+import { dictionaries, type Locale } from "@/lib/i18n";
 
 export type DirectoryPerson = {
   id: string;
@@ -90,9 +85,6 @@ export default function DirectoryClient({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [textSize, setTextSize] = useState<"standard" | "large">("standard");
   const [appearanceReady, setAppearanceReady] = useState(false);
-  const [scrubLetter, setScrubLetter] = useState<string | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const alphabetRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("directory-text-size");
@@ -117,9 +109,6 @@ export default function DirectoryClient({
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [settingsOpen]);
 
-  useEffect(() => {
-    listRef.current?.scrollTo({ top: 0, behavior: "auto" });
-  }, [query]);
   const dateLocale = locale === "uk" ? "uk-UA" : "en-US";
   const nameLocale = members.some((person) =>
     /[А-Яа-яІіЇїЄєҐґ]/u.test(person.lastName),
@@ -166,38 +155,6 @@ export default function DirectoryClient({
     }
     return [...grouped.entries()];
   }, [nameLocale, results]);
-
-  const alphabet = nameLocale === "uk-UA" ? ukrainianAlphabet : englishAlphabet;
-  const visibleLetters = new Set(groups.map(([letter]) => letter));
-
-  const scrollToLetter = (letter: string) => {
-    const list = listRef.current;
-    const section = document.getElementById(`letter-${letter}`);
-    if (!list || !section) return;
-    list.scrollTo({ top: section.offsetTop, behavior: "auto" });
-    setScrubLetter(letter);
-  };
-
-  const scrubAlphabet = (clientY: number) => {
-    const rail = alphabetRef.current;
-    if (!rail) return;
-    const bounds = rail.getBoundingClientRect();
-    const ratio = Math.max(
-      0,
-      Math.min(0.999, (clientY - bounds.top) / bounds.height),
-    );
-    const targetIndex = Math.floor(ratio * alphabet.length);
-    const availableIndexes = alphabet
-      .map((letter, index) => (visibleLetters.has(letter) ? index : -1))
-      .filter((index) => index >= 0);
-    if (!availableIndexes.length) return;
-    const nearestIndex = availableIndexes.reduce((nearest, index) =>
-      Math.abs(index - targetIndex) < Math.abs(nearest - targetIndex)
-        ? index
-        : nearest,
-    );
-    scrollToLetter(alphabet[nearestIndex]);
-  };
 
   if (selected)
     return (
@@ -375,16 +332,33 @@ export default function DirectoryClient({
             </button>
           </div>
         </header>
-        <div
-          ref={listRef}
-          className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
-        >
-          <p className="px-4 py-3 pr-9 text-sm font-medium text-[var(--app-muted)]">
+        <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 py-3 backdrop-blur-xl">
+          <label className="relative block">
+            <Search className="absolute left-3 top-3 size-5 text-slate-400" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={copy.searchPlaceholder}
+              className="min-h-11 w-full rounded-2xl border border-transparent bg-[var(--app-surface-muted)] py-2.5 pl-10 pr-11 text-base outline-none placeholder:text-slate-400 focus:border-[var(--app-brand)] focus:bg-white focus:ring-4 focus:ring-[#d9e9f3]"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="absolute right-0 top-0 grid size-11 place-items-center text-slate-400 hover:text-slate-700"
+                aria-label={copy.clearSearch}
+              >
+                <X className="size-5" />
+              </button>
+            )}
+          </label>
+        </div>
+        <div className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <p className="px-4 py-3 text-sm font-medium text-[var(--app-muted)]">
             {query
               ? `${results.length} ${results.length === 1 ? copy.result : copy.results}`
               : `${members.length} ${members.length === 1 ? copy.member : copy.members}`}
           </p>
-          <div className="pr-8">
+          <div>
             {groups.map(([letter, people]) => (
               <section key={letter} id={`letter-${letter}`}>
                 <h2 className="sticky top-0 z-10 border-y border-[var(--app-line)] bg-[var(--app-surface-muted)]/95 px-4 py-1.5 text-sm font-bold text-[var(--app-brand)] backdrop-blur">
@@ -416,77 +390,6 @@ export default function DirectoryClient({
               {copy.noMembers}
             </div>
           )}
-        </div>
-        <nav
-          ref={alphabetRef}
-          aria-label={
-            locale === "uk" ? "Алфавітний покажчик" : "Alphabetical index"
-          }
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            scrubAlphabet(event.clientY);
-          }}
-          onPointerMove={(event) => {
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-              scrubAlphabet(event.clientY);
-            }
-          }}
-          onPointerUp={(event) => {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-            window.setTimeout(() => setScrubLetter(null), 180);
-          }}
-          onPointerCancel={() => setScrubLetter(null)}
-          className="absolute right-0 top-1/2 z-20 flex w-11 -translate-y-1/2 touch-none select-none flex-col items-center py-1 text-[8px] font-bold leading-[9px] max-[600px]:text-[7px] max-[600px]:leading-[7px]"
-        >
-          {alphabet.map((letter) =>
-            visibleLetters.has(letter) ? (
-              <a
-                key={letter}
-                href={`#letter-${letter}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  scrollToLetter(letter);
-                  window.setTimeout(() => setScrubLetter(null), 180);
-                }}
-                className="min-w-5 text-center text-[var(--app-brand)] hover:underline"
-              >
-                {letter}
-              </a>
-            ) : (
-              <span key={letter} className="min-w-5 text-center text-slate-300">
-                {letter}
-              </span>
-            ),
-          )}
-        </nav>
-        {scrubLetter && (
-          <div
-            aria-hidden
-            className="native-fade pointer-events-none absolute left-1/2 top-1/2 z-40 grid size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-2xl bg-[#07131d]/82 text-4xl font-bold text-white shadow-xl backdrop-blur-xl"
-          >
-            {scrubLetter}
-          </div>
-        )}
-        <div className="safe-bottom z-30 flex-none border-t border-[var(--app-line)] bg-white/92 px-4 pb-4 pt-3 backdrop-blur-xl">
-          <label className="relative block">
-            <Search className="absolute left-3 top-3 size-5 text-slate-400" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={copy.searchPlaceholder}
-              className="min-h-11 w-full rounded-2xl border border-transparent bg-[var(--app-surface-muted)] py-2.5 pl-10 pr-11 text-base outline-none placeholder:text-slate-400 focus:border-[var(--app-brand)] focus:bg-white focus:ring-4 focus:ring-[#d9e9f3]"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="absolute right-0 top-0 grid size-11 place-items-center text-slate-400 hover:text-slate-700"
-                aria-label={copy.clearSearch}
-              >
-                <X className="size-5" />
-              </button>
-            )}
-          </label>
         </div>
         {settingsOpen && (
           <div
