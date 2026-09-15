@@ -426,6 +426,15 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  await readFile(
+    new URL(
+      "../supabase/migrations/20260915050000_linked_deacon_details.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 await db.exec(baseline);
 assert.equal(await scalar("select count(*)::int from public.deacon_groups"), 0);
 await db.exec(`update public.profiles set status='active' where id in ('${uid(3)}','${uid(4)}');
@@ -603,6 +612,46 @@ assert.equal(
   ),
   0,
 );
+await db.exec("reset role");
+const linkedDeaconPerson = await scalar(
+  "select person_id from public.profiles where id=$1",
+  [uid(4)],
+);
+await db.query(
+  "update public.people set first_name='Оновлене', last_name='Прізвище', phone='(253) 555-0199' where id=$1",
+  [linkedDeaconPerson],
+);
+await as(1);
+const updatedDeacon = (
+  await db.query(
+    "select * from public.list_group_deacons() where profile_id=$1",
+    [uid(4)],
+  )
+).rows[0];
+assert.equal(updatedDeacon.display_name, "Оновлене Прізвище");
+assert.equal(updatedDeacon.phone, "(253) 555-0199");
+assert.equal(
+  (
+    await db.query("select * from public.list_eligible_deacons() where id=$1", [
+      uid(4),
+    ])
+  ).rows[0].display_name,
+  "Оновлене Прізвище",
+);
+await db.exec("reset role");
+await db.query("update public.profiles set status='revoked' where id=$1", [
+  uid(4),
+]);
+await as(1);
+const revokedDeacon = (
+  await db.query(
+    "select * from public.list_group_deacons() where profile_id=$1",
+    [uid(4)],
+  )
+).rows[0];
+assert.notEqual(revokedDeacon.display_name, "Оновлене Прізвище");
+assert.equal(revokedDeacon.person_id, null);
+assert.equal(revokedDeacon.phone, null);
 await db.close();
 console.log(
   "Deacon Group migration, RPC, RLS, transitions, safeguards, and atomic-audit checks passed.",

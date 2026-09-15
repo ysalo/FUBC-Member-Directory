@@ -27,5 +27,6 @@ export async function reviewAccount(targetId: string, formData: FormData) {
   revalidatePath("/admin/accounts");
   revalidatePath("/admin/groups");
   revalidatePath("/groups");
+  revalidatePath("/groups/[id]", "page");
   revalidatePath("/");
 }

@@ -77,6 +77,9 @@ export async function addMember(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/groups");
+  revalidatePath("/groups/[id]", "page");
+  revalidatePath("/admin/groups");
+  revalidatePath("/admin/accounts");
   revalidatePath("/admin");
 }
 
@@ -133,6 +136,9 @@ export async function updateMember(memberId: string, formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/groups");
+  revalidatePath("/groups/[id]", "page");
+  revalidatePath("/admin/groups");
+  revalidatePath("/admin/accounts");
   revalidatePath("/admin");
   revalidatePath(`/admin/${memberId}`);
   redirect("/admin");
@@ -150,6 +156,9 @@ export async function archiveMember(memberId: string) {
   if (error) throw new Error("Unable to archive this member.");
   revalidatePath("/");
   revalidatePath("/groups");
+  revalidatePath("/groups/[id]", "page");
+  revalidatePath("/admin/groups");
+  revalidatePath("/admin/accounts");
   revalidatePath("/admin");
 }
 
@@ -165,5 +174,8 @@ export async function restoreMember(memberId: string) {
   if (error) throw new Error("Unable to restore this member.");
   revalidatePath("/");
   revalidatePath("/groups");
+  revalidatePath("/groups/[id]", "page");
+  revalidatePath("/admin/groups");
+  revalidatePath("/admin/accounts");
   revalidatePath("/admin");
 }

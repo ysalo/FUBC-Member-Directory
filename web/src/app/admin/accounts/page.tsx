@@ -51,6 +51,16 @@ export default async function AccountsPage() {
   ]);
   if (error) throw new Error("Unable to load account requests.");
   const profiles = (profileRows ?? []) as AccountProfile[];
+  const memberNames = new Map(
+    (people ?? []).map((person) => [
+      person.id,
+      `${person.first_name} ${person.last_name}`.trim(),
+    ]),
+  );
+  const accountName = (account: AccountProfile) =>
+    (account.person_id ? memberNames.get(account.person_id) : null) ||
+    account.display_name ||
+    t(locale, "unnamedAccount");
 
   return (
     <main className="safe-page min-h-dvh p-4 sm:p-8">
@@ -100,14 +110,11 @@ export default async function AccountsPage() {
                     >
                       <div className="flex min-w-0 items-start gap-3">
                         <div className="grid size-11 shrink-0 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">
-                          {(account.display_name || account.email)
-                            .slice(0, 1)
-                            .toUpperCase()}
+                          {accountName(account).slice(0, 1).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-slate-900">
-                            {account.display_name ||
-                              t(locale, "unnamedAccount")}
+                            {accountName(account)}
                           </p>
                           <p className="truncate text-sm text-slate-500">
                             {account.email}
