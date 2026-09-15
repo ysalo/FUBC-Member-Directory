@@ -141,46 +141,65 @@ export default function DirectoryClient({
     return (
       <main className="h-dvh overflow-hidden bg-[var(--app-bg)] sm:p-6">
         <section className="native-enter native-shadow mx-auto flex h-dvh max-w-xl flex-col overflow-hidden bg-white sm:h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
-          <header className="safe-top flex flex-none items-center justify-between border-b border-[var(--app-line)] bg-white/92 px-4 pb-3 backdrop-blur-xl">
-            <button
-              onClick={() => {
-                setPhotoOpen(false);
-                setSelected(null);
-              }}
-              aria-label={copy.backToDirectory}
-              className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-2xl font-medium text-[var(--app-brand)] hover:bg-[#d9e9f3]"
-            >
-              ←
-            </button>
-            <p className="text-sm font-semibold text-[var(--app-muted)]">
-              {copy.memberProfile}
-            </p>
-            <LanguageSwitcher locale={locale} />
-          </header>
           <div className="native-scroll min-h-0 flex-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="relative flex flex-col items-center px-5 pb-5 pt-8 text-center">
+            <div className="relative h-[62dvh] min-h-[360px] max-h-[600px] overflow-hidden bg-gradient-to-br from-[var(--app-brand)] to-[#07131d]">
+              {selected.photoPath ? (
+                <button
+                  onClick={() => setPhotoOpen(true)}
+                  aria-label={copy.viewPhoto}
+                  className="absolute inset-0 h-full w-full cursor-zoom-in"
+                >
+                  <img
+                    src={selected.photoPath}
+                    alt={selected.name}
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              ) : (
+                <div className="grid h-full place-items-center pb-16">
+                  <Avatar person={selected} large />
+                </div>
+              )}
+              {selected.photoPath && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 scale-105 bg-cover bg-center blur-xl"
+                  style={{
+                    backgroundImage: `url(${selected.photoPath})`,
+                    maskImage:
+                      "linear-gradient(to bottom, transparent 48%, black 82%)",
+                    WebkitMaskImage:
+                      "linear-gradient(to bottom, transparent 48%, black 82%)",
+                  }}
+                />
+              )}
               <div
                 aria-hidden
-                className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--app-brand-soft)] to-white"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-[#07131d]/90"
               />
-              <div className="relative">
-                {selected.photoPath ? (
-                  <button
-                    onClick={() => setPhotoOpen(true)}
-                    aria-label={copy.viewPhoto}
-                    className="rounded-full"
-                  >
-                    <Avatar person={selected} large />
-                  </button>
-                ) : (
-                  <Avatar person={selected} large />
-                )}
+              <div className="safe-top absolute inset-x-0 top-0 z-10 flex items-start justify-between px-4">
+                <button
+                  onClick={() => {
+                    setPhotoOpen(false);
+                    setSelected(null);
+                  }}
+                  aria-label={copy.backToDirectory}
+                  className="grid size-11 shrink-0 place-items-center rounded-full border border-white/15 bg-[#07131d]/65 text-2xl font-medium text-white shadow-lg backdrop-blur-xl hover:bg-[#07131d]/80"
+                >
+                  ←
+                </button>
+                <LanguageSwitcher locale={locale} overlay />
               </div>
-              <h1 className="relative mt-4 text-[28px] font-bold tracking-[-0.025em] text-[var(--app-ink)]">
-                {selected.name}
-              </h1>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-5 pb-6 pt-20 text-left">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-white/70">
+                  {copy.memberProfile}
+                </p>
+                <h1 className="text-[30px] font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-md min-[375px]:text-[34px]">
+                  {selected.name}
+                </h1>
+              </div>
             </div>
-            <div className="mx-4 mb-8 overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-sm sm:mx-6">
+            <div className="mx-4 mb-8 mt-4 overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-sm sm:mx-6">
               {selected.phone && (
                 <a
                   href={`tel:${selected.phone.replace(/[^\d+]/g, "")}`}
