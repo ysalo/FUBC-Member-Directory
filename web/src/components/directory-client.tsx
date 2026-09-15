@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import BottomNavigation from "@/components/bottom-navigation";
+import BirthdayNotificationDemo from "@/components/birthday-notification-demo";
 import Link from "@/components/navigation-link";
 import { groupCopy, type DeaconGroup } from "@/lib/group-copy";
 import { upcomingBirthdays, ageOn, membershipDuration } from "@/lib/birthdays";
@@ -87,6 +88,7 @@ export default function DirectoryClient({
   deaconGroups,
   today = "",
   showBirthdays = false,
+  birthdayNotificationKey,
 }: {
   members: DirectoryPerson[];
   role: AppRole;
@@ -95,6 +97,7 @@ export default function DirectoryClient({
   deaconGroups?: DeaconGroup[];
   today?: string;
   showBirthdays?: boolean;
+  birthdayNotificationKey?: string;
 }) {
   const copy = dictionaries[locale];
   const [query, setQuery] = useState("");
@@ -741,6 +744,12 @@ export default function DirectoryClient({
                 showBirthdays &&
                 view === "birthdays" && (
                   <section>
+                    {birthdayNotificationKey && (
+                      <BirthdayNotificationDemo
+                        preferenceKey={birthdayNotificationKey}
+                        locale={locale}
+                      />
+                    )}
                     <h2 className="font-semibold">{labels.upcoming}</h2>
                     <p className="mt-1 text-xs text-[var(--app-muted)]">
                       {labels.next30}

@@ -47,6 +47,11 @@ export default async function GroupPage({
       ]}
       today={churchToday()}
       showBirthdays={leadsGroup}
+      birthdayNotificationKey={
+        leadsGroup
+          ? `directory-birthday-demo:${profile.id}:${group.id}`
+          : undefined
+      }
     />
   );
 }
