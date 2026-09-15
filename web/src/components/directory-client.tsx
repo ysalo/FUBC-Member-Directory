@@ -10,7 +10,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/navigation-link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import LanguageSwitcher from "@/components/language-switcher";
 import SignOutButton from "@/components/sign-out-button";
@@ -349,7 +349,7 @@ export default function DirectoryClient({
           </div>
         </header>
         <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 backdrop-blur-xl">
-          <label className="flex min-h-11 items-center gap-3 px-1">
+          <label className="directory-search flex min-h-11 items-center gap-3 px-1">
             <Search className="size-5 shrink-0 text-slate-400" />
             <input
               value={query}

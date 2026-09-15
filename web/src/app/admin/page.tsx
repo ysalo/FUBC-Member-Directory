@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/navigation-link";
 import { addMember, archiveMember, restoreMember } from "./actions";
 import { requireEditor } from "@/lib/auth";
 import LanguageSwitcher from "@/components/language-switcher";

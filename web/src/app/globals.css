@@ -77,6 +77,18 @@ textarea {
   outline-offset: 2px;
 }
 
+.directory-search {
+  box-shadow: inset 0 -1px transparent;
+  transition: box-shadow 160ms ease;
+}
+.directory-search:focus-within {
+  box-shadow: inset 0 -1px rgb(25 74 112 / 35%);
+}
+.directory-search input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .safe-page {
   padding-bottom: max(env(safe-area-inset-bottom), 0px);
 }
