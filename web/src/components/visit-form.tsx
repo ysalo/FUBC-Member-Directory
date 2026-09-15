@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { UserRound, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
+import MemberPhoto from "@/components/member-photo";
 import { useRouter } from "next/navigation";
 import { mutateVisit } from "@/app/visitation/actions";
 import {
@@ -15,6 +16,7 @@ type VisitMember = {
   name: string;
   address: string;
   groupId: string | null;
+  photoPath?: string | null;
 };
 export default function VisitForm({
   member,
@@ -160,13 +162,7 @@ export default function VisitForm({
                         }}
                       >
                         <span className="flex min-w-0 items-center gap-3">
-                          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-[var(--app-brand)]">
-                            <UserRound
-                              aria-hidden="true"
-                              className="size-4"
-                              strokeWidth={1.75}
-                            />
-                          </span>
+                          <MemberPhoto name={m.name} photoPath={m.photoPath} />
                           <span className="break-words">{m.name}</span>
                         </span>
                         {person?.id === m.id && (

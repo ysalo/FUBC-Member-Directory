@@ -21,7 +21,7 @@ await writeFile(
   resolve(dir, "entry.tsx"),
   `import React,{useState,useEffect} from 'react';import{createRoot}from'react-dom/client';import VisitForm from ${JSON.stringify(resolve(root, "src/components/visit-form.tsx"))};import VisitControls from ${JSON.stringify(resolve(root, "src/components/visit-controls.tsx"))};import VisitDetails from ${JSON.stringify(resolve(root, "src/components/visit-details.tsx"))};import BottomNavigation from ${JSON.stringify(resolve(root, "src/components/bottom-navigation.tsx"))};
 window.actions=[];window.pending=2;window.demo={id:'visit',pastor_id:'pastor',pastor_name:'Fictional Pastor',person_id:'member',member_name:'A very long fictional member name for accessibility testing',member_address:'123 Example Street, Seattle, WA',location:'Church meeting room',scheduled_at:'2099-12-15T19:30:00Z',notes:'Discuss the upcoming visit',status:'open',revision:2,updated_fields:['location'],visit_recipients:[{deacon_id:'d1',deacon_name:'First Deacon',response:'accepted',decline_reason:'',last_viewed_revision:1},{deacon_id:'d2',deacon_name:'Second Deacon',response:'pending',decline_reason:'',last_viewed_revision:0}]};
-function App(){const[version,setVersion]=useState(0);useEffect(()=>{const update=()=>setVersion(v=>v+1);window.addEventListener('refresh-fixture',update);return()=>window.removeEventListener('refresh-fixture',update);},[]);const p=new URLSearchParams(location.search),mode=p.get('mode'),locale=p.get('locale')||'en',detail=mode==='deacon'||mode==='pastor',userId=mode==='deacon'?'d1':'pastor';return <><main className="mx-auto max-w-xl p-5 pb-28 bg-[var(--app-surface)] text-[var(--app-ink)]">{detail?<><VisitDetails visit={window.demo} locale={locale} userId={userId}/><p data-testid="response" className="sr-only">{window.demo.visit_recipients[0].response}</p><VisitControls visit={{...window.demo}} userId={userId} locale={locale} /></>:<><h1 className="mb-5 text-2xl font-semibold">{mode==='edit'?'Edit request':'Request visit'}</h1><VisitForm member={mode==='new'?undefined:{id:'member',name:window.demo.member_name,address:window.demo.member_address,groupId:p.get('missing')?null:'group'}} members={mode==='new'?[{id:'member',name:'First member',address:'First home',groupId:'group'},{id:'other',name:'Other member',address:'Other home',groupId:null}]:[]} deacons={[{id:'d1',name:'First Deacon',group_id:'group'},{id:'d2',name:'Second Deacon',group_id:'group'},{id:'d3',name:'Other Deacon',group_id:null}]} visit={mode==='edit'?window.demo:undefined} locale={locale} submission="fixture-submission"/></>}</main><BottomNavigation role="member" isDeacon={mode==='deacon'} isPastor={mode!=='deacon'} locale={locale} fixed/></>};createRoot(document.getElementById('root')).render(<App/>);`,
+function App(){const[version,setVersion]=useState(0);useEffect(()=>{const update=()=>setVersion(v=>v+1);window.addEventListener('refresh-fixture',update);return()=>window.removeEventListener('refresh-fixture',update);},[]);const p=new URLSearchParams(location.search),mode=p.get('mode'),locale=p.get('locale')||'en',detail=mode==='deacon'||mode==='pastor',userId=mode==='deacon'?'d1':'pastor';return <><main className="mx-auto max-w-xl p-5 pb-28 bg-[var(--app-surface)] text-[var(--app-ink)]">{detail?<><VisitDetails visit={window.demo} locale={locale} userId={userId}/><p data-testid="response" className="sr-only">{window.demo.visit_recipients[0].response}</p><VisitControls visit={{...window.demo}} userId={userId} locale={locale} /></>:<><h1 className="mb-5 text-2xl font-semibold">{mode==='edit'?'Edit request':'Request visit'}</h1><VisitForm member={mode==='new'?undefined:{id:'member',name:window.demo.member_name,address:window.demo.member_address,groupId:p.get('missing')?null:'group'}} members={mode==='new'?[{id:'member',name:'First member',photoPath:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jX1sAAAAASUVORK5CYII=',address:'First home',groupId:'group'},{id:'other',name:'Other member',photoPath:'/missing-photo.png',address:'Other home',groupId:null}]:[]} deacons={[{id:'d1',name:'First Deacon',group_id:'group'},{id:'d2',name:'Second Deacon',group_id:'group'},{id:'d3',name:'Other Deacon',group_id:null}]} visit={mode==='edit'?window.demo:undefined} locale={locale} submission="fixture-submission"/></>}</main><BottomNavigation role="member" isDeacon={mode==='deacon'} isPastor={mode!=='deacon'} locale={locale} fixed/></>};createRoot(document.getElementById('root')).render(<App/>);`,
 );
 await new Promise((res, rej) => {
   const compiler = webpack({
@@ -36,6 +36,10 @@ await new Promise((res, rej) => {
         "@/lib/visitation": resolve(root, "src/lib/visitation.ts"),
         "@/app/visitation/actions": resolve(dir, "stubs.tsx"),
         "@/components/navigation-link": resolve(dir, "stubs.tsx"),
+        "@/components/member-photo": resolve(
+          root,
+          "src/components/member-photo.tsx",
+        ),
         "next/navigation": resolve(dir, "stubs.tsx"),
         "@/lib/i18n": resolve(root, "src/lib/i18n.ts"),
         "@/lib/group-copy": resolve(root, "src/lib/group-copy.ts"),
@@ -114,6 +118,11 @@ try {
   await expect(
     page.getByRole("button", { name: "Other member", exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("button", { name: "First member", exact: true })
+      .locator("img"),
+  ).toBeVisible();
   await page.getByRole("button", { name: "First member", exact: true }).click();
   await expect(page.getByLabel("First Deacon", { exact: true })).toBeChecked();
   await expect(page.getByLabel("Second Deacon", { exact: true })).toBeChecked();
@@ -122,6 +131,11 @@ try {
     .getByRole("button", { name: "First member Change", exact: true })
     .click();
   await page.getByLabel("Search people").fill("Other");
+  await expect(
+    page
+      .getByRole("button", { name: "Other member", exact: true })
+      .locator("img"),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Other member", exact: true }).click();
   await expect(
     page.getByLabel("First Deacon", { exact: true }),
@@ -208,7 +222,7 @@ try {
     for (const theme of ["light", "dark"]) {
       await page.setViewportSize({ width, height: 812 });
       await page.goto(url + "/?missing=1&locale=uk");
-      await page.locator('input[name="time"]').fill('2099-12-15T12:30');
+      await page.locator('input[name="time"]').fill("2099-12-15T12:30");
       await page.evaluate((t) => {
         document.documentElement.dataset.theme = t;
         document.documentElement.dataset.textSize = "large";
@@ -226,11 +240,22 @@ try {
         fullPage: true,
         animations: "disabled",
       });
-      await page.goto(url + '/?mode=new');
-      await page.locator('input[name="time"]').fill('2099-12-15T12:30');
-      await page.evaluate((t) => {document.documentElement.dataset.theme=t; document.documentElement.dataset.textSize='large';}, theme);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({path:resolve(dir, `picker-${width}-${theme}.png`),fullPage:true,animations:'disabled'});
+      await page.goto(url + "/?mode=new");
+      await page.locator('input[name="time"]').fill("2099-12-15T12:30");
+      await page.evaluate((t) => {
+        document.documentElement.dataset.theme = t;
+        document.documentElement.dataset.textSize = "large";
+      }, theme);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: resolve(dir, `picker-${width}-${theme}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
     }
   for (const mode of ["pastor", "deacon"])
     for (const theme of ["light", "dark"]) {
