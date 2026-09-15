@@ -335,6 +335,12 @@ export default function DirectoryClient({
             <div className="min-w-0">
               <h1 className="mt-0.5 text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--app-ink)] min-[375px]:text-[26px]">
                 {copy.memberDirectory}
+                <span
+                  aria-label={`${members.length} ${members.length === 1 ? copy.member : copy.members}`}
+                  className="ml-2 align-middle text-sm font-medium tracking-normal text-[var(--app-muted)]"
+                >
+                  {members.length}
+                </span>
               </h1>
             </div>
             <button
@@ -369,11 +375,6 @@ export default function DirectoryClient({
           </label>
         </div>
         <div className="native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white">
-          <p className="px-4 py-3 text-sm font-medium text-[var(--app-muted)]">
-            {query
-              ? `${results.length} ${results.length === 1 ? copy.result : copy.results}`
-              : `${members.length} ${members.length === 1 ? copy.member : copy.members}`}
-          </p>
           <div>
             {groups.map(([letter, people]) => (
               <section key={letter} id={`letter-${letter}`}>
