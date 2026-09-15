@@ -14,7 +14,7 @@ create type public.account_status as enum ('pending', 'active', 'denied', 'revok
 
 create table public.people (
   id uuid primary key default gen_random_uuid(), first_name text not null, last_name text not null,
-  date_of_birth date, phone text, address_line_1 text, address_line_2 text, city text,
+  date_of_birth date, membership_joined_at date, phone text, address_line_1 text, address_line_2 text, city text,
   state text, postal_code text, photo_path text, notes text, archived_at timestamptz,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
