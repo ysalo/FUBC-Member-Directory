@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import LanguageSwitcher from "@/components/language-switcher";
 import SignOutButton from "@/components/sign-out-button";
 import { dictionaries, type Locale } from "@/lib/i18n";
@@ -85,6 +85,12 @@ export default function DirectoryClient({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [textSize, setTextSize] = useState<"standard" | "large">("standard");
   const [appearanceReady, setAppearanceReady] = useState(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+
+  const returnToDirectory = () => {
+    setPhotoOpen(false);
+    setSelected(null);
+  };
 
   useEffect(() => {
     const saved = window.localStorage.getItem("directory-text-size");
@@ -159,7 +165,29 @@ export default function DirectoryClient({
   if (selected)
     return (
       <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
-        <section className="native-enter native-shadow mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]">
+        <section
+          onTouchStart={(event) => {
+            const touch = event.touches[0];
+            swipeStart.current = touch
+              ? { x: touch.clientX, y: touch.clientY }
+              : null;
+          }}
+          onTouchEnd={(event) => {
+            const start = swipeStart.current;
+            const touch = event.changedTouches[0];
+            swipeStart.current = null;
+            if (!start || !touch || photoOpen) return;
+            const horizontalDistance = touch.clientX - start.x;
+            const verticalDistance = Math.abs(touch.clientY - start.y);
+            if (
+              horizontalDistance > 72 &&
+              horizontalDistance > verticalDistance * 1.4
+            ) {
+              returnToDirectory();
+            }
+          }}
+          className="native-enter native-shadow mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]"
+        >
           <div className="native-scroll min-h-0 flex-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="relative h-[62dvh] min-h-[360px] max-h-[600px] overflow-hidden bg-gradient-to-br from-[var(--app-brand)] to-[#07131d]">
               {selected.photoPath ? (
@@ -198,10 +226,7 @@ export default function DirectoryClient({
               />
               <div className="safe-top absolute inset-x-0 top-0 z-10 flex items-start justify-between px-4">
                 <button
-                  onClick={() => {
-                    setPhotoOpen(false);
-                    setSelected(null);
-                  }}
+                  onClick={returnToDirectory}
                   aria-label={copy.backToDirectory}
                   className="grid size-11 shrink-0 place-items-center rounded-full border border-white/15 bg-[#07131d]/65 text-2xl font-medium text-white shadow-lg backdrop-blur-xl hover:bg-[#07131d]/80"
                 >
@@ -214,15 +239,13 @@ export default function DirectoryClient({
                 </h1>
               </div>
             </div>
-            <div className="mx-4 mb-8 mt-4 overflow-hidden rounded-2xl border border-[var(--app-line)] bg-white shadow-sm sm:mx-6">
+            <div className="mx-5 mb-10 mt-7 space-y-7 sm:mx-7">
               {selected.phone && (
                 <a
                   href={`tel:${selected.phone.replace(/[^\d+]/g, "")}`}
-                  className="flex min-h-[72px] gap-4 border-b border-[var(--app-line)] px-4 py-4 hover:bg-[var(--app-surface-muted)]"
+                  className="flex min-h-14 items-start gap-4 py-1"
                 >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-[var(--app-brand)]">
-                    <Phone className="size-5" />
-                  </span>
+                  <Phone className="mt-1 size-5 shrink-0 text-slate-400" />
                   <span className="min-w-0">
                     <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       {copy.phone}
@@ -238,11 +261,9 @@ export default function DirectoryClient({
                   href={`https://maps.apple.com/?q=${encodeURIComponent(selected.address)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex min-h-[72px] gap-4 border-b border-[var(--app-line)] px-4 py-4 hover:bg-[var(--app-surface-muted)]"
+                  className="flex min-h-14 items-start gap-4 py-1"
                 >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--app-accent-soft)] text-[var(--app-accent)]">
-                    <MapPin className="size-5" />
-                  </span>
+                  <MapPin className="mt-1 size-5 shrink-0 text-slate-400" />
                   <span className="min-w-0">
                     <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                       {copy.address}
@@ -253,10 +274,8 @@ export default function DirectoryClient({
                   </span>
                 </a>
               )}
-              <div className="flex min-h-[72px] gap-4 border-b border-[var(--app-line)] px-4 py-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-[var(--app-brand)]">
-                  <UserRound className="size-5" />
-                </span>
+              <div className="flex min-h-14 items-start gap-4 py-1">
+                <UserRound className="mt-1 size-5 shrink-0 text-slate-400" />
                 <span>
                   <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                     {copy.dateOfBirth}
@@ -266,10 +285,8 @@ export default function DirectoryClient({
                   </span>
                 </span>
               </div>
-              <div className="flex min-h-[72px] gap-4 px-4 py-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--app-accent-soft)] text-[var(--app-accent)]">
-                  <CalendarDays className="size-5" />
-                </span>
+              <div className="flex min-h-14 items-start gap-4 py-1">
+                <CalendarDays className="mt-1 size-5 shrink-0 text-slate-400" />
                 <span>
                   <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                     {copy.membershipDate}
@@ -323,25 +340,25 @@ export default function DirectoryClient({
               onClick={() => setSettingsOpen(true)}
               aria-label={copy.settings}
               aria-expanded={settingsOpen}
-              className="grid size-11 shrink-0 place-items-center rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] text-[var(--app-brand)] hover:bg-[var(--app-brand-soft)]"
+              className="grid size-11 shrink-0 place-items-center text-[var(--app-muted)] hover:text-[var(--app-ink)]"
             >
               <Settings className="size-5" />
             </button>
           </div>
         </header>
-        <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 py-3 backdrop-blur-xl">
-          <label className="relative block">
-            <Search className="absolute left-3 top-3 size-5 text-slate-400" />
+        <div className="z-30 flex-none bg-white/92 px-4 py-2 backdrop-blur-xl">
+          <label className="flex min-h-11 items-center gap-3 px-1">
+            <Search className="size-5 shrink-0 text-slate-400" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={copy.searchPlaceholder}
-              className="min-h-11 w-full rounded-2xl border border-transparent bg-[var(--app-surface-muted)] py-2.5 pl-10 pr-11 text-base outline-none placeholder:text-slate-400 focus:border-[var(--app-brand)] focus:bg-white focus:ring-4 focus:ring-[#d9e9f3]"
+              className="min-h-11 min-w-0 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-slate-400"
             />
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="absolute right-0 top-0 grid size-11 place-items-center text-slate-400 hover:text-slate-700"
+                className="grid size-11 shrink-0 place-items-center text-slate-400 hover:text-slate-700"
                 aria-label={copy.clearSearch}
               >
                 <X className="size-5" />
