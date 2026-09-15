@@ -5,7 +5,6 @@ import {
   MapPin,
   Phone,
   Search,
-  ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -167,15 +166,15 @@ export default function DirectoryClient({
                   style={{
                     backgroundImage: `url(${selected.photoPath})`,
                     maskImage:
-                      "linear-gradient(to bottom, transparent 48%, black 82%)",
+                      "linear-gradient(to bottom, transparent 66%, rgba(0, 0, 0, 0.18) 76%, black 100%)",
                     WebkitMaskImage:
-                      "linear-gradient(to bottom, transparent 48%, black 82%)",
+                      "linear-gradient(to bottom, transparent 66%, rgba(0, 0, 0, 0.18) 76%, black 100%)",
                   }}
                 />
               )}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-[#07131d]/90"
+                className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(7,19,29,0.16)_0%,transparent_24%,transparent_68%,rgba(7,19,29,0.82)_100%)]"
               />
               <div className="safe-top absolute inset-x-0 top-0 z-10 flex items-start justify-between px-4">
                 <button
@@ -190,10 +189,7 @@ export default function DirectoryClient({
                 </button>
                 <LanguageSwitcher locale={locale} overlay />
               </div>
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-5 pb-6 pt-20 text-left">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-white/70">
-                  {copy.memberProfile}
-                </p>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-5 pb-6 pt-14 text-left">
                 <h1 className="text-[30px] font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-md min-[375px]:text-[34px]">
                   {selected.name}
                 </h1>
@@ -404,10 +400,6 @@ export default function DirectoryClient({
               </button>
             )}
           </label>
-          <p className="mt-2 hidden items-center justify-center gap-1.5 text-[11px] text-slate-400 min-[375px]:flex">
-            <ShieldCheck className="size-3.5" />
-            {copy.approvedOnly}
-          </p>
         </div>
       </section>
     </main>
