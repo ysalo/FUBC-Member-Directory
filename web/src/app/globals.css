@@ -775,3 +775,9 @@ h1:not(.sr-only) {
     padding-block: 4px;
   }
 }
+
+@media (max-height: 460px) and (min-width: 500px) {
+  .side-menu::before { height: 120px; }
+  .text-size-option { min-width: 0; }
+  .text-size-option span:last-child { max-width: 100%; font-size: .65rem; overflow-wrap: anywhere; }
+}
