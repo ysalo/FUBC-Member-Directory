@@ -295,9 +295,7 @@ export default function DirectoryClient({
 
   if (selected)
     return (
-      <main
-        className={`${deaconGroups ? "" : "directory-home"} fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6`}
-      >
+      <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
         <section
           onTouchStart={(event) => {
             const touch = event.touches[0];
@@ -635,9 +633,7 @@ export default function DirectoryClient({
   );
 
   return (
-    <main
-      className={`${deaconGroups ? "" : "directory-home"} fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6`}
-    >
+    <main className="fixed inset-0 h-dvh overflow-hidden overscroll-none bg-[var(--app-bg)] sm:p-6">
       <section className="native-enter native-shadow relative mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]">
         <div className="safe-top flex-none bg-white px-4 pb-1">
           <h1 className="sr-only">
