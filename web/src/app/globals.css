@@ -400,7 +400,7 @@ textarea {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 3.5rem;
   line-height: 1;
-  color: var(--app-brand);
+  color: #f5f1e8;
   letter-spacing: -0.04em;
 }
 .brand-wordmark::first-letter {
@@ -408,6 +408,7 @@ textarea {
 }
 .brand-caption {
   margin-top: 12px;
+  color: #f5f1e8;
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.2em;
