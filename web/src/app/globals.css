@@ -633,3 +633,145 @@ h1:not(.sr-only) {
   font-family: Georgia, serif;
   font-size: 1.6rem;
 }
+
+/* Fit settings to the available viewport while preserving touch targets. */
+@media (max-height: 740px) {
+  .menu-brand {
+    padding: 40px 0 16px;
+  }
+  .side-menu::before {
+    height: 170px;
+  }
+  .menu-section {
+    padding: 12px 0;
+  }
+}
+@media (max-height: 700px) {
+  .side-menu {
+    padding-inline: 18px;
+  }
+  .menu-brand {
+    padding: 24px 0 10px;
+  }
+  .brand-wordmark {
+    font-size: 2.5rem;
+  }
+  .brand-caption {
+    margin-top: 8px;
+  }
+  .menu-header {
+    padding-block: 8px;
+    margin-bottom: 0;
+  }
+  .menu-header span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .menu-section {
+    padding: 8px 0;
+  }
+  .menu-section-title {
+    margin-bottom: 8px;
+  }
+  .theme-choice-button,
+  .language-select,
+  .language-select select {
+    min-height: 44px;
+  }
+  .text-size-option {
+    min-height: 52px;
+    gap: 8px;
+  }
+  .menu-footer {
+    padding-block: 8px;
+  }
+}
+@media (max-height: 460px) and (min-width: 500px) {
+  .side-menu {
+    display: grid;
+    width: min(94vw, 48rem);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto auto 1fr auto;
+    column-gap: 16px;
+  }
+  .menu-brand {
+    grid-column: 1/-1;
+    padding: 12px 48px 6px;
+  }
+  .brand-wordmark {
+    font-size: 2rem;
+  }
+  .brand-caption {
+    display: none;
+  }
+  .menu-header {
+    grid-column: 1/-1;
+    padding-block: 6px;
+  }
+  .menu-section {
+    min-width: 0;
+  }
+  .menu-section-title {
+    font-size: 0.8rem;
+  }
+  .theme-choice {
+    gap: 4px;
+  }
+  .theme-choice-button {
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px;
+  }
+  .theme-choice-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .language-select > svg {
+    margin-inline: 8px;
+    width: 18px;
+  }
+  .language-select select {
+    padding-right: 26px;
+    font-size: 0.8rem;
+  }
+  .text-size-stepper {
+    padding: 0;
+  }
+  .text-size-stepper::after {
+    display: none;
+  }
+  .text-size-option {
+    font-size: 0.7rem;
+  }
+  .menu-footer {
+    grid-column: 1/-1;
+    padding-block: 4px;
+  }
+}
+@media (max-height: 460px) and (max-width: 499px) {
+  .menu-brand {
+    padding: 12px 40px 6px;
+  }
+  .brand-wordmark {
+    font-size: 2rem;
+  }
+  .brand-caption {
+    display: none;
+  }
+  .menu-header {
+    padding-block: 4px;
+  }
+  .menu-section {
+    padding-block: 6px;
+  }
+  .menu-section-title {
+    margin-bottom: 4px;
+  }
+  .side-menu {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .menu-footer {
+    padding-block: 4px;
+  }
+}

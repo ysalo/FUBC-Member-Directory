@@ -393,8 +393,8 @@ try {
   // Exercise the real menu without touching authenticated accounts.
   for (const locale of ["en", "uk"])
     for (const theme of ["light", "dark"])
-      for (const width of [320, 390, 1280]) {
-        await page.setViewportSize({ width, height: width === 320 ? 568 : 812 });
+      for (const [width, height] of [[320, 440], [320, 568], [390, 664], [390, 812], [393, 852], [430, 932], [460, 1000], [568, 320], [844, 390], [1280, 812]]) {
+        await page.setViewportSize({ width, height });
         await page.goto(url + "/?mode=pastor&locale=" + locale);
         await page.evaluate((theme) => {
           document.documentElement.dataset.theme = theme;
@@ -409,12 +409,15 @@ try {
         expect(await page.evaluate(() => document.body.style.overflow)).toBe("hidden");
         expect(await page.locator("#root").evaluate((root) => root.inert)).toBe(true);
         expect(await menu.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+        const fit = await menu.evaluate((node) => ({height:node.clientHeight,scroll:node.scrollHeight,children:[...node.children].map(c=>({class:c.className,height:c.getBoundingClientRect().height}))}));
+        if(fit.scroll>fit.height) console.log(JSON.stringify({width,height,locale,theme,fit}));
+        expect(fit.scroll <= fit.height).toBe(true);
         await expect(menu.locator('a[href], button').first()).toBeFocused();
         await page.keyboard.press("Shift+Tab");
         await expect(menu.getByRole("button").last()).toBeFocused();
         await page.keyboard.press("Tab");
         await expect(menu.locator('a[href], button').first()).toBeFocused();
-        await page.screenshot({ path: resolve(dir, `menu-${locale}-${theme}-${width}.png`), animations: "disabled" });
+        await page.screenshot({ path: resolve(dir, `menu-${locale}-${theme}-${width}-${height}.png`), animations: "disabled" });
         const bounds = await menu.boundingBox();
         expect(Math.round(bounds.x + bounds.width)).toBe(width);
         expect(bounds.y).toBe(0);

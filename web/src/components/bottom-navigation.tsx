@@ -318,7 +318,7 @@ export default function BottomNavigation({
                   ))}
                 </div>
               </section>
-              <div className="mt-auto border-t border-[var(--app-line)] py-3">
+              <div className="menu-footer mt-auto border-t border-[var(--app-line)] py-3">
                 <SignOutButton
                   variant="menu"
                   label={copy.signOut}
