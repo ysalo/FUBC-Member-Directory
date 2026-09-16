@@ -8,17 +8,23 @@ import { loadVisitIdentities } from "@/lib/member-profile-data";
 export default async function VisitationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; tab?: string }>;
 }) {
   const { supabase, profile } = await requireActiveProfile(),
     locale = await getLocale(),
     c = visitCopy(locale);
-  const { data, error } = await supabase
+  const params = await searchParams;
+  const archived = params.tab === "archive";
+  let visitQuery = supabase
     .from("visit_requests")
     .select("*,visit_recipients(*)")
-    .order("scheduled_at");
+    .order("scheduled_at", { ascending: !archived });
+  visitQuery = archived
+    ? visitQuery.not("archived_at", "is", null)
+    : visitQuery.is("archived_at", null);
+  const { data, error } = await visitQuery;
   if (error) throw new Error("Unable to load visitation");
-  const query = (await searchParams).q?.trim() ?? "";
+  const query = params.q?.trim() ?? "";
   const filteredVisits = ((data ?? []) as Visit[]).filter((v) =>
     [
       v.member_name,
@@ -45,10 +51,31 @@ export default async function VisitationPage({
           </Link>
         )}
       </div>
+      <nav
+        aria-label={
+          locale === "uk" ? "Розділи відвідувань" : "Visitation sections"
+        }
+        className="mb-5 grid grid-cols-2 rounded-xl bg-[var(--app-surface-muted)] p-1"
+      >
+        {[
+          { archive: false, label: c.activeTab },
+          { archive: true, label: c.archiveTab },
+        ].map((tab) => (
+          <Link
+            key={tab.label}
+            href={tab.archive ? "/visitation?tab=archive" : "/visitation"}
+            aria-current={archived === tab.archive ? "page" : undefined}
+            className={`flex min-h-11 items-center justify-center rounded-lg px-3 text-sm font-semibold ${archived === tab.archive ? "bg-[var(--app-surface)] text-[var(--app-ink)] shadow-sm" : "text-[var(--app-muted)]"}`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
       <form
         className="directory-search mb-6 flex min-h-11 min-w-0 items-center gap-3 border-b border-[var(--app-line)] px-1"
         role="search"
       >
+        {archived && <input type="hidden" name="tab" value="archive" />}
         <Search aria-hidden="true" className="size-5 shrink-0 text-slate-400" />
         <label className="min-w-0 flex-1">
           <span className="sr-only">{c.searchVisits}</span>
@@ -62,7 +89,7 @@ export default async function VisitationPage({
         </label>
         {query && (
           <Link
-            href="/visitation"
+            href={archived ? "/visitation?tab=archive" : "/visitation"}
             aria-label={locale === "uk" ? "Очистити пошук" : "Clear search"}
             className="grid size-11 shrink-0 place-items-center text-slate-400 hover:text-slate-700"
           >
@@ -93,7 +120,7 @@ export default async function VisitationPage({
             <h2 className="mb-3 text-lg font-semibold">{g.title}</h2>
             {!g.items.length && (
               <p className="text-[var(--app-muted)]">
-                {query ? c.noResults : c.empty}
+                {query ? c.noResults : archived ? c.archiveEmpty : c.empty}
               </p>
             )}
             <div className="space-y-3">
@@ -150,7 +177,7 @@ export default async function VisitationPage({
                         </span>
                       </p>
                       <p className="mt-2 text-sm text-[var(--app-muted)]">
-                        {c[v.status]}
+                        {archived ? c.archived : c[v.status]}
                       </p>
                       <ul className="space-y-1 text-sm text-[var(--app-muted)]">
                         {v.visit_recipients.map((recipient) => (
@@ -170,7 +197,9 @@ export default async function VisitationPage({
                       {v.status === "open" &&
                         v.visit_recipients.some(
                           (r) => r.response === "accepted",
-                        ) && <span className="block text-sm">{c.confirmed}</span>}
+                        ) && (
+                          <span className="block text-sm">{c.confirmed}</span>
+                        )}
                       {r &&
                         v.revision > 1 &&
                         r.last_viewed_revision < v.revision && (

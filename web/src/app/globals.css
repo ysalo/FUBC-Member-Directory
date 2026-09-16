@@ -521,42 +521,72 @@ textarea {
 .language-select select:focus-visible {
   outline: none;
 }
-.text-size-stepper {
+.text-size-slider {
   display: flex;
-  position: relative;
-  padding: 0 8px;
+  align-items: flex-start;
+  gap: 12px;
 }
-.text-size-stepper::before {
-  content: "";
-  position: absolute;
-  top: 15px;
-  left: 18%;
-  right: 18%;
-  height: 2px;
+.text-size-a {
+  flex: none;
+  margin-top: 7px;
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--app-ink);
+}
+.text-size-a-small {
+  font-size: 1rem;
+}
+.text-size-a-large {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.text-size-range {
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.text-size-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
   background: var(--app-line);
 }
-.text-size-option {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  min-height: 60px;
-  color: var(--app-muted);
-  font-size: 0.8rem;
-}
-.text-size-dot {
-  position: relative;
-  margin-top: 8px;
-  width: 16px;
-  height: 16px;
+.text-size-range::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  appearance: none;
+  border: 0;
   border-radius: 50%;
+  background: var(--app-brand);
+  box-shadow: 0 0 0 4px var(--app-surface);
+}
+.text-size-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
   background: var(--app-line);
 }
-.text-size-option[aria-pressed="true"] .text-size-dot {
+.text-size-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
   background: var(--app-brand);
+  box-shadow: 0 0 0 4px var(--app-surface);
 }
-.text-size-option[aria-pressed="true"] {
+.text-size-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: -3px;
+  color: var(--app-muted);
+  font-size: 0.75rem;
+}
+.text-size-labels span:last-child {
+  text-align: right;
+}
+.text-size-labels .is-selected {
   color: var(--app-ink);
   font-weight: 600;
 }
@@ -656,13 +686,6 @@ h1:not(.sr-only) {
     cover;
   mask-image: linear-gradient(#000 0%, #000 65%, transparent);
 }
-.text-size-stepper::after {
-  content: "A";
-  align-self: flex-start;
-  font-family: Georgia, serif;
-  font-size: 1.6rem;
-}
-
 /* Fit settings to the available viewport while preserving touch targets. */
 @media (max-height: 740px) {
   .menu-brand {
@@ -708,10 +731,6 @@ h1:not(.sr-only) {
   .language-select select {
     min-height: 44px;
   }
-  .text-size-option {
-    min-height: 52px;
-    gap: 8px;
-  }
   .menu-footer {
     padding-block: 8px;
   }
@@ -720,6 +739,7 @@ h1:not(.sr-only) {
   .side-menu {
     display: grid;
     width: min(94vw, 48rem);
+    padding-bottom: env(safe-area-inset-bottom);
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: auto auto 1fr auto;
     column-gap: 16px;
@@ -764,14 +784,11 @@ h1:not(.sr-only) {
     padding-right: 26px;
     font-size: 0.8rem;
   }
-  .text-size-stepper {
-    padding: 0;
+  .text-size-slider {
+    gap: 6px;
   }
-  .text-size-stepper::after {
-    display: none;
-  }
-  .text-size-option {
-    font-size: 0.7rem;
+  .text-size-labels {
+    font-size: 0.65rem;
   }
   .menu-footer {
     grid-column: 1/-1;
@@ -780,10 +797,10 @@ h1:not(.sr-only) {
 }
 @media (max-height: 460px) and (max-width: 499px) {
   .menu-brand {
-    padding: 12px 40px 6px;
+    padding: 4px 40px 2px;
   }
   .brand-wordmark {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
   .brand-caption {
     display: none;
@@ -809,12 +826,8 @@ h1:not(.sr-only) {
   .side-menu::before {
     height: 120px;
   }
-  .text-size-option {
-    min-width: 0;
-  }
-  .text-size-option span:last-child {
+  .text-size-labels span {
     max-width: 100%;
-    font-size: 0.65rem;
     overflow-wrap: anywhere;
   }
 }

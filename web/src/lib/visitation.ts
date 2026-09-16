@@ -24,6 +24,7 @@ export type Visit = {
   scheduled_at: string;
   notes: string;
   status: "open" | "cancelled" | "completed";
+  archived_at?: string | null;
   revision: number;
   updated_fields: string[];
   visit_recipients: VisitRecipient[];
@@ -54,6 +55,12 @@ const en = {
   change: "Change",
   searchPeople: "Search people",
   searchVisits: "Search visits",
+  activeTab: "Current",
+  archiveTab: "Archive",
+  archive: "Archive visit",
+  archived: "Archived",
+  confirmArchive: "Move this visit to the archive?",
+  phone: "Phone number",
   noResults: "No matches found.",
   pendingRequests: "visits awaiting response",
   save: "Save changes",
@@ -65,6 +72,7 @@ const en = {
   complete: "Mark completed",
   back: "Back",
   empty: "No planned visits yet.",
+  archiveEmpty: "No archived visits yet.",
   updated: "Updated details",
   confirmed: "Companion confirmed",
   pending: "Pending",
@@ -106,6 +114,12 @@ const uk: typeof en = {
   change: "Змінити",
   searchPeople: "Пошук людей",
   searchVisits: "Пошук відвідувань",
+  activeTab: "Поточні",
+  archiveTab: "Архів",
+  archive: "Архівувати відвідування",
+  archived: "В архіві",
+  confirmArchive: "Перемістити це відвідування до архіву?",
+  phone: "Номер телефону",
   noResults: "Збігів не знайдено.",
   pendingRequests: "відвідувань очікують відповіді",
   save: "Зберегти зміни",
@@ -117,6 +131,7 @@ const uk: typeof en = {
   complete: "Позначити завершеним",
   back: "Назад",
   empty: "Запланованих відвідувань ще немає.",
+  archiveEmpty: "Архів відвідувань порожній.",
   updated: "Деталі оновлено",
   confirmed: "Супровід підтверджено",
   pending: "Очікується",

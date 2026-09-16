@@ -1,4 +1,12 @@
-import { CalendarDays, MapPin, FileText, Check, Clock, X } from "lucide-react";
+import {
+  CalendarDays,
+  MapPin,
+  FileText,
+  Check,
+  Clock,
+  X,
+  Phone,
+} from "lucide-react";
 import { formatVisitDate, visitCopy, type Visit } from "@/lib/visitation";
 import type { Locale } from "@/lib/i18n";
 import VisitMemberLink from "@/components/visit-member-link";
@@ -43,7 +51,7 @@ export default function VisitDetails({
           </h1>
         </div>
         <span className="mt-3 inline-flex rounded-full bg-[var(--app-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--app-muted)]">
-          {c[v.status]}
+          {v.archived_at ? c.archived : c[v.status]}
         </span>
       </header>
       {unseen && (
@@ -68,6 +76,12 @@ export default function VisitDetails({
             field: "location",
             Icon: MapPin,
           },
+          {
+            label: c.phone,
+            value: v.member_phone || c.missing,
+            field: "phone",
+            Icon: Phone,
+          },
         ].map(({ label, value, field, Icon }) => (
           <div key={field} className="flex gap-3 p-4">
             <Icon
@@ -89,6 +103,13 @@ export default function VisitDetails({
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.location)}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    className="text-[var(--app-brand)] underline decoration-[var(--app-line)] underline-offset-4"
+                  >
+                    {value}
+                  </a>
+                ) : field === "phone" && v.member_phone ? (
+                  <a
+                    href={`tel:${v.member_phone.replace(/[^\d+]/g, "")}`}
                     className="text-[var(--app-brand)] underline decoration-[var(--app-line)] underline-offset-4"
                   >
                     {value}

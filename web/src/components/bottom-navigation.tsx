@@ -293,12 +293,29 @@ export default function BottomNavigation({
               </section>
               <section className="menu-section">
                 <h3 className="menu-section-title">{copy.textSize}</h3>
-                <div className="text-size-stepper">
-                  {["standard", "large"].map((size) => (
-                    <button
-                      key={size}
-                      aria-pressed={size === textSize}
-                      onClick={() => {
+                <div className="text-size-slider">
+                  <span
+                    aria-hidden="true"
+                    className="text-size-a text-size-a-small"
+                  >
+                    A
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="1"
+                      value={textSize === "large" ? 1 : 0}
+                      aria-label={copy.textSize}
+                      aria-valuetext={
+                        textSize === "large"
+                          ? copy.largerText
+                          : copy.standardText
+                      }
+                      onChange={(event) => {
+                        const size =
+                          event.target.value === "1" ? "large" : "standard";
                         setTextSize(size);
                         document.documentElement.dataset.textSize = size;
                         try {
@@ -308,14 +325,27 @@ export default function BottomNavigation({
                           );
                         } catch {}
                       }}
-                      className="text-size-option"
-                    >
-                      <span className="text-size-dot" aria-hidden="true" />
-                      <span>
-                        {size === "large" ? copy.largerText : copy.standardText}
+                      className="text-size-range"
+                    />
+                    <div className="text-size-labels" aria-hidden="true">
+                      <span
+                        className={textSize === "standard" ? "is-selected" : ""}
+                      >
+                        {copy.standardText}
                       </span>
-                    </button>
-                  ))}
+                      <span
+                        className={textSize === "large" ? "is-selected" : ""}
+                      >
+                        {copy.largerText}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className="text-size-a text-size-a-large"
+                  >
+                    A
+                  </span>
                 </div>
               </section>
               <div className="menu-footer mt-auto border-t border-[var(--app-line)] py-3">

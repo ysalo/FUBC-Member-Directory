@@ -5,7 +5,14 @@ import { mutateVisit } from "@/app/visitation/actions";
 import { visitCopy, type Visit } from "@/lib/visitation";
 import type { Locale } from "@/lib/i18n";
 import Link from "@/components/navigation-link";
-import { Check, X, Pencil, CheckCircle2, RefreshCw } from "lucide-react";
+import {
+  Archive,
+  Check,
+  X,
+  Pencil,
+  CheckCircle2,
+  RefreshCw,
+} from "lucide-react";
 export default function VisitControls({
   visit,
   userId,
@@ -32,8 +39,9 @@ export default function VisitControls({
       })
       .catch(() => setError(c.failed));
   }, [visit.id, visit.revision, recipient, c.failed]);
-  async function run(op: "respond" | "close", decision: string) {
+  async function run(op: "respond" | "close" | "archive", decision = "") {
     if (decision === "cancelled" && !window.confirm(c.confirmCancel)) return;
+    if (op === "archive" && !window.confirm(c.confirmArchive)) return;
     setBusy(true);
     setError("");
     const f = new FormData();
@@ -55,9 +63,35 @@ export default function VisitControls({
       setBusy(false);
     }
   }
-  if (visit.status !== "open") return null;
   const button =
     "flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50";
+  if (visit.archived_at) return null;
+  if (visit.status !== "open")
+    return visit.pastor_id === userId ? (
+      <div className="mt-6 border-t border-[var(--app-line)] pt-5">
+        <button
+          disabled={busy}
+          className={`${button} w-full border border-[var(--app-line)] bg-[var(--app-surface-muted)] text-[var(--app-ink)]`}
+          onClick={() => run("archive")}
+        >
+          <Archive aria-hidden="true" className="size-4" />
+          {c.archive}
+        </button>
+        {busy && (
+          <p role="status" className="mt-3">
+            {c.saving}
+          </p>
+        )}
+        {error && (
+          <p
+            role="alert"
+            className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700"
+          >
+            {error}
+          </p>
+        )}
+      </div>
+    ) : null;
   return (
     <div className="mt-6 space-y-5 border-t border-[var(--app-line)] pt-5">
       <div className="flex items-center justify-between gap-3">

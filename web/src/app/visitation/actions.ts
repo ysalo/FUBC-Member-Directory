@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getLocale } from "@/lib/locale";
 import { visitCopy, visitTimeToIso } from "@/lib/visitation";
 export async function mutateVisit(
-  operation: "save" | "respond" | "close" | "view",
+  operation: "save" | "respond" | "close" | "archive" | "view",
   form: FormData,
 ): Promise<{ id?: string; error?: string }> {
   const { supabase } = await requireActiveProfile();
@@ -40,6 +40,11 @@ export async function mutateVisit(
       result = await supabase.rpc("close_visit", {
         target: value("id"),
         decision: value("decision"),
+        expected_revision: Number(value("revision")),
+      });
+    else if (operation === "archive")
+      result = await supabase.rpc("archive_visit", {
+        target: value("id"),
         expected_revision: Number(value("revision")),
       });
     else

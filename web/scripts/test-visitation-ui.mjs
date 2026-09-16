@@ -15,7 +15,7 @@ await writeFile(
 );
 await writeFile(
   resolve(dir, "stubs.tsx"),
-  `import React from 'react';export function createClient(){return {auth:{signOut:async()=>{window.signedOut=true;}}};}export const usePathname=()=>'/visitation';export const useRouter=()=>({push:(url)=>{window.destination=url;},replace:(url)=>{window.destination=url;},refresh:()=>window.dispatchEvent(new Event('refresh-fixture'))});export default function Link({children,...props}){return <a {...props}>{children}</a>;}export async function mutateGroup(op,form){window.actions.push({op,...Object.fromEntries(form)});return {};}export async function pendingVisitCount(){return window.pending;}export async function mutateVisit(op,form){window.actions.push({op,...Object.fromEntries(form),deacons:form.getAll('deacon')});if(window.failNext){window.failNext=false;return {error:'Unable to save. Your draft has been retained.'};}if(op==='respond'){window.pending=1;window.demo.visit_recipients[0].response=form.get('decision');window.demo.visit_recipients[0].decline_reason=form.get('decision')==='declined'?form.get('reason'):'';}if(op==='close'){window.pending=0;window.demo.status=form.get('decision');}return {id:'saved-fixture'};}`,
+  `import React from 'react';export function createClient(){return {auth:{signOut:async()=>{window.signedOut=true;}}};}export const usePathname=()=>'/visitation';export const useRouter=()=>({push:(url)=>{window.destination=url;},replace:(url)=>{window.destination=url;},refresh:()=>window.dispatchEvent(new Event('refresh-fixture'))});export default function Link({children,...props}){return <a {...props}>{children}</a>;}export async function mutateGroup(op,form){window.actions.push({op,...Object.fromEntries(form)});return {};}export async function pendingVisitCount(){return window.pending;}export async function mutateVisit(op,form){window.actions.push({op,...Object.fromEntries(form),deacons:form.getAll('deacon')});if(window.failNext){window.failNext=false;return {error:'Unable to save. Your draft has been retained.'};}if(op==='respond'){window.pending=1;window.demo.visit_recipients[0].response=form.get('decision');window.demo.visit_recipients[0].decline_reason=form.get('decision')==='declined'?form.get('reason'):'';}if(op==='close'){window.pending=0;window.demo.status=form.get('decision');}if(op==='archive'){window.demo.archived_at=new Date().toISOString();}return {id:'saved-fixture'};}`,
 );
 await writeFile(
   resolve(dir, "entry.tsx"),
@@ -29,7 +29,7 @@ import GroupManagement from ${JSON.stringify(resolve(root, "src/components/group
 import BottomNavigation from ${JSON.stringify(resolve(root, "src/components/bottom-navigation.tsx"))};
 const p=new URLSearchParams(location.search), unavailable=p.has('unavailable');
 window.actions=[];window.pending=2;
-window.demo={id:'visit',pastor_id:'pastor',pastor_person_id:unavailable?null:'pastor-person',pastor_name:'Fictional Pastor',person_id:'member',member_available:!unavailable,member_name:'A very long fictional member name for accessibility testing',member_address:'123 Example Street, Seattle, WA',location:'Church meeting room',scheduled_at:'2099-12-15T19:30:00Z',notes:'Discuss the upcoming visit',status:'open',revision:2,updated_fields:['location'],visit_recipients:[{deacon_id:'d1',deacon_person_id:unavailable?null:'deacon-person-1',deacon_name:'First Deacon',response:'accepted',decline_reason:'',last_viewed_revision:1},{deacon_id:'d2',deacon_person_id:unavailable?null:'deacon-person-2',deacon_name:'Second Deacon',response:'pending',decline_reason:'',last_viewed_revision:0}]};
+window.demo={id:'visit',pastor_id:'pastor',pastor_person_id:unavailable?null:'pastor-person',pastor_name:'Fictional Pastor',person_id:'member',member_available:!unavailable,member_name:'A very long fictional member name for accessibility testing',member_address:'123 Example Street, Seattle, WA',member_phone:'(206) 555-0142',location:'Church meeting room',scheduled_at:'2099-12-15T19:30:00Z',notes:'Discuss the upcoming visit',status:'open',archived_at:null,revision:2,updated_fields:['location'],visit_recipients:[{deacon_id:'d1',deacon_person_id:unavailable?null:'deacon-person-1',deacon_name:'First Deacon',response:'accepted',decline_reason:'',last_viewed_revision:1},{deacon_id:'d2',deacon_person_id:unavailable?null:'deacon-person-2',deacon_name:'Second Deacon',response:'pending',decline_reason:'',last_viewed_revision:0}]};
 function App(){
   const[version,setVersion]=useState(0);
   useEffect(()=>{const update=()=>setVersion(v=>v+1);window.addEventListener('refresh-fixture',update);return()=>window.removeEventListener('refresh-fixture',update);},[]);
@@ -76,9 +76,18 @@ await new Promise((res, rej) => {
         "@/lib/directory-view": resolve(root, "src/lib/directory-view.ts"),
         "@/lib/i18n": resolve(root, "src/lib/i18n.ts"),
         "@/lib/group-copy": resolve(root, "src/lib/group-copy.ts"),
-        "@/components/language-switcher": resolve(root, "src/components/language-switcher.tsx"),
-        "@/components/sign-out-button": resolve(root, "src/components/sign-out-button.tsx"),
-        "@/components/appearance-settings": resolve(root, "src/components/appearance-settings.tsx"),
+        "@/components/language-switcher": resolve(
+          root,
+          "src/components/language-switcher.tsx",
+        ),
+        "@/components/sign-out-button": resolve(
+          root,
+          "src/components/sign-out-button.tsx",
+        ),
+        "@/components/appearance-settings": resolve(
+          root,
+          "src/components/appearance-settings.tsx",
+        ),
         "@/components/visit-member-link": resolve(
           root,
           "src/components/visit-member-link.tsx",
@@ -99,7 +108,9 @@ await new Promise((res, rej) => {
   });
 });
 const cssSource = resolve(root, "src/app/globals.css");
-const postcss = createRequire(require.resolve("@tailwindcss/postcss"))("postcss");
+const postcss = createRequire(require.resolve("@tailwindcss/postcss"))(
+  "postcss",
+);
 const { css } = await postcss([
   require("@tailwindcss/postcss")({ base: root }),
 ]).process(await readFile(cssSource, "utf8"), { from: cssSource });
@@ -276,6 +287,9 @@ try {
     "href",
     "https://www.google.com/maps/search/?api=1&query=Church%20meeting%20room",
   );
+  await expect(
+    page.getByRole("link", { name: "(206) 555-0142", exact: true }),
+  ).toHaveAttribute("href", "tel:2065550142");
   expect(
     await page.evaluate(() => window.demo.visit_recipients[0].decline_reason),
   ).toBe("");
@@ -299,6 +313,14 @@ try {
   await expect(
     page.getByRole("button", { name: "Mark completed" }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Archive visit" }),
+  ).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Archive visit" }).click();
+  await expect(page.getByRole("button", { name: "Archive visit" })).toHaveCount(
+    0,
+  );
   for (const locale of ["en", "uk"]) {
     await page.goto(url + "/?mode=pastor&unavailable=1&locale=" + locale);
     await expect(page.locator('main a[href^="/members/"]')).toHaveCount(0);
@@ -320,11 +342,9 @@ try {
     page.getByRole("link", { name: "First Deacon", exact: true }),
   ).toHaveAttribute("href", "/members/deacon-person-1");
   await expect(page.locator("a a, button a, a button, label a")).toHaveCount(0);
-  const createGroup = page
-    .locator("form")
-    .filter({
-      has: page.getByRole("button", { name: "Create group", exact: true }),
-    });
+  const createGroup = page.locator("form").filter({
+    has: page.getByRole("button", { name: "Create group", exact: true }),
+  });
   await createGroup.getByLabel("Group name").fill("New fixture group");
   await createGroup.getByLabel("First deacon").selectOption("d2");
   await expect(
@@ -393,7 +413,18 @@ try {
   // Exercise the real menu without touching authenticated accounts.
   for (const locale of ["en", "uk"])
     for (const theme of ["light", "dark"])
-      for (const [width, height] of [[320, 440], [320, 568], [390, 664], [390, 812], [393, 852], [430, 932], [460, 1000], [568, 320], [844, 390], [1280, 812]]) {
+      for (const [width, height] of [
+        [320, 440],
+        [320, 568],
+        [390, 664],
+        [390, 812],
+        [393, 852],
+        [430, 932],
+        [460, 1000],
+        [568, 320],
+        [844, 390],
+        [1280, 812],
+      ]) {
         await page.setViewportSize({ width, height });
         await page.goto(url + "/?mode=pastor&locale=" + locale);
         await page.evaluate((theme) => {
@@ -401,51 +432,108 @@ try {
           document.documentElement.dataset.themePreference = theme;
           document.documentElement.dataset.textSize = "large";
         }, theme);
-        const trigger = page.getByRole("button", { name: locale === "uk" ? "Меню" : "Menu", exact: true });
+        const trigger = page.getByRole("button", {
+          name: locale === "uk" ? "Меню" : "Menu",
+          exact: true,
+        });
         await trigger.click();
         const menu = page.getByRole("dialog");
         await expect(menu).toBeVisible();
+        const textSizeSlider = menu.getByRole("slider", {
+          name: locale === "uk" ? "Розмір тексту" : "Text size",
+        });
+        await expect(textSizeSlider).toHaveValue("1");
+        expect(
+          (await textSizeSlider.boundingBox()).height,
+        ).toBeGreaterThanOrEqual(44);
         await expect(menu.getByRole("link")).toHaveCount(1);
-        expect(await page.evaluate(() => document.body.style.overflow)).toBe("hidden");
-        expect(await page.locator("#root").evaluate((root) => root.inert)).toBe(true);
-        expect(await menu.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-        const fit = await menu.evaluate((node) => ({height:node.clientHeight,scroll:node.scrollHeight,children:[...node.children].map(c=>({class:c.className,height:c.getBoundingClientRect().height}))}));
-        if(fit.scroll>fit.height) console.log(JSON.stringify({width,height,locale,theme,fit}));
+        expect(await page.evaluate(() => document.body.style.overflow)).toBe(
+          "hidden",
+        );
+        expect(await page.locator("#root").evaluate((root) => root.inert)).toBe(
+          true,
+        );
+        expect(
+          await menu.evaluate((node) => node.scrollWidth <= node.clientWidth),
+        ).toBe(true);
+        const fit = await menu.evaluate((node) => ({
+          height: node.clientHeight,
+          scroll: node.scrollHeight,
+          children: [...node.children].map((c) => ({
+            class: c.className,
+            height: c.getBoundingClientRect().height,
+          })),
+        }));
+        if (fit.scroll > fit.height)
+          console.log(JSON.stringify({ width, height, locale, theme, fit }));
         expect(fit.scroll <= fit.height).toBe(true);
-        const profile = menu.locator('a[href], button').first();
+        const profile = menu.locator("a[href], button").first();
         await expect(profile).toBeFocused();
-        expect(await profile.evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("none");
-        const closeBounds = await menu.getByRole("button", { name: locale === "uk" ? "Закрити меню" : "Close menu" }).boundingBox();
+        expect(
+          await profile.evaluate((node) => getComputedStyle(node).outlineStyle),
+        ).toBe("none");
+        const closeBounds = await menu
+          .getByRole("button", {
+            name: locale === "uk" ? "Закрити меню" : "Close menu",
+          })
+          .boundingBox();
         expect(closeBounds.width).toBeGreaterThanOrEqual(56);
         expect(closeBounds.height).toBeGreaterThanOrEqual(56);
         await page.keyboard.press("Shift+Tab");
         await expect(menu.getByRole("button").last()).toBeFocused();
         await page.keyboard.press("Tab");
-        await expect(menu.locator('a[href], button').first()).toBeFocused();
+        await expect(menu.locator("a[href], button").first()).toBeFocused();
         const language = menu.getByRole("combobox");
         await language.focus();
-        expect(await language.evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("none");
-        expect(await language.locator("..").evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("solid");
-        await page.screenshot({ path: resolve(dir, `menu-${locale}-${theme}-${width}-${height}.png`), animations: "disabled" });
+        expect(
+          await language.evaluate(
+            (node) => getComputedStyle(node).outlineStyle,
+          ),
+        ).toBe("none");
+        expect(
+          await language
+            .locator("..")
+            .evaluate((node) => getComputedStyle(node).outlineStyle),
+        ).toBe("solid");
+        await page.screenshot({
+          path: resolve(dir, `menu-${locale}-${theme}-${width}-${height}.png`),
+          animations: "disabled",
+        });
         const bounds = await menu.boundingBox();
         expect(Math.round(bounds.x + bounds.width)).toBe(width);
         expect(bounds.y).toBe(0);
         for (const button of await menu.getByRole("button").all()) {
-          expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(44);
+          expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(
+            44,
+          );
         }
-        await expect(menu.getByRole("button", { name: /System|Системний/ })).toHaveCount(0);
-        const light = menu.getByRole("button", { name: locale === "uk" ? "Світла тема" : "Light theme", exact: true });
-        const dark = menu.getByRole("button", { name: locale === "uk" ? "Темна тема" : "Dark theme", exact: true });
+        await expect(
+          menu.getByRole("button", { name: /System|Системний/ }),
+        ).toHaveCount(0);
+        const light = menu.getByRole("button", {
+          name: locale === "uk" ? "Світла тема" : "Light theme",
+          exact: true,
+        });
+        const dark = menu.getByRole("button", {
+          name: locale === "uk" ? "Темна тема" : "Dark theme",
+          exact: true,
+        });
         await light.click();
         await expect(light).toHaveAttribute("aria-pressed", "true");
         await dark.click();
         await expect(dark).toHaveAttribute("aria-pressed", "true");
-        expect(await page.evaluate(() => localStorage.getItem("directory-theme"))).toBe("dark");
+        expect(
+          await page.evaluate(() => localStorage.getItem("directory-theme")),
+        ).toBe("dark");
         await page.keyboard.press("Escape");
         await expect(menu).toHaveCount(0);
         await expect(trigger).toBeFocused();
-        expect(await page.locator("#root").evaluate((root) => root.inert)).toBe(false);
-        expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
+        expect(await page.locator("#root").evaluate((root) => root.inert)).toBe(
+          false,
+        );
+        expect(await page.evaluate(() => document.body.style.overflow)).toBe(
+          "",
+        );
         await trigger.click();
         await page.mouse.click(2, 2);
         await expect(menu).toHaveCount(0);
@@ -456,15 +544,26 @@ try {
     const menu = page.getByRole("dialog");
     await expect(menu.getByRole("link")).toHaveCount(1);
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link")).toHaveCount(role === "member" ? 3 : 4);
+    await expect(
+      page
+        .getByRole("navigation", { name: "Main navigation" })
+        .getByRole("link"),
+    ).toHaveCount(role === "member" ? 3 : 4);
     await expect(menu).toHaveCount(0);
   }
   await page.goto(url + "/?mode=pastor");
   await page.getByRole("button", { name: "Menu", exact: true }).click();
-  await expect(page.getByRole("combobox", { name: "Language", exact: true })).toHaveValue("en");
-  await page.getByRole("dialog").getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Language", exact: true }),
+  ).toHaveValue("en");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Sign out", exact: true })
+    .click();
   await expect.poll(() => page.evaluate(() => window.signedOut)).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.destination)).toBe("/login");
+  await expect
+    .poll(() => page.evaluate(() => window.destination))
+    .toBe("/login");
   console.log(
     "Visitation/admin UI passed: canonical member links, unavailable identities, separate selection controls, shared BackButton, group selections, recipient defaults/overrides, save failure/recovery, editing, response changes, Ukrainian, light/dark, large text, 320/375/460px.",
   );

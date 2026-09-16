@@ -26,7 +26,10 @@ export default async function VisitPage({
   const [v] = await loadVisitIdentities(supabase, [data as Visit]);
   return (
     <>
-      <VisitBack locale={locale} />
+      <VisitBack
+        locale={locale}
+        href={v.archived_at ? "/visitation?tab=archive" : "/visitation"}
+      />
       <VisitDetails visit={v} locale={locale} userId={profile.id} />
       <VisitControls visit={v} userId={profile.id} locale={locale} />
     </>

@@ -25,6 +25,15 @@ const lifecycle = (
     "utf8",
   )
 ).split("-- Hosted scheduler")[0];
+const archive = (
+  await readFile(
+    new URL(
+      "../supabase/migrations/20260915220000_visitation_archive.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+).split("-- Hosted scheduler")[0];
 for (const upgrade of [true, false]) {
   const db = new PGlite();
   await db.exec(`create role authenticated;create role anon;create schema auth;create schema storage;
@@ -37,6 +46,7 @@ for (const upgrade of [true, false]) {
   );
   if (upgrade) await db.exec(migration);
   await db.exec(lifecycle);
+  await db.exec(archive);
   for (let n = 1; n <= 6; n++)
     await db.query("insert into auth.users(id,email) values($1,$2)", [
       id(n),
@@ -248,6 +258,19 @@ for (const upgrade of [true, false]) {
     await scalar("select status from public.visit_requests where id=$1", [v]),
     "completed",
   );
+  await db.query("select public.archive_visit($1,$2)", [v, 2]);
+  assert.equal(
+    await scalar(
+      "select archived_at is not null from public.visit_requests where id=$1",
+      [v],
+    ),
+    true,
+  );
+  await as(2);
+  await assert.rejects(
+    db.query("select public.archive_visit($1,$2)", [v, 2]),
+    /Pastor/,
+  );
   await as(4);
   await assert.rejects(
     db.query("select public.respond_visit($1,$2,$3,$4)", [
@@ -267,7 +290,7 @@ for (const upgrade of [true, false]) {
     /profiles_ministry_roles_check/,
   );
   await db.query(
-    "update public.visit_requests set scheduled_at=now()-interval '5 hours 59 minutes',status='open' where id=$1",
+    "update public.visit_requests set scheduled_at=now()-interval '5 hours 59 minutes',status='open',archived_at=null where id=$1",
     [v],
   );
   assert.equal(await scalar("select public.auto_complete_visits()"), 0);
@@ -286,6 +309,29 @@ for (const upgrade of [true, false]) {
   assert.equal(
     await scalar(
       "select count(*)::int from public.audit_events where event_type='visit.auto_completed'",
+    ),
+    1,
+  );
+  await db.query(
+    "update public.visit_requests set updated_at=now()-interval '5 hours 59 minutes' where id=$1",
+    [v],
+  );
+  assert.equal(await scalar("select public.auto_archive_visits()"), 0);
+  await db.query(
+    "update public.visit_requests set updated_at=now()-interval '6 hours' where id=$1",
+    [v],
+  );
+  await as(2);
+  await assert.rejects(
+    db.query("select public.auto_archive_visits()"),
+    /permission denied/,
+  );
+  await db.exec("reset role");
+  assert.equal(await scalar("select public.auto_archive_visits()"), 1);
+  assert.equal(await scalar("select public.auto_archive_visits()"), 0);
+  assert.equal(
+    await scalar(
+      "select count(*)::int from public.audit_events where event_type='visit.auto_archived'",
     ),
     1,
   );
