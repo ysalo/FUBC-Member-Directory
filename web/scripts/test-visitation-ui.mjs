@@ -412,10 +412,19 @@ try {
         await page.keyboard.press("Tab");
         await expect(menu.locator('a[href], button').first()).toBeFocused();
         await page.screenshot({ path: resolve(dir, `menu-${locale}-${theme}-${width}.png`), animations: "disabled" });
-        const toggle = menu.getByRole("switch");
-        if (await toggle.getAttribute("aria-checked") === "true") await toggle.click();
-        await toggle.click();
-        await expect(toggle).toHaveAttribute("aria-checked", "true");
+        const bounds = await menu.boundingBox();
+        expect(Math.round(bounds.x + bounds.width)).toBe(width);
+        expect(bounds.y).toBe(0);
+        for (const button of await menu.getByRole("button").all()) {
+          expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(44);
+        }
+        await expect(menu.getByRole("button", { name: /System|Системний/ })).toHaveCount(0);
+        const light = menu.getByRole("button", { name: locale === "uk" ? "Світла тема" : "Light theme", exact: true });
+        const dark = menu.getByRole("button", { name: locale === "uk" ? "Темна тема" : "Dark theme", exact: true });
+        await light.click();
+        await expect(light).toHaveAttribute("aria-pressed", "true");
+        await dark.click();
+        await expect(dark).toHaveAttribute("aria-pressed", "true");
         expect(await page.evaluate(() => localStorage.getItem("directory-theme"))).toBe("dark");
         await page.keyboard.press("Escape");
         await expect(menu).toHaveCount(0);
@@ -437,11 +446,6 @@ try {
   }
   await page.goto(url + "/?mode=pastor");
   await page.getByRole("button", { name: "Menu", exact: true }).click();
-  await page.getByRole("button", { name: "System", exact: true }).click();
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect(page.getByRole("switch")).toHaveAttribute("aria-checked", "true");
-  await page.emulateMedia({ colorScheme: "light" });
-  await expect(page.getByRole("switch")).toHaveAttribute("aria-checked", "false");
   await expect(page.getByRole("button", { name: "English", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("dialog").getByRole("button", { name: "Sign out", exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.signedOut)).toBe(true);

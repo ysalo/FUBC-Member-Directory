@@ -1,9 +1,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
+
 import { useState } from "react";
-import LanguageSwitcher from "@/components/language-switcher";
+
 import { dictionaries, type Locale } from "@/lib/i18n";
 import { safeNextPath } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/browser";
@@ -64,38 +64,11 @@ export default function LoginClient({ locale }: { locale: Locale }) {
   }
   return (
     <main className="login-page">
-      <div className="login-language">
-        <LanguageSwitcher locale={locale} />
-      </div>
       <section
         className="login-card native-enter"
         aria-label={locale === "uk" ? "Вхід" : "Login"}
       >
-        <div className="login-art" aria-hidden="true">
-          <span className="login-blob login-blob-one" />
-          <span className="login-blob login-blob-two" />
-          <span className="login-dot login-dot-one" />
-          <span className="login-dot login-dot-two" />
-          <span className="login-dot login-dot-three" />
-          <Image
-            className="login-logo"
-            src="/church-logo.jpg"
-            alt=""
-            width={900}
-            height={900}
-            priority
-          />
-          <svg
-            className="login-wave"
-            viewBox="0 0 400 80"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0 45C75 0 115 12 180 40S310 85 400 36V80H0Z"
-              fill="currentColor"
-            />
-          </svg>
-        </div>
+        <div className="login-art" aria-hidden="true" />
         <div className="login-actions">
           <button
             type="button"

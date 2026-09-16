@@ -4,47 +4,43 @@
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: max(100px, env(safe-area-inset-top)) 24px max(40px, env(safe-area-inset-bottom));
-  background: radial-gradient(ellipse at 15% 10%, #176ea6, transparent 65%), #064c82;
-  position: relative;
+  padding: 24px;
+  background: var(--app-bg);
 }
-.login-language { position: absolute; top: max(24px, env(safe-area-inset-top)); right: 24px; }
 .login-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 360px;
   overflow: hidden;
-  border-radius: 32px;
-  background: #fff;
-  box-shadow: 0 28px 80px #002d5460;
+  border: 1px solid var(--app-line);
+  border-radius: 20px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
 }
-.login-art { height: 340px; position: relative; overflow: hidden; background: #08639f; }
-.login-blob, .login-dot { position: absolute; display: block; }
-.login-blob-one { width: 370px; height: 220px; left: -140px; top: -75px; border-radius: 45% 55% 60% 40%; background: #034e85; transform: rotate(-24deg); }
-.login-blob-two { width: 300px; height: 170px; right: -90px; bottom: 15px; border-radius: 60% 40% 45% 55%; background: #1380bd; transform: rotate(20deg); }
-.login-dot { border-radius: 50%; background: #f3c526; }
-.login-dot-one { width: 30px; height: 30px; top: 35px; right: 36px; }
-.login-dot-two { width: 11px; height: 11px; left: 30px; top: 180px; opacity: .85; }
-.login-dot-three { width: 16px; height: 16px; right: 28px; bottom: 100px; background: #41a0cf; }
-.login-logo { position: absolute; width: 190px; height: 190px; object-fit: contain; top: 64px; left: 50%; transform: translateX(-50%); border-radius: 50%; box-shadow: 0 12px 30px #00365930; }
-.login-wave { position: absolute; width: 100%; height: 65px; bottom: -1px; color: #fff; }
-.login-actions { padding: 24px 32px 48px; }
+.login-art {
+  height: 144px;
+  border-bottom: 1px solid var(--app-line);
+  background-color: var(--app-surface-muted);
+  background-image: repeating-linear-gradient(135deg, transparent, transparent 15px, var(--app-line) 15px, var(--app-line) 16px);
+}
+.login-actions { padding: 28px; }
 .login-google {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  width: 100%; min-height: 56px; padding: 12px 16px;
-  border: 1px solid #dce4eb; border-radius: 14px;
-  background: #fff; color: #253649; font-weight: 600; font-size: 15px;
-  box-shadow: 0 3px 10px #16395808; cursor: pointer;
-  transition: background .15s, box-shadow .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 16px;
+  border: 1px solid var(--app-line);
+  border-radius: 12px;
+  background: var(--app-surface);
+  color: var(--app-ink);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
 }
-.login-google:hover { background: #f4f8fc; box-shadow: 0 4px 14px #16395814; }
-.login-google:focus-visible { outline: 3px solid #08639f; outline-offset: 4px; }
+.login-google:hover { background: var(--app-surface-muted); }
 .login-google:disabled { opacity: .6; cursor: wait; }
-@media (max-width: 380px) {
-  .login-page { padding-left: 16px; padding-right: 16px; }
-  .login-art { height: 300px; }
-  .login-logo { top: 45px; }
-  .login-actions { padding: 20px 24px 36px; }
-}
 
 :root {
   color-scheme: light;
@@ -290,9 +286,7 @@ textarea {
 }
 
 /* Floating menu respects notches and remains scrollable at large text sizes. */
-.menu-overlay {
-  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-}
+.menu-overlay { padding: 0; }
 .side-menu {
   animation: menu-enter 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -307,60 +301,47 @@ textarea {
 .side-menu button[aria-pressed="true"] {
   font-weight: 600;
 }
-.side-menu .appearance-option,
 .side-menu .menu-small-option {
-  font-size: 0.6875rem;
-  line-height: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
-@keyframes menu-enter {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+.side-menu {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-right: max(1rem, env(safe-area-inset-right));
 }
-.theme-toggle {
-  position: relative;
+.menu-header {
+  background-image: radial-gradient(var(--app-line) 0.6px, transparent 0.6px);
+  background-size: 10px 10px;
+}
+.theme-choice {
   display: inline-flex;
-  align-items: center;
-  justify-content: space-around;
-  width: 64px;
-  height: 30px;
-  padding: 3px;
+  gap: 4px;
+  padding: 4px;
   border: 1px solid var(--app-line);
-  border-radius: 999px;
+  border-radius: 16px;
   background: var(--app-surface-muted);
-  color: var(--app-muted);
 }
-.theme-toggle-thumb {
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--app-surface);
-  box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
-  transition: transform 180ms ease;
-}
-.theme-toggle[data-dark="true"] .theme-toggle-thumb { transform: translateX(34px); }
-.theme-toggle-icon { position: relative; width: 13px; height: 13px; }
-.theme-toggle[data-dark="false"] .theme-toggle-icon:nth-of-type(1),
-.theme-toggle[data-dark="true"] .theme-toggle-icon:nth-of-type(2) { color: var(--app-ink); }
-.theme-system {
+.theme-choice-button {
   position: relative;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 30px;
-  border-radius: 50%;
-  color: var(--app-muted);
+  width: 68px;
+  height: 56px;
+  border-radius: 12px;
+  border: 2px solid transparent;
 }
-.theme-system:hover { color: var(--app-ink); }
-.theme-system-dot {
-  position: absolute;
-  bottom: 2px;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--app-ink);
+.theme-choice-light { background: #fff; color: #272725; }
+.theme-choice-dark { background: #272725; color: #edf2f0; }
+.theme-choice-button[aria-pressed="true"] {
+  border-color: var(--app-focus);
+  box-shadow: 0 0 0 1px var(--app-focus);
+}
+.theme-choice-button:hover { opacity: 0.85; }
+.theme-choice-icon { width: 32px; height: 32px; }
+@keyframes menu-enter {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .side-menu { animation: none; }

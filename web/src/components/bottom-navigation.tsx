@@ -230,31 +230,31 @@ export default function BottomNavigation({
             aria-modal="true"
             aria-labelledby="settings-title"
             onClick={(e) => e.stopPropagation()}
-            className="side-menu native-scroll flex min-h-0 w-[min(calc(100vw-24px),18rem)] flex-col overflow-y-auto rounded-3xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 shadow-2xl"
+            className="side-menu native-scroll flex h-dvh min-h-0 w-[min(90vw,21rem)] flex-col overflow-y-auto border-l border-[var(--app-line)] bg-[var(--app-surface)] px-4 shadow-2xl"
           >
-            <div className="flex items-center justify-between gap-2 border-b border-[var(--app-line)] px-2 pt-3 pb-3">
+            <div className="menu-header flex items-center justify-between gap-2 border-b border-[var(--app-line)] px-2 pt-4 pb-4">
               <h2 id="settings-title" className="sr-only">{copy.settings}</h2>
               <div className="min-w-0 flex-1">
                 <p className="sr-only">{copy.signedInAs}</p>
-                {currentUser.personId ? <Link href={`/members/${currentUser.personId}`} onClick={() => setOpen(false)} className="flex min-w-0 items-center gap-2">{identity}</Link>
+                {currentUser.personId ? <Link href={`/members/${currentUser.personId}`} onClick={() => setOpen(false)} className="flex min-h-11 min-w-0 items-center gap-2">{identity}</Link>
                   : <div className="flex min-w-0 items-center gap-2">{identity}</div>}
               </div>
               <button
                 aria-label={copy.closeSettings}
                 onClick={() => setOpen(false)}
-                className="grid size-8 shrink-0 place-items-center rounded-xl text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)]"
+                className="grid size-11 shrink-0 place-items-center rounded-xl text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)]"
               >
-                <X className="size-4" />
+                <X className="size-5" />
               </button>
             </div>
             <AppearanceSettings locale={locale} />
             <section className="px-2 py-3">
-              <h3 className="mb-2 text-xs font-medium text-[var(--app-muted)]">{copy.language}</h3>
+              <h3 className="mb-3 text-sm font-medium text-[var(--app-muted)]">{copy.language}</h3>
               <LanguageSwitcher locale={locale} variant="flags" />
             </section>
             <section className="px-2 pt-3 pb-5">
-              <h3 className="mb-2 text-xs font-medium text-[var(--app-muted)]">{copy.textSize}</h3>
-              <div className="inline-flex gap-1 rounded-lg bg-[var(--app-surface-muted)] p-0.5">
+              <h3 className="mb-3 text-sm font-medium text-[var(--app-muted)]">{copy.textSize}</h3>
+              <div className="grid grid-cols-2 gap-1 rounded-lg bg-[var(--app-surface-muted)] p-0.5">
                 {["standard", "large"].map((size) => (
                   <button
                     key={size}
@@ -264,7 +264,7 @@ export default function BottomNavigation({
                       document.documentElement.dataset.textSize = size;
                       try { window.localStorage.setItem("directory-text-size", size); } catch {}
                     }}
-                    className={`menu-small-option min-h-8 rounded-md px-2 text-xs ${size === textSize ? "bg-[var(--app-surface)] font-semibold shadow-sm" : "text-[var(--app-muted)]"}`}
+                    className={`menu-small-option min-h-11 rounded-lg px-3 text-sm ${size === textSize ? "bg-[var(--app-surface)] font-semibold shadow-sm" : "text-[var(--app-muted)]"}`}
                   >
                     {size === "large" ? copy.largerText : copy.standardText}
                   </button>

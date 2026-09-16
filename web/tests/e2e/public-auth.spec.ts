@@ -4,7 +4,7 @@ for (const id of ["60000000-0000-4000-8000-000000000001", "not-a-uuid"]) {
   test(`member route ${id} requires authentication`, async ({ page }) => {
     await page.goto(`/members/${id}`);
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.locator(".login-logo")).toBeVisible();
+    await expect(page.locator(".login-art")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Member profile" })).toHaveCount(0);
   });
 }
@@ -59,7 +59,9 @@ test("group routes require authentication", async ({ page }) => {
 test("shows SSO-only login without Apple by default", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading")).toHaveCount(0);
-  await expect(page.locator(".login-logo")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Language" })).toHaveCount(0);
+  await expect(page.locator(".login-logo")).toHaveCount(0);
+  await expect(page.locator(".login-art")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
   ).toBeVisible();
@@ -83,13 +85,15 @@ test("login has no horizontal overflow on supported viewports", async ({
   expect(overflow).toBe(false);
   const google = page.getByRole("button", { name: "Continue with Google" });
   expect((await google.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await page.screenshot({ path: `../work/login-clean-${test.info().project.name}.png`, fullPage: true });
 });
 
-test("language choice persists and localizes the login screen", async ({
+test("saved language localizes the login without a language selector", async ({
   page,
 }) => {
   await page.goto("/login");
-  await page.getByRole("button", { name: "УКР" }).click();
+  await page.context().addCookies([{ name: "app_locale", value: "uk", url: "http://127.0.0.1:3000" }]);
+  await page.reload();
   await expect(
     page.getByRole("button", { name: "Продовжити з Google" }),
   ).toBeVisible();

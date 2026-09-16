@@ -1,52 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Monitor, Sun, Moon } from "lucide-react";
+import { useState } from "react";
 import type { Locale } from "@/lib/i18n";
 
 export default function AppearanceSettings({ locale }: { locale: Locale }) {
-  const [theme, setTheme] = useState(() =>
-    typeof document === "undefined" ? "system" : document.documentElement.dataset.themePreference || "system",
-  );
   const [dark, setDark] = useState(() =>
     typeof document !== "undefined" && document.documentElement.dataset.theme === "dark",
   );
   const uk = locale === "uk";
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const update = () => { if (theme === "system") setDark(media.matches); };
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, [theme]);
-
-  function select(value: "system" | "light" | "dark") {
-    const nextDark = value === "system" ? window.matchMedia("(prefers-color-scheme: dark)").matches : value === "dark";
-    setTheme(value);
-    setDark(nextDark);
+  function select(value: "light" | "dark") {
+    setDark(value === "dark");
     document.documentElement.dataset.themePreference = value;
-    document.documentElement.dataset.theme = nextDark ? "dark" : "light";
+    document.documentElement.dataset.theme = value;
     try { localStorage.setItem("directory-theme", value); } catch {}
   }
-
   return (
-    <section className="px-2 pt-4 pb-3">
-      <h3 className="mb-2 text-xs font-medium text-[var(--app-muted)]">{uk ? "Вигляд" : "Appearance"}</h3>
-      <div className="flex items-center gap-2">
-        <button type="button" role="switch" aria-checked={dark}
-          aria-label={uk ? "Темна тема" : "Dark theme"}
-          onClick={() => select(dark ? "light" : "dark")}
-          className="theme-toggle" data-dark={dark}>
-          <span className="theme-toggle-thumb" aria-hidden="true" />
-          <Sun aria-hidden="true" className="theme-toggle-icon" strokeWidth={1.6} />
-          <Moon aria-hidden="true" className="theme-toggle-icon" strokeWidth={1.6} />
+    <section className="px-2 pt-5 pb-4">
+      <h3 className="mb-3 text-sm font-medium text-[var(--app-muted)]">{uk ? "Вигляд" : "Appearance"}</h3>
+      <div className="theme-choice" role="group" aria-label={uk ? "Вигляд" : "Appearance"}>
+        <button type="button" aria-label={uk ? "Світла тема" : "Light theme"} aria-pressed={!dark} onClick={() => select("light")} className="theme-choice-button theme-choice-light">
+          <svg aria-hidden="true" viewBox="0 0 40 40" className="theme-choice-icon">
+            <circle cx="20" cy="20" r="8" fill="currentColor" />
+            <path d="M20 3v4m0 26v4M3 20h4m26 0h4M8 8l3 3m18 18 3 3M8 32l3-3m18-18 3-3" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+          </svg>
         </button>
-        <button type="button" aria-pressed={theme === "system"}
-          aria-label={uk ? "Системний" : "System"}
-          title={uk ? "Використовувати тему пристрою" : "Follow device appearance"}
-          onClick={() => select("system")} className="theme-system">
-          <Monitor aria-hidden="true" className="size-3.5" strokeWidth={1.6} />
-          {theme === "system" && <span aria-hidden="true" className="theme-system-dot" />}
+        <button type="button" aria-label={uk ? "Темна тема" : "Dark theme"} aria-pressed={dark} onClick={() => select("dark")} className="theme-choice-button theme-choice-dark">
+          <svg aria-hidden="true" viewBox="0 0 40 40" className="theme-choice-icon"><path fill="currentColor" d="M24 3A17 17 0 1 0 37 27 17 17 0 0 1 24 3Z" /></svg>
         </button>
       </div>
     </section>
