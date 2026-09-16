@@ -193,15 +193,22 @@ try {
   ).toHaveCount(0);
   await expect(
     page
-      .getByRole("link", { name: "First member", exact: true })
+      .getByRole("button", {
+        name: "Choose a person: First member",
+        exact: true,
+      })
       .locator("img"),
   ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "First member", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByText("Select", { exact: true })).toHaveCount(0);
   await page
     .getByRole("button", { name: "Choose a person: First member", exact: true })
     .click();
   await expect(
     page.getByRole("link", { name: "First member", exact: true }),
-  ).toHaveAttribute("href", "/members/member");
+  ).toHaveCount(0);
   await expect(page.locator('input[name="personId"]')).toHaveValue("member");
   await expect(page.getByLabel("First Deacon", { exact: true })).toBeChecked();
   await expect(page.getByLabel("Second Deacon", { exact: true })).toBeChecked();
@@ -210,7 +217,10 @@ try {
   await page.getByLabel("Search people").fill("Other");
   await expect(
     page
-      .getByRole("link", { name: "Other member", exact: true })
+      .getByRole("button", {
+        name: "Choose a person: Other member",
+        exact: true,
+      })
       .locator("img"),
   ).toHaveCount(0);
   await page
@@ -587,7 +597,7 @@ try {
     .poll(() => page.evaluate(() => window.destination))
     .toBe("/login");
   console.log(
-    "Visitation/admin UI passed: canonical member links, unavailable identities, separate selection controls, shared BackButton, group selections, recipient defaults/overrides, save failure/recovery, editing, response changes, Ukrainian, light/dark, large text, 320/375/460px.",
+    "Visitation/admin UI passed: row-based person selection, canonical detail links, unavailable identities, shared BackButton, group selections, recipient defaults/overrides, save failure/recovery, editing, response changes, Ukrainian, light/dark, large text, 320/375/460px.",
   );
 } finally {
   if (browser) await browser.close();

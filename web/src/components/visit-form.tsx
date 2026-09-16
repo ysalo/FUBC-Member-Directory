@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Search, X } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import VisitMemberLink from "@/components/visit-member-link";
 import { useRouter } from "next/navigation";
 import { mutateVisit } from "@/app/visitation/actions";
@@ -101,6 +101,7 @@ export default function VisitForm({
                   name={person.name}
                   photoPath={person.photoPath}
                   showPhoto
+                  profileLink={false}
                   locale={locale}
                 />
               )}
@@ -149,43 +150,42 @@ export default function VisitForm({
                         .includes(query.trim().toLocaleLowerCase(locale)),
                     )
                     .map((m) => (
-                      <div
+                      <button
                         key={m.id}
-                        className="flex min-h-12 items-center justify-between gap-3 border-b border-[var(--app-line)] px-2 py-3"
+                        type="button"
+                        aria-label={`${c.choosePerson}: ${m.name}`}
+                        aria-pressed={person?.id === m.id}
+                        className="flex min-h-14 w-full items-center justify-between gap-3 border-b border-[var(--app-line)] px-2 py-3 text-left hover:bg-[var(--app-brand-soft)] focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--app-focus)] aria-pressed:bg-[var(--app-brand-soft)]"
+                        onClick={() => {
+                          setPerson(m);
+                          setLocation(m.address);
+                          setSelected(
+                            deacons
+                              .filter(
+                                (d) => m.groupId && d.group_id === m.groupId,
+                              )
+                              .map((d) => d.id),
+                          );
+                          setChoosing(false);
+                          setQuery("");
+                        }}
                       >
                         <VisitMemberLink
                           personId={m.id}
                           name={m.name}
                           photoPath={m.photoPath}
                           showPhoto
+                          profileLink={false}
                           locale={locale}
                         />
-                        <button
-                          type="button"
-                          aria-label={`${c.choosePerson}: ${m.name}`}
-                          aria-pressed={person?.id === m.id}
-                          className="min-h-11 shrink-0 rounded-md px-3 text-sm text-[var(--app-brand)] hover:bg-[var(--app-brand-soft)]"
-                          onClick={() => {
-                            setPerson(m);
-                            setLocation(m.address);
-                            setSelected(
-                              deacons
-                                .filter(
-                                  (d) => m.groupId && d.group_id === m.groupId,
-                                )
-                                .map((d) => d.id),
-                            );
-                            setChoosing(false);
-                            setQuery("");
-                          }}
-                        >
-                          {person?.id === m.id
-                            ? "✓"
-                            : locale === "uk"
-                              ? "Обрати"
-                              : "Select"}
-                        </button>
-                      </div>
+                        {person?.id === m.id && (
+                          <Check
+                            aria-hidden="true"
+                            className="size-5 shrink-0 text-[var(--app-brand)]"
+                            strokeWidth={2.5}
+                          />
+                        )}
+                      </button>
                     ))}
                   {!members.some((m) =>
                     m.name
@@ -212,6 +212,7 @@ export default function VisitForm({
                   name={person.name}
                   photoPath={person.photoPath}
                   showPhoto
+                  profileLink={false}
                   locale={locale}
                 />
               )}

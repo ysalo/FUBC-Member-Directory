@@ -7,12 +7,14 @@ export default function VisitMemberLink({
   name,
   photoPath,
   showPhoto = false,
+  profileLink = true,
   locale,
 }: {
   personId?: string | null;
   name: string;
   photoPath?: string | null;
   showPhoto?: boolean;
+  profileLink?: boolean;
   locale: Locale;
 }) {
   const content = (
@@ -21,6 +23,10 @@ export default function VisitMemberLink({
       <span className="min-w-0 break-words">{name}</span>
     </>
   );
+  if (!profileLink)
+    return (
+      <span className="inline-flex min-w-0 items-center gap-3">{content}</span>
+    );
   return personId ? (
     <Link
       href={`/members/${personId}`}
