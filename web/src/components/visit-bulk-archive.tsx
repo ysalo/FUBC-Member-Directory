@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Archive } from "lucide-react";
+import { Archive, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { archiveVisits } from "@/app/visitation/actions";
 import { visitCopy } from "@/lib/visitation";
@@ -87,8 +87,24 @@ export default function VisitBulkArchive({
   return (
     <ArchiveSelection.Provider value={context}>
       {!!items.length && (
-        <div className="mb-5 rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-3">
-          <div className="flex flex-wrap items-center gap-3">
+        <div
+          data-testid="bulk-archive-toolbar"
+          role="toolbar"
+          aria-label={c.bulkArchiveTools}
+          className="sticky top-[env(safe-area-inset-top)] z-30 -mx-1 mb-5 rounded-2xl border border-[var(--app-line)] bg-[color-mix(in_srgb,var(--app-surface)_94%,transparent)] p-2 shadow-lg shadow-black/8 backdrop-blur-xl"
+        >
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 min-[460px]:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <div
+              className="flex min-h-11 min-w-0 items-center gap-2 px-2"
+              aria-live="polite"
+            >
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--app-brand-soft)] text-sm font-bold text-[var(--app-brand)]">
+                {selected.size}
+              </span>
+              <span className="truncate text-sm font-medium text-[var(--app-muted)]">
+                {c.selectedVisits}
+              </span>
+            </div>
             <button
               type="button"
               disabled={busy}
@@ -99,21 +115,16 @@ export default function VisitBulkArchive({
                     : new Set(items.map((item) => item.id)),
                 )
               }
-              className="min-h-11 rounded-xl px-3 text-sm font-semibold text-[var(--app-brand)] hover:bg-[var(--app-brand-soft)] disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold whitespace-nowrap text-[var(--app-brand)] hover:bg-[var(--app-brand-soft)] disabled:opacity-50"
             >
+              <CheckCheck aria-hidden="true" className="size-4 shrink-0" />
               {allSelected ? c.clearSelection : c.selectAll}
             </button>
-            <span
-              className="mr-auto text-sm text-[var(--app-muted)]"
-              aria-live="polite"
-            >
-              {selected.size} {c.selectedVisits}
-            </span>
             <button
               type="button"
               disabled={busy || selected.size === 0}
               onClick={runArchive}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--app-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-45"
+              className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--app-brand)] px-4 py-2 text-sm font-semibold whitespace-nowrap text-white disabled:bg-[var(--app-surface-muted)] disabled:text-[var(--app-muted)] min-[460px]:col-span-1"
             >
               <Archive aria-hidden="true" className="size-4" />
               {busy ? c.saving : c.archiveSelected}

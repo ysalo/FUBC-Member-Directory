@@ -40,6 +40,7 @@ function App(){
     {mode==='bulk'?<VisitBulkArchive locale={locale} items={[{id:'visit-one',revision:2,memberName:'First member'},{id:'visit-two',revision:4,memberName:'Other member'}]}>
       <article className="relative mb-3 min-h-20 rounded-2xl border p-4 pr-14"><p>First member</p><VisitArchiveCheckbox id="visit-one" memberName="First member" locale={locale}/></article>
       <article className="relative min-h-20 rounded-2xl border p-4 pr-14"><p>Other member</p><VisitArchiveCheckbox id="visit-two" memberName="Other member" locale={locale}/></article>
+      <div className="h-[1200px]" aria-hidden="true" />
     </VisitBulkArchive>:mode==='groups'?<GroupManagement
       locale={locale}
       groups={[{id:'group',name:'Fixture group',memberIds:['member','archived'],deacons:[{id:'d1',name:'First Deacon',status:'active',personId:'deacon-person-1',phone:null}]}]}
@@ -182,6 +183,18 @@ try {
   expect(save.deacons).toEqual(["d1", "d3"]);
   expect(save.location).toBe("Alternate meeting place");
   await page.goto(url + "/?mode=bulk");
+  const bulkToolbar = page.getByRole("toolbar", {
+    name: "Bulk archive controls",
+  });
+  expect(
+    await bulkToolbar.evaluate((node) => getComputedStyle(node).position),
+  ).toBe("sticky");
+  await page.evaluate(() => scrollTo(0, 500));
+  const firstStickyTop = (await bulkToolbar.boundingBox()).y;
+  await page.evaluate(() => scrollTo(0, 850));
+  const secondStickyTop = (await bulkToolbar.boundingBox()).y;
+  expect(Math.abs(firstStickyTop - secondStickyTop)).toBeLessThanOrEqual(1);
+  await page.evaluate(() => scrollTo(0, 0));
   await page.screenshot({
     path: resolve(dir, "bulk-archive.png"),
     fullPage: true,
@@ -195,7 +208,10 @@ try {
   await page.getByRole("button", { name: "Select all", exact: true }).click();
   await expect(page.getByLabel("Select visit with First member")).toBeChecked();
   await expect(page.getByLabel("Select visit with Other member")).toBeChecked();
-  await expect(page.getByText("2 selected", { exact: true })).toBeVisible();
+  await expect(bulkToolbar.getByText("2", { exact: true })).toBeVisible();
+  await expect(
+    bulkToolbar.getByText("selected", { exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Clear selection", exact: true })
     .click();
