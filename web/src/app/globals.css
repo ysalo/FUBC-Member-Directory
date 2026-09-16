@@ -509,6 +509,13 @@ textarea {
 .language-select option {
   background: var(--app-surface);
 }
+.language-select:focus-within {
+  outline: 3px solid var(--app-focus);
+  outline-offset: 2px;
+}
+.language-select select:focus-visible {
+  outline: none;
+}
 .text-size-stepper {
   display: flex;
   position: relative;
@@ -805,4 +812,36 @@ h1:not(.sr-only) {
     font-size: 0.65rem;
     overflow-wrap: anywhere;
   }
+}
+
+/* The main directory keeps its preferred dark presentation across theme choices. */
+.directory-home {
+  color-scheme: dark;
+  --app-focus: #e1b75c;
+  --app-bg: #0b1722;
+  --app-surface: #122331;
+  --app-surface-muted: #1d3242;
+  --app-ink: #f5f1e8;
+  --app-muted: #afbdc8;
+  --app-line: #324857;
+  --app-primary: #24516f;
+  --app-brand: #a9d1e8;
+  --app-brand-strong: #346685;
+  --app-brand-soft: #233d50;
+  --app-shadow: 0 18px 60px rgb(0 0 0 / 25%);
+}
+html[data-theme="dark"] .bottom-navigation-item[aria-current="page"],
+.directory-home .bottom-navigation-item[aria-current="page"] {
+  color: #a9d1e8;
+}
+html[data-theme="dark"] .bottom-navigation-item[aria-current="page"]::before,
+.directory-home .bottom-navigation-item[aria-current="page"]::before {
+  border-color: rgb(169 209 232 / 24%);
+  background: rgb(35 61 80 / 88%);
+  box-shadow: 0 2px 10px rgb(80 145 184 / 10%);
+}
+
+html[data-theme="dark"] .language-select:focus-within,
+.directory-home .language-select:focus-within {
+  outline-color: #a9d1e8;
 }

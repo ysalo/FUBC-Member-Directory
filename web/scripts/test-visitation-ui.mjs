@@ -417,6 +417,10 @@ try {
         await expect(menu.getByRole("button").last()).toBeFocused();
         await page.keyboard.press("Tab");
         await expect(menu.locator('a[href], button').first()).toBeFocused();
+        const language = menu.getByRole("combobox");
+        await language.focus();
+        expect(await language.evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("none");
+        expect(await language.locator("..").evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("solid");
         await page.screenshot({ path: resolve(dir, `menu-${locale}-${theme}-${width}-${height}.png`), animations: "disabled" });
         const bounds = await menu.boundingBox();
         expect(Math.round(bounds.x + bounds.width)).toBe(width);
