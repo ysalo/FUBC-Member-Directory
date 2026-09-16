@@ -50,13 +50,13 @@ export default function LoginClient({ locale }: { locale: Locale }) {
     setLoading(provider);
     setError("");
     try {
-    const next = safeNextPath(searchParams.get("next"));
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
-    const { error: authError } = await createClient().auth.signInWithOAuth({
-      provider,
-      options: { redirectTo },
-    });
-    if (authError) throw authError;
+      const next = safeNextPath(searchParams.get("next"));
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const { error: authError } = await createClient().auth.signInWithOAuth({
+        provider,
+        options: { redirectTo },
+      });
+      if (authError) throw authError;
     } catch {
       setLoading(null);
       setError(copy.providerUnavailable);
@@ -69,26 +69,63 @@ export default function LoginClient({ locale }: { locale: Locale }) {
         aria-label={locale === "uk" ? "Вхід" : "Login"}
       >
         <div className="login-art" aria-hidden="true">
-          <svg className="login-contours" viewBox="0 0 1440 1000" preserveAspectRatio="xMidYMin slice">
-            <defs>
-              <pattern id="login-contour-pattern" width="480" height="320" patternUnits="userSpaceOnUse" patternTransform="rotate(-18)">
-                <g fill="none" stroke="currentColor" strokeWidth="1">
-                  <path d="M0 40C80-60 160-60 240 40S400 140 480 40" />
-                  <path d="M0 60C80-40 160-40 240 60S400 160 480 60" />
-                  <path d="M0 80C80-20 160-20 240 80S400 180 480 80" />
-                  <path d="M0 100C80 0 160 0 240 100S400 200 480 100" />
-                  <path d="M0 120C80 20 160 20 240 120S400 220 480 120" />
-                  <path d="M0 140C80 40 160 40 240 140S400 240 480 140" />
-                  <path d="M0 160C80 60 160 60 240 160S400 260 480 160" />
-                  <path d="M0 180C80 80 160 80 240 180S400 280 480 180" />
-                </g>
-              </pattern>
-            </defs>
-            <rect width="1440" height="1000" fill="url(#login-contour-pattern)" />
+          <svg
+            className="login-contours"
+            viewBox="0 0 1440 1000"
+            preserveAspectRatio="xMidYMin slice"
+          >
+            <g fill="none" stroke="currentColor" strokeWidth="1">
+              <path d="M-180 -100C120 -300 300 100 600 -65S1100 -280 1620 -90" />
+              <path d="M-180 -70C120 -270 300 130 600 -35S1100 -250 1620 -60" />
+              <path d="M-180 -40C120 -240 300 160 600 -5S1100 -220 1620 -30" />
+              <path d="M-180 -10C120 -210 300 190 600 25S1100 -190 1620 0" />
+              <path d="M-180 20C120 -180 300 220 600 55S1100 -160 1620 30" />
+              <path d="M-180 50C120 -150 300 250 600 85S1100 -130 1620 60" />
+              <path d="M-180 80C120 -120 300 280 600 115S1100 -100 1620 90" />
+              <path d="M-180 110C120 -90 300 310 600 145S1100 -70 1620 120" />
+              <path d="M-180 140C120 -60 300 340 600 175S1100 -40 1620 150" />
+              <path d="M-180 170C120 -30 300 370 600 205S1100 -10 1620 180" />
+              <path d="M-180 200C120 0 300 400 600 235S1100 20 1620 210" />
+              <path d="M-180 230C120 30 300 430 600 265S1100 50 1620 240" />
+              <path d="M-180 260C120 60 300 460 600 295S1100 80 1620 270" />
+              <path d="M-180 290C120 90 300 490 600 325S1100 110 1620 300" />
+              <path d="M-180 320C120 120 300 520 600 355S1100 140 1620 330" />
+              <path d="M-180 350C120 150 300 550 600 385S1100 170 1620 360" />
+              <path d="M-180 380C120 180 300 580 600 415S1100 200 1620 390" />
+              <path d="M-180 410C120 210 300 610 600 445S1100 230 1620 420" />
+              <path d="M-180 440C120 240 300 640 600 475S1100 260 1620 450" />
+              <path d="M-180 470C120 270 300 670 600 505S1100 290 1620 480" />
+              <path d="M-180 500C120 300 300 700 600 535S1100 320 1620 510" />
+              <path d="M-180 530C120 330 300 730 600 565S1100 350 1620 540" />
+              <path d="M-180 560C120 360 300 760 600 595S1100 380 1620 570" />
+              <path d="M-180 590C120 390 300 790 600 625S1100 410 1620 600" />
+              <path d="M-180 620C120 420 300 820 600 655S1100 440 1620 630" />
+              <path d="M-180 650C120 450 300 850 600 685S1100 470 1620 660" />
+              <path d="M-180 680C120 480 300 880 600 715S1100 500 1620 690" />
+              <path d="M-180 710C120 510 300 910 600 745S1100 530 1620 720" />
+              <path d="M-180 740C120 540 300 940 600 775S1100 560 1620 750" />
+              <path d="M-180 770C120 570 300 970 600 805S1100 590 1620 780" />
+              <path d="M-180 800C120 600 300 1000 600 835S1100 620 1620 810" />
+              <path d="M-180 830C120 630 300 1030 600 865S1100 650 1620 840" />
+              <path d="M-180 860C120 660 300 1060 600 895S1100 680 1620 870" />
+              <path d="M-180 890C120 690 300 1090 600 925S1100 710 1620 900" />
+              <path d="M-180 920C120 720 300 1120 600 955S1100 740 1620 930" />
+              <path d="M-180 950C120 750 300 1150 600 985S1100 770 1620 960" />
+              <path d="M-180 980C120 780 300 1180 600 1015S1100 800 1620 990" />
+              <path d="M-180 1010C120 810 300 1210 600 1045S1100 830 1620 1020" />
+              <path d="M-180 1040C120 840 300 1240 600 1075S1100 860 1620 1050" />
+              <path d="M-180 1070C120 870 300 1270 600 1105S1100 890 1620 1080" />
+              <path d="M-180 1100C120 900 300 1300 600 1135S1100 920 1620 1110" />
+            </g>
           </svg>
         </div>
         <div className="login-actions">
-          <h1 className="login-title">FUBC<span>{locale === "uk" ? "Довідник членів церкви" : "Member Directory"}</span></h1>
+          <h1 className="login-title">
+            FUBC
+            <span>
+              {locale === "uk" ? "Довідник членів церкви" : "Member Directory"}
+            </span>
+          </h1>
           <button
             type="button"
             onClick={() => signIn("google")}
@@ -99,7 +136,9 @@ export default function LoginClient({ locale }: { locale: Locale }) {
             <ProviderIcon provider="google" />
             {loading === "google" ? copy.openingGoogle : copy.continueGoogle}
           </button>
-          <p role="status" className="sr-only">{loading === "google" ? copy.openingGoogle : ""}</p>
+          <p role="status" className="sr-only">
+            {loading === "google" ? copy.openingGoogle : ""}
+          </p>
           {error && (
             <p
               role="alert"
