@@ -268,7 +268,7 @@ export default function BottomNavigation({
                     <Link
                       href={`/members/${currentUser.personId}`}
                       onClick={() => setOpen(false)}
-                      className="flex min-h-11 min-w-0 items-center gap-2"
+                      className="menu-profile flex min-h-11 min-w-0 items-center gap-2"
                     >
                       {identity}
                     </Link>
@@ -281,9 +281,9 @@ export default function BottomNavigation({
                 <button
                   aria-label={copy.closeSettings}
                   onClick={() => setOpen(false)}
-                  className="menu-close grid size-11 shrink-0 place-items-center rounded-xl"
+                  className="menu-close grid size-14 shrink-0 place-items-center rounded-2xl"
                 >
-                  <X className="size-5" />
+                  <X className="size-7" strokeWidth={1.75} />
                 </button>
               </div>
               <AppearanceSettings locale={locale} />

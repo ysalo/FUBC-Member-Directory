@@ -416,9 +416,20 @@ textarea {
 }
 .menu-close {
   position: absolute;
-  right: 12px;
-  top: max(12px, env(safe-area-inset-top));
+  right: 8px;
+  top: max(8px, env(safe-area-inset-top));
   color: #fff;
+}
+.menu-close:hover,
+.menu-close:focus-visible {
+  background: rgb(255 255 255 / 12%);
+}
+.menu-profile {
+  border-radius: 12px;
+}
+.menu-profile:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--app-surface-muted) 72%, transparent);
 }
 .menu-header {
   background: none;

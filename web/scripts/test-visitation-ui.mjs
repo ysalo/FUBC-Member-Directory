@@ -412,7 +412,12 @@ try {
         const fit = await menu.evaluate((node) => ({height:node.clientHeight,scroll:node.scrollHeight,children:[...node.children].map(c=>({class:c.className,height:c.getBoundingClientRect().height}))}));
         if(fit.scroll>fit.height) console.log(JSON.stringify({width,height,locale,theme,fit}));
         expect(fit.scroll <= fit.height).toBe(true);
-        await expect(menu.locator('a[href], button').first()).toBeFocused();
+        const profile = menu.locator('a[href], button').first();
+        await expect(profile).toBeFocused();
+        expect(await profile.evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("none");
+        const closeBounds = await menu.getByRole("button", { name: locale === "uk" ? "Закрити меню" : "Close menu" }).boundingBox();
+        expect(closeBounds.width).toBeGreaterThanOrEqual(56);
+        expect(closeBounds.height).toBeGreaterThanOrEqual(56);
         await page.keyboard.press("Shift+Tab");
         await expect(menu.getByRole("button").last()).toBeFocused();
         await page.keyboard.press("Tab");
