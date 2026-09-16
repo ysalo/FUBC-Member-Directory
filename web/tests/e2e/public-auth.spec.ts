@@ -58,7 +58,7 @@ test("group routes require authentication", async ({ page }) => {
 
 test("shows SSO-only login without Apple by default", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("heading")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "FIBC Member Directory" })).toBeVisible();
   await expect(page.getByRole("group", { name: "Language" })).toHaveCount(0);
   await expect(page.locator(".login-logo")).toHaveCount(0);
   await expect(page.locator(".login-art")).toBeVisible();
@@ -85,6 +85,9 @@ test("login has no horizontal overflow on supported viewports", async ({
   expect(overflow).toBe(false);
   const google = page.getByRole("button", { name: "Continue with Google" });
   expect((await google.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  const canvas = await page.locator(".login-page").boundingBox();
+  expect(canvas?.width).toBe(page.viewportSize()?.width);
+  expect(canvas?.height).toBeGreaterThanOrEqual(page.viewportSize()!.height);
   await page.screenshot({ path: `../work/login-clean-${test.info().project.name}.png`, fullPage: true });
 });
 

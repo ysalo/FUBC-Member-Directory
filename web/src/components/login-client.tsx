@@ -68,8 +68,27 @@ export default function LoginClient({ locale }: { locale: Locale }) {
         className="login-card native-enter"
         aria-label={locale === "uk" ? "Вхід" : "Login"}
       >
-        <div className="login-art" aria-hidden="true" />
+        <div className="login-art" aria-hidden="true">
+          <svg className="login-contours" viewBox="0 0 1440 1000" preserveAspectRatio="xMidYMin slice">
+            <defs>
+              <pattern id="login-contour-pattern" width="480" height="320" patternUnits="userSpaceOnUse" patternTransform="rotate(-18)">
+                <g fill="none" stroke="currentColor" strokeWidth="1">
+                  <path d="M0 40C80-60 160-60 240 40S400 140 480 40" />
+                  <path d="M0 60C80-40 160-40 240 60S400 160 480 60" />
+                  <path d="M0 80C80-20 160-20 240 80S400 180 480 80" />
+                  <path d="M0 100C80 0 160 0 240 100S400 200 480 100" />
+                  <path d="M0 120C80 20 160 20 240 120S400 220 480 120" />
+                  <path d="M0 140C80 40 160 40 240 140S400 240 480 140" />
+                  <path d="M0 160C80 60 160 60 240 160S400 260 480 160" />
+                  <path d="M0 180C80 80 160 80 240 180S400 280 480 180" />
+                </g>
+              </pattern>
+            </defs>
+            <rect width="1440" height="1000" fill="url(#login-contour-pattern)" />
+          </svg>
+        </div>
         <div className="login-actions">
+          <h1 className="login-title">FIBC<span>{locale === "uk" ? "Довідник членів церкви" : "Member Directory"}</span></h1>
           <button
             type="button"
             onClick={() => signIn("google")}
