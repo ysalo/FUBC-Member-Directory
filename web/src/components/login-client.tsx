@@ -88,7 +88,7 @@ export default function LoginClient({ locale }: { locale: Locale }) {
           </svg>
         </div>
         <div className="login-actions">
-          <h1 className="login-title">FIBC<span>{locale === "uk" ? "Довідник членів церкви" : "Member Directory"}</span></h1>
+          <h1 className="login-title">FUBC<span>{locale === "uk" ? "Довідник членів церкви" : "Member Directory"}</span></h1>
           <button
             type="button"
             onClick={() => signIn("google")}

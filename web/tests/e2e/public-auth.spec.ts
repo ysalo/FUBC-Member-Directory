@@ -58,7 +58,7 @@ test("group routes require authentication", async ({ page }) => {
 
 test("shows SSO-only login without Apple by default", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "FIBC Member Directory" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "FUBC Member Directory" })).toBeVisible();
   await expect(page.getByRole("group", { name: "Language" })).toHaveCount(0);
   await expect(page.locator(".login-logo")).toHaveCount(0);
   await expect(page.locator(".login-art")).toBeVisible();
