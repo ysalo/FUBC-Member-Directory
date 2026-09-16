@@ -2,7 +2,7 @@ import Link from "@/components/navigation-link";
 import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { visitCopy, formatVisitDate, type Visit } from "@/lib/visitation";
-import { CalendarDays, ChevronRight, Search, X } from "lucide-react";
+import { CalendarDays, Check, Clock, Search, X } from "lucide-react";
 import VisitMemberLink from "@/components/visit-member-link";
 import { loadVisitIdentities } from "@/lib/member-profile-data";
 import VisitBulkArchive, {
@@ -56,15 +56,17 @@ export default async function VisitationPage({
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 py-5">
         <h1 className="text-2xl font-semibold">{c.title}</h1>
-        {canManage && (
+      </div>
+      {canManage && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl justify-end px-5 pb-2">
           <Link
             href="/visitation/new"
-            className="inline-flex min-h-11 items-center rounded-xl bg-[var(--app-brand)] px-4 py-2 text-sm font-semibold text-white"
+            className="pointer-events-auto inline-flex min-h-12 items-center rounded-xl bg-[var(--app-brand)] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-black/20"
           >
             {c.request}
           </Link>
-        )}
-      </div>
+        </div>
+      )}
       <nav
         aria-label={
           locale === "uk" ? "Розділи відвідувань" : "Visitation sections"
@@ -185,10 +187,6 @@ export default async function VisitationPage({
                             className="size-4 shrink-0"
                           />
                           {formatVisitDate(v.scheduled_at, locale)}
-                          <ChevronRight
-                            aria-hidden="true"
-                            className="ml-auto size-4 shrink-0"
-                          />
                         </p>
                         <p className="text-sm text-[var(--app-muted)]">
                           {c.requester}:{" "}
@@ -200,30 +198,42 @@ export default async function VisitationPage({
                             />
                           </span>
                         </p>
-                        <p className="mt-2 text-sm text-[var(--app-muted)]">
-                          {archived ? c.archived : c[v.status]}
+                        <p className="mt-2 text-sm font-medium text-[var(--app-muted)]">
+                          {c[archived ? "completed" : v.status]}
                         </p>
-                        <ul className="space-y-1 text-sm text-[var(--app-muted)]">
-                          {v.visit_recipients.map((recipient) => (
-                            <li key={recipient.deacon_id}>
-                              <span className="pointer-events-auto">
-                                <VisitMemberLink
-                                  personId={recipient.deacon_person_id}
-                                  name={recipient.deacon_name}
-                                  locale={locale}
-                                />
-                              </span>
-                              {": "}
-                              {c[recipient.response]}
-                            </li>
-                          ))}
+                        <ul className="mt-3 space-y-2 border-t border-[var(--app-line)] pt-3 text-sm">
+                          {v.visit_recipients.map((recipient) => {
+                            const ResponseIcon =
+                              recipient.response === "accepted" ? Check : Clock;
+                            return (
+                              <li
+                                key={recipient.deacon_id}
+                                className="flex min-w-0 items-center justify-between gap-3"
+                              >
+                                <span className="pointer-events-auto min-w-0 text-[var(--app-muted)]">
+                                  <VisitMemberLink
+                                    personId={recipient.deacon_person_id}
+                                    name={recipient.deacon_name}
+                                    locale={locale}
+                                  />
+                                </span>
+                                <span
+                                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${recipient.response === "accepted" ? "bg-[var(--app-brand-soft)] text-[var(--app-brand)]" : recipient.response === "declined" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}
+                                >
+                                  {recipient.response === "declined" ? (
+                                    <X aria-hidden="true" className="size-3.5" />
+                                  ) : (
+                                    <ResponseIcon
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                    />
+                                  )}
+                                  {c[recipient.response]}
+                                </span>
+                              </li>
+                            );
+                          })}
                         </ul>
-                        {v.status === "open" &&
-                          v.visit_recipients.some(
-                            (r) => r.response === "accepted",
-                          ) && (
-                            <span className="block text-sm">{c.confirmed}</span>
-                          )}
                         {r &&
                           v.revision > 1 &&
                           r.last_viewed_revision < v.revision && (

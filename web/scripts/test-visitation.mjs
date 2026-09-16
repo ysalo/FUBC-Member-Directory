@@ -41,6 +41,13 @@ const archiveCurrent = await readFile(
   ),
   "utf8",
 );
+const archiveCompletes = await readFile(
+  new URL(
+    "../supabase/migrations/20260916010000_archive_completes_visits.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 for (const upgrade of [true, false]) {
   const db = new PGlite();
   await db.exec(`create role authenticated;create role anon;create schema auth;create schema storage;
@@ -55,6 +62,7 @@ for (const upgrade of [true, false]) {
   await db.exec(lifecycle);
   await db.exec(archive);
   await db.exec(archiveCurrent);
+  await db.exec(archiveCompletes);
   for (let n = 1; n <= 6; n++)
     await db.query("insert into auth.users(id,email) values($1,$2)", [
       id(n),
@@ -356,6 +364,12 @@ for (const upgrade of [true, false]) {
       [openArchive],
     ),
     true,
+  );
+  assert.equal(
+    await scalar("select status from public.visit_requests where id=$1", [
+      openArchive,
+    ]),
+    "completed",
   );
   await db.exec("reset role");
   await db.exec(baseline);
