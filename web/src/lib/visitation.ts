@@ -18,6 +18,7 @@ export type Visit = {
   member_name: string;
   member_address: string;
   member_photo?: string | null;
+  member_phone?: string | null;
   member_available?: boolean;
   location: string;
   scheduled_at: string;

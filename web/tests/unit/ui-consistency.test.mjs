@@ -238,7 +238,7 @@ test("menu identity prefers the linked member photo and falls back for unlinked 
   assert.equal(unlinked.photoPath, null);
 });
 
-test("Menu shows identity and photo and stays available on member-edit pages", async () => {
+test("Menu shows a compact identity header and stays available on member-edit pages", async () => {
   const react = require("react");
   const navigation = await load("components/bottom-navigation.tsx", {
     react: {
@@ -280,6 +280,7 @@ test("Menu shows identity and photo and stays available on member-edit pages", a
     assert.match(html, /Close menu/);
     assert.match(html, /Signed in as/);
     assert.match(html, /Test Member/);
+    assert.match(html, /member@example\.invalid/);
     assert.match(html, /src="\/portrait.png"/);
     if (personId) assert.match(html, new RegExp(`href="/members/${personId}"`));
     else {
