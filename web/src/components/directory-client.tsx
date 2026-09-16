@@ -556,7 +556,7 @@ export default function DirectoryClient({
     );
 
   const searchBar = (
-    <div className="z-30 flex-none border-b border-[var(--app-line)] bg-white/92 px-4 backdrop-blur-xl">
+    <div className={`${filtersOpen ? "relative z-50" : "z-30"} flex-none border-b border-[var(--app-line)] bg-white/92 px-4 backdrop-blur-xl`}>
       <div className="directory-search flex min-h-11 items-center gap-3 px-1">
         <Search className="size-5 shrink-0 text-slate-400" />
         <input

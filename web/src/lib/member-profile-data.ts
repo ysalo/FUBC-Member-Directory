@@ -29,11 +29,12 @@ export async function loadVisitIdentities(supabase: Client, visits: Visit[]) {
     ]),
   );
   const personIds = [...new Set(visits.map((visit) => visit.person_id))];
+  const contactPersonIds = [...new Set([...personIds, ...identities.values()])];
   const [{ data: people, error }, photos] = await Promise.all([
     supabase
       .from("people")
-      .select("id")
-      .in("id", personIds)
+      .select("id,phone")
+      .in("id", contactPersonIds)
       .is("archived_at", null),
     loadVisitPhotos(supabase, [...personIds, ...identities.values()]),
   ]);
@@ -42,6 +43,9 @@ export async function loadVisitIdentities(supabase: Client, visits: Visit[]) {
   return visits.map((visit) => ({
     ...visit,
     member_available: available.has(visit.person_id),
+    member_phone:
+      (people ?? []).find((person) => person.id === visit.person_id)?.phone ??
+      null,
     member_photo: photos.get(visit.person_id),
     pastor_person_id: identities.get(visit.pastor_id) ?? null,
     pastor_photo: photos.get(identities.get(visit.pastor_id) ?? ""),

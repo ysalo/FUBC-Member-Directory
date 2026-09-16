@@ -51,7 +51,7 @@ export default function LoginClient({ locale }: { locale: Locale }) {
     <main className="safe-page grid min-h-dvh place-items-center p-5">
       <section
         aria-labelledby="login-title"
-        className="native-enter native-shadow w-full max-w-md rounded-[2rem] border border-[var(--app-line)] bg-[var(--app-surface)] p-5 sm:p-8"
+        className="native-enter native-shadow w-full max-w-sm rounded-3xl border border-[var(--app-line)] bg-[var(--app-surface)] p-6 sm:p-8"
       >
         <div className="flex items-center gap-3">
           <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[var(--app-brand-soft)] text-[var(--app-brand)]">
@@ -67,7 +67,7 @@ export default function LoginClient({ locale }: { locale: Locale }) {
         </div>
         <h1
           id="login-title"
-          className="mt-7 text-4xl font-bold tracking-[-0.035em] text-[var(--app-ink)]"
+          className="mt-6 text-3xl font-bold tracking-[-0.035em] text-[var(--app-ink)]"
         >
           {copy.welcome}
         </h1>
@@ -95,7 +95,7 @@ export default function LoginClient({ locale }: { locale: Locale }) {
             </button>
           ))}
         </div>
-        <div className="mt-5 space-y-3">
+        <div className="mt-7 space-y-3">
           <button
             type="button"
             onClick={() => signIn("google")}
