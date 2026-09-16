@@ -104,7 +104,10 @@ const { css } = await postcss([
   require("@tailwindcss/postcss")({ base: root }),
 ]).process(await readFile(cssSource, "utf8"), { from: cssSource });
 const server = createServer(async (req, res) => {
-  if (req.url === "/bundle.js") {
+  if (req.url === "/brand-contours.svg") {
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.end(await readFile(resolve(root, "public/brand-contours.svg")));
+  } else if (req.url === "/bundle.js") {
     res.setHeader("Content-Type", "text/javascript; charset=utf-8");
     res.end(await readFile(resolve(dir, "bundle.js")));
   } else if (req.url === "/style.css") {
@@ -446,7 +449,7 @@ try {
   }
   await page.goto(url + "/?mode=pastor");
   await page.getByRole("button", { name: "Menu", exact: true }).click();
-  await expect(page.getByRole("button", { name: "English", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("combobox", { name: "Language", exact: true })).toHaveValue("en");
   await page.getByRole("dialog").getByRole("button", { name: "Sign out", exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.signedOut)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.destination)).toBe("/login");

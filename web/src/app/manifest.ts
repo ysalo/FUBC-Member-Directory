@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "A secure directory for approved members.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f3f2f0",
-    theme_color: "#454541",
+    background_color: "#f7f5f0",
+    theme_color: "#123e5b",
     icons: [
       {
         src: "/app-icon.svg",

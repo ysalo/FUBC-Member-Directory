@@ -13,5 +13,5 @@ test("system appearance follows the device and explicit preference persists", as
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue("--app-surface").trim(),
-  )).toBe("#20201e");
+  )).toBe("#122331");
 });

@@ -89,9 +89,14 @@ export default function BottomNavigation({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const background = Array.from(document.body.children)
-      .filter((element): element is HTMLElement => element instanceof HTMLElement && element !== overlay.current)
+      .filter(
+        (element): element is HTMLElement =>
+          element instanceof HTMLElement && element !== overlay.current,
+      )
       .map((element) => ({ element, inert: element.inert }));
-    background.forEach(({ element }) => { element.inert = true; });
+    background.forEach(({ element }) => {
+      element.inert = true;
+    });
     const focusable = () =>
       Array.from(
         dialog.current?.querySelectorAll<HTMLElement>(
@@ -117,7 +122,9 @@ export default function BottomNavigation({
     return () => {
       document.removeEventListener("keydown", key);
       document.body.style.overflow = previousOverflow;
-      background.forEach(({ element, inert }) => { element.inert = inert; });
+      background.forEach(({ element, inert }) => {
+        element.inert = inert;
+      });
       previous?.focus();
     };
   }, [open]);
@@ -155,14 +162,24 @@ export default function BottomNavigation({
         ]
       : []),
   ];
-  const identity = <>
-    <MemberPhoto name={currentUser.name} photoPath={currentUser.photoPath} />
-    <span className="min-w-0">
-      <span className="block break-words text-xs font-semibold">{currentUser.name}</span>
-      {!currentUser.personId && <span className="block text-[10px] text-[var(--app-muted)]">{copy.notLinked}</span>}
-      <span className="block break-all text-[10px] text-[var(--app-muted)]">{currentUser.email}</span>
-    </span>
-  </>;
+  const identity = (
+    <>
+      <MemberPhoto name={currentUser.name} photoPath={currentUser.photoPath} />
+      <span className="min-w-0">
+        <span className="block break-words text-base font-semibold">
+          {currentUser.name}
+        </span>
+        {!currentUser.personId && (
+          <span className="block text-xs text-[var(--app-muted)]">
+            {copy.notLinked}
+          </span>
+        )}
+        <span className="block break-all text-xs text-[var(--app-muted)]">
+          {currentUser.email}
+        </span>
+      </span>
+    </>
+  );
   return (
     <>
       <nav
@@ -187,7 +204,7 @@ export default function BottomNavigation({
                 {href === "/visitation" && pending !== null && pending > 0 && (
                   <span
                     aria-hidden="true"
-                    className="absolute -right-3 -top-2 grid min-h-4 min-w-4 place-items-center rounded-full bg-[#c43232] px-1 text-[10px] font-bold leading-4 text-white ring-2 ring-[var(--app-surface)]"
+                    className="absolute -right-3 -top-2 grid min-h-4 min-w-4 place-items-center rounded-full bg-[#c43232] px-1 text-xs font-bold leading-4 text-white ring-2 ring-[var(--app-surface)]"
                   >
                     {pending > 99 ? "99+" : pending}
                   </span>
@@ -217,70 +234,101 @@ export default function BottomNavigation({
           </button>
         </div>
       </nav>
-      {open && createPortal(
-        <div
-          ref={overlay}
-          className="menu-overlay native-fade fixed inset-0 z-[80] flex justify-end bg-black/35"
-          onClick={() => setOpen(false)}
-        >
-          <aside
-            ref={dialog}
-            id="directory-menu"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-title"
-            onClick={(e) => e.stopPropagation()}
-            className="side-menu native-scroll flex h-dvh min-h-0 w-[min(90vw,21rem)] flex-col overflow-y-auto border-l border-[var(--app-line)] bg-[var(--app-surface)] px-4 shadow-2xl"
+      {open &&
+        createPortal(
+          <div
+            ref={overlay}
+            className="menu-overlay native-fade fixed inset-0 z-[80] flex justify-end bg-black/35"
+            onClick={() => setOpen(false)}
           >
-            <div className="menu-header flex items-center justify-between gap-2 border-b border-[var(--app-line)] px-2 pt-4 pb-4">
-              <h2 id="settings-title" className="sr-only">{copy.settings}</h2>
-              <div className="min-w-0 flex-1">
-                <p className="sr-only">{copy.signedInAs}</p>
-                {currentUser.personId ? <Link href={`/members/${currentUser.personId}`} onClick={() => setOpen(false)} className="flex min-h-11 min-w-0 items-center gap-2">{identity}</Link>
-                  : <div className="flex min-w-0 items-center gap-2">{identity}</div>}
+            <aside
+              ref={dialog}
+              id="directory-menu"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="settings-title"
+              onClick={(e) => e.stopPropagation()}
+              className="side-menu native-scroll flex h-dvh min-h-0 w-[min(90vw,24rem)] flex-col overflow-y-auto border-l border-[var(--app-line)] bg-[var(--app-surface)] px-6 shadow-2xl"
+            >
+              <div className="menu-brand">
+                <p className="brand-wordmark">FUBC</p>
+                <p className="brand-caption">
+                  {locale === "uk"
+                    ? "Довідник членів церкви"
+                    : "Member Directory"}
+                </p>
               </div>
-              <button
-                aria-label={copy.closeSettings}
-                onClick={() => setOpen(false)}
-                className="grid size-11 shrink-0 place-items-center rounded-xl text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)]"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <AppearanceSettings locale={locale} />
-            <section className="px-2 py-3">
-              <h3 className="mb-3 text-sm font-medium text-[var(--app-muted)]">{copy.language}</h3>
-              <LanguageSwitcher locale={locale} variant="flags" />
-            </section>
-            <section className="px-2 pt-3 pb-5">
-              <h3 className="mb-3 text-sm font-medium text-[var(--app-muted)]">{copy.textSize}</h3>
-              <div className="grid grid-cols-2 gap-1 rounded-lg bg-[var(--app-surface-muted)] p-0.5">
-                {["standard", "large"].map((size) => (
-                  <button
-                    key={size}
-                    aria-pressed={size === textSize}
-                    onClick={() => {
-                      setTextSize(size);
-                      document.documentElement.dataset.textSize = size;
-                      try { window.localStorage.setItem("directory-text-size", size); } catch {}
-                    }}
-                    className={`menu-small-option min-h-11 rounded-lg px-3 text-sm ${size === textSize ? "bg-[var(--app-surface)] font-semibold shadow-sm" : "text-[var(--app-muted)]"}`}
-                  >
-                    {size === "large" ? copy.largerText : copy.standardText}
-                  </button>
-                ))}
+              <div className="menu-header flex items-center justify-between gap-2 px-0 pt-4 pb-4">
+                <h2 id="settings-title" className="sr-only">
+                  {copy.settings}
+                </h2>
+                <div className="min-w-0 flex-1">
+                  <p className="sr-only">{copy.signedInAs}</p>
+                  {currentUser.personId ? (
+                    <Link
+                      href={`/members/${currentUser.personId}`}
+                      onClick={() => setOpen(false)}
+                      className="flex min-h-11 min-w-0 items-center gap-2"
+                    >
+                      {identity}
+                    </Link>
+                  ) : (
+                    <div className="flex min-w-0 items-center gap-2">
+                      {identity}
+                    </div>
+                  )}
+                </div>
+                <button
+                  aria-label={copy.closeSettings}
+                  onClick={() => setOpen(false)}
+                  className="menu-close grid size-11 shrink-0 place-items-center rounded-xl"
+                >
+                  <X className="size-5" />
+                </button>
               </div>
-            </section>
-            <div className="mt-auto border-t border-[var(--app-line)] py-3">
-              <SignOutButton
-                variant="menu"
-                label={copy.signOut}
-                loadingLabel={copy.signingOut}
-              />
-            </div>
-          </aside>
-        </div>, document.body
-      )}
+              <AppearanceSettings locale={locale} />
+              <section className="menu-section">
+                <h3 className="menu-section-title">{copy.language}</h3>
+                <LanguageSwitcher locale={locale} />
+              </section>
+              <section className="menu-section">
+                <h3 className="menu-section-title">{copy.textSize}</h3>
+                <div className="text-size-stepper">
+                  {["standard", "large"].map((size) => (
+                    <button
+                      key={size}
+                      aria-pressed={size === textSize}
+                      onClick={() => {
+                        setTextSize(size);
+                        document.documentElement.dataset.textSize = size;
+                        try {
+                          window.localStorage.setItem(
+                            "directory-text-size",
+                            size,
+                          );
+                        } catch {}
+                      }}
+                      className="text-size-option"
+                    >
+                      <span className="text-size-dot" aria-hidden="true" />
+                      <span>
+                        {size === "large" ? copy.largerText : copy.standardText}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <div className="mt-auto border-t border-[var(--app-line)] py-3">
+                <SignOutButton
+                  variant="menu"
+                  label={copy.signOut}
+                  loadingLabel={copy.signingOut}
+                />
+              </div>
+            </aside>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
