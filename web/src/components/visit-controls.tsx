@@ -176,6 +176,14 @@ export default function VisitControls({
           >
             {c.cancel}
           </button>
+          <button
+            disabled={busy}
+            className={`${button} w-full border border-[var(--app-line)] bg-[var(--app-surface-muted)] text-[var(--app-ink)]`}
+            onClick={() => run("archive")}
+          >
+            <Archive aria-hidden="true" className="size-4" />
+            {c.archive}
+          </button>
         </section>
       )}
       {busy && <p role="status">{c.saving}</p>}

@@ -15,7 +15,7 @@ await writeFile(
 );
 await writeFile(
   resolve(dir, "stubs.tsx"),
-  `import React from 'react';export function createClient(){return {auth:{signOut:async()=>{window.signedOut=true;}}};}export const usePathname=()=>'/visitation';export const useRouter=()=>({push:(url)=>{window.destination=url;},replace:(url)=>{window.destination=url;},refresh:()=>window.dispatchEvent(new Event('refresh-fixture'))});export default function Link({children,...props}){return <a {...props}>{children}</a>;}export async function mutateGroup(op,form){window.actions.push({op,...Object.fromEntries(form)});return {};}export async function pendingVisitCount(){return window.pending;}export async function mutateVisit(op,form){window.actions.push({op,...Object.fromEntries(form),deacons:form.getAll('deacon')});if(window.failNext){window.failNext=false;return {error:'Unable to save. Your draft has been retained.'};}if(op==='respond'){window.pending=1;window.demo.visit_recipients[0].response=form.get('decision');window.demo.visit_recipients[0].decline_reason=form.get('decision')==='declined'?form.get('reason'):'';}if(op==='close'){window.pending=0;window.demo.status=form.get('decision');}if(op==='archive'){window.demo.archived_at=new Date().toISOString();}return {id:'saved-fixture'};}`,
+  `import React from 'react';export function createClient(){return {auth:{signOut:async()=>{window.signedOut=true;}}};}export const usePathname=()=>'/visitation';export const useRouter=()=>({push:(url)=>{window.destination=url;},replace:(url)=>{window.destination=url;},refresh:()=>window.dispatchEvent(new Event('refresh-fixture'))});export default function Link({children,...props}){return <a {...props}>{children}</a>;}export async function mutateGroup(op,form){window.actions.push({op,...Object.fromEntries(form)});return {};}export async function archiveVisits(visits){window.bulkArchived=visits;return {};}export async function pendingVisitCount(){return window.pending;}export async function mutateVisit(op,form){window.actions.push({op,...Object.fromEntries(form),deacons:form.getAll('deacon')});if(window.failNext){window.failNext=false;return {error:'Unable to save. Your draft has been retained.'};}if(op==='respond'){window.pending=1;window.demo.visit_recipients[0].response=form.get('decision');window.demo.visit_recipients[0].decline_reason=form.get('decision')==='declined'?form.get('reason'):'';}if(op==='close'){window.pending=0;window.demo.status=form.get('decision');}if(op==='archive'){window.demo.archived_at=new Date().toISOString();}return {id:'saved-fixture'};}`,
 );
 await writeFile(
   resolve(dir, "entry.tsx"),
@@ -27,6 +27,7 @@ import VisitDetails from ${JSON.stringify(resolve(root, "src/components/visit-de
 import VisitBack from ${JSON.stringify(resolve(root, "src/components/visit-back.tsx"))};
 import GroupManagement from ${JSON.stringify(resolve(root, "src/components/group-management.tsx"))};
 import BottomNavigation from ${JSON.stringify(resolve(root, "src/components/bottom-navigation.tsx"))};
+import VisitBulkArchive,{VisitArchiveCheckbox} from ${JSON.stringify(resolve(root, "src/components/visit-bulk-archive.tsx"))};
 const p=new URLSearchParams(location.search), unavailable=p.has('unavailable');
 window.actions=[];window.pending=2;
 window.demo={id:'visit',pastor_id:'pastor',pastor_person_id:unavailable?null:'pastor-person',pastor_name:'Fictional Pastor',person_id:'member',member_available:!unavailable,member_name:'A very long fictional member name for accessibility testing',member_address:'123 Example Street, Seattle, WA',member_phone:'(206) 555-0142',location:'Church meeting room',scheduled_at:'2099-12-15T19:30:00Z',notes:'Discuss the upcoming visit',status:'open',archived_at:null,revision:2,updated_fields:['location'],visit_recipients:[{deacon_id:'d1',deacon_person_id:unavailable?null:'deacon-person-1',deacon_name:'First Deacon',response:'accepted',decline_reason:'',last_viewed_revision:1},{deacon_id:'d2',deacon_person_id:unavailable?null:'deacon-person-2',deacon_name:'Second Deacon',response:'pending',decline_reason:'',last_viewed_revision:0}]};
@@ -36,7 +37,10 @@ function App(){
   const mode=p.get('mode'),locale=p.get('locale')||'en',detail=mode==='deacon'||mode==='pastor',userId=mode==='deacon'?'d1':'pastor';
   return <><main className="mx-auto max-w-xl p-5 pb-28 bg-[var(--app-surface)] text-[var(--app-ink)]">
     <VisitBack locale={locale}/>
-    {mode==='groups'?<GroupManagement
+    {mode==='bulk'?<VisitBulkArchive locale={locale} items={[{id:'visit-one',revision:2,memberName:'First member'},{id:'visit-two',revision:4,memberName:'Other member'}]}>
+      <article className="relative mb-3 min-h-20 rounded-2xl border p-4 pr-14"><p>First member</p><VisitArchiveCheckbox id="visit-one" memberName="First member" locale={locale}/></article>
+      <article className="relative min-h-20 rounded-2xl border p-4 pr-14"><p>Other member</p><VisitArchiveCheckbox id="visit-two" memberName="Other member" locale={locale}/></article>
+    </VisitBulkArchive>:mode==='groups'?<GroupManagement
       locale={locale}
       groups={[{id:'group',name:'Fixture group',memberIds:['member','archived'],deacons:[{id:'d1',name:'First Deacon',status:'active',personId:'deacon-person-1',phone:null}]}]}
       people={[{id:'member',first_name:'Active',last_name:'Member',archived_at:null},{id:'archived',first_name:'Archived',last_name:'Member',archived_at:'2026-01-01'}]}
@@ -177,6 +181,41 @@ try {
   const save = await page.evaluate(() => window.actions.at(-1));
   expect(save.deacons).toEqual(["d1", "d3"]);
   expect(save.location).toBe("Alternate meeting place");
+  await page.goto(url + "/?mode=bulk");
+  await page.screenshot({
+    path: resolve(dir, "bulk-archive.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  const archiveSelected = page.getByRole("button", {
+    name: "Archive selected",
+    exact: true,
+  });
+  await expect(archiveSelected).toBeDisabled();
+  await page.getByRole("button", { name: "Select all", exact: true }).click();
+  await expect(page.getByLabel("Select visit with First member")).toBeChecked();
+  await expect(page.getByLabel("Select visit with Other member")).toBeChecked();
+  await expect(page.getByText("2 selected", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Clear selection", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Select visit with First member"),
+  ).not.toBeChecked();
+  await page.getByLabel("Select visit with First member").check();
+  await page.getByLabel("Select visit with Other member").check();
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toBe("Archive 2 selected visits?");
+    await dialog.accept();
+  });
+  await archiveSelected.click();
+  await expect
+    .poll(() => page.evaluate(() => window.bulkArchived))
+    .toEqual([
+      { id: "visit-one", revision: 2 },
+      { id: "visit-two", revision: 4 },
+    ]);
+  await expect(archiveSelected).toBeDisabled();
   await page.goto(url + "/?mode=edit");
   await page.goto(url + "/?mode=new");
   await expect(page.getByLabel("Date and time")).toBeVisible();
@@ -597,7 +636,7 @@ try {
     .poll(() => page.evaluate(() => window.destination))
     .toBe("/login");
   console.log(
-    "Visitation/admin UI passed: row-based person selection, canonical detail links, unavailable identities, shared BackButton, group selections, recipient defaults/overrides, save failure/recovery, editing, response changes, Ukrainian, light/dark, large text, 320/375/460px.",
+    "Visitation/admin UI passed: row-based person selection, bulk archiving, canonical detail links, unavailable identities, shared BackButton, group selections, recipient defaults/overrides, save failure/recovery, editing, response changes, Ukrainian, light/dark, large text, 320/375/460px.",
   );
 } finally {
   if (browser) await browser.close();

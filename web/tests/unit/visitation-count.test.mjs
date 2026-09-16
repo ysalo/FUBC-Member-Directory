@@ -7,7 +7,7 @@ const source = await readFile(
   "utf8",
 );
 const compiled = ts.transpileModule(
-  `let context;const requireActiveProfile=async()=>context;export const setContext=value=>context=value;${source.replace(/^import .*;\r?$/gm, "")}`,
+  `let context;const requireActiveProfile=async()=>context;const getLocale=async()=>"en";const visitCopy=()=>({failed:"failed"});const revalidatePath=()=>{};export const setContext=value=>context=value;${source.replace(/^import .*;\r?$/gm, "")}`,
   {
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
@@ -15,7 +15,7 @@ const compiled = ts.transpileModule(
     },
   },
 ).outputText;
-const { pendingVisitCount, setContext } = await import(
+const { archiveVisits, pendingVisitCount, setContext } = await import(
   "data:text/javascript;base64," + Buffer.from(compiled).toString("base64")
 );
 const requests = [
@@ -101,4 +101,54 @@ test("ordinary accounts perform no visitation count queries", async () => {
 test("failed count is unavailable rather than a false zero", async () => {
   fixture(["deacon"], { message: "offline" });
   assert.equal(await pendingVisitCount(), null);
+});
+
+test("bulk archive deduplicates visits and preserves expected revisions", async () => {
+  const calls = [];
+  setContext({
+    supabase: {
+      async rpc(name, input) {
+        calls.push({ name, input });
+        return { error: null };
+      },
+    },
+    profile: { id: "viewer", ministry_roles: ["pastor"] },
+  });
+  const first = "10000000-0000-4000-8000-000000000001";
+  const second = "10000000-0000-4000-8000-000000000002";
+  assert.deepEqual(
+    await archiveVisits([
+      { id: first, revision: 2 },
+      { id: second, revision: 4 },
+      { id: first, revision: 2 },
+    ]),
+    {},
+  );
+  assert.deepEqual(calls, [
+    {
+      name: "archive_visit",
+      input: { target: first, expected_revision: 2 },
+    },
+    {
+      name: "archive_visit",
+      input: { target: second, expected_revision: 4 },
+    },
+  ]);
+});
+
+test("bulk archive rejects malformed requests before database access", async () => {
+  let called = false;
+  setContext({
+    supabase: {
+      async rpc() {
+        called = true;
+        return { error: null };
+      },
+    },
+    profile: { id: "viewer", ministry_roles: ["pastor"] },
+  });
+  assert.deepEqual(await archiveVisits([{ id: "not-an-id", revision: 1 }]), {
+    error: "failed",
+  });
+  assert.equal(called, false);
 });

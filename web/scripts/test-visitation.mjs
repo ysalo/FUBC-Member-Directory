@@ -34,6 +34,13 @@ const archive = (
     "utf8",
   )
 ).split("-- Hosted scheduler")[0];
+const archiveCurrent = await readFile(
+  new URL(
+    "../supabase/migrations/20260915230000_archive_current_visits.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 for (const upgrade of [true, false]) {
   const db = new PGlite();
   await db.exec(`create role authenticated;create role anon;create schema auth;create schema storage;
@@ -47,6 +54,7 @@ for (const upgrade of [true, false]) {
   if (upgrade) await db.exec(migration);
   await db.exec(lifecycle);
   await db.exec(archive);
+  await db.exec(archiveCurrent);
   for (let n = 1; n <= 6; n++)
     await db.query("insert into auth.users(id,email) values($1,$2)", [
       id(n),
@@ -335,6 +343,21 @@ for (const upgrade of [true, false]) {
     ),
     1,
   );
+  await as(1);
+  const openArchiveArgs = [...args];
+  openArchiveArgs[4] = "2099-01-02T12:00:00Z";
+  openArchiveArgs[6] = [id(2)];
+  openArchiveArgs[7] = id(21);
+  const openArchive = await scalar(save, openArchiveArgs);
+  await db.query("select public.archive_visit($1,$2)", [openArchive, 1]);
+  assert.equal(
+    await scalar(
+      "select archived_at is not null from public.visit_requests where id=$1",
+      [openArchive],
+    ),
+    true,
+  );
+  await db.exec("reset role");
   await db.exec(baseline);
   await db.close();
   console.log(

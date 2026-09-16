@@ -65,6 +65,47 @@ export async function mutateVisit(
   return { id: typeof result.data === "string" ? result.data : undefined };
 }
 
+export async function archiveVisits(
+  visits: Array<{ id: string; revision: number }>,
+): Promise<{ error?: string }> {
+  const { supabase } = await requireActiveProfile();
+  const copy = visitCopy(await getLocale());
+  const unique = [
+    ...new Map(
+      visits.map((visit) => [
+        visit.id,
+        { ...visit, revision: Number(visit.revision) },
+      ]),
+    ).values(),
+  ];
+  if (
+    unique.length === 0 ||
+    unique.length > 100 ||
+    unique.some(
+      (visit) =>
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          visit.id,
+        ) || !Number.isInteger(visit.revision),
+    )
+  )
+    return { error: copy.failed };
+  try {
+    const results = await Promise.all(
+      unique.map((visit) =>
+        supabase.rpc("archive_visit", {
+          target: visit.id,
+          expected_revision: visit.revision,
+        }),
+      ),
+    );
+    if (results.some((result) => result.error)) return { error: copy.failed };
+  } catch {
+    return { error: copy.failed };
+  }
+  revalidatePath("/visitation", "layout");
+  return {};
+}
+
 export async function pendingVisitCount(): Promise<number | null> {
   const { supabase, profile } = await requireActiveProfile();
   const pastor = profile.ministry_roles.includes("pastor");

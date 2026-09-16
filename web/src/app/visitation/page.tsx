@@ -5,6 +5,9 @@ import { visitCopy, formatVisitDate, type Visit } from "@/lib/visitation";
 import { CalendarDays, ChevronRight, Search, X } from "lucide-react";
 import VisitMemberLink from "@/components/visit-member-link";
 import { loadVisitIdentities } from "@/lib/member-profile-data";
+import VisitBulkArchive, {
+  VisitArchiveCheckbox,
+} from "@/components/visit-bulk-archive";
 export default async function VisitationPage({
   searchParams,
 }: {
@@ -38,11 +41,22 @@ export default async function VisitationPage({
       .includes(query.toLocaleLowerCase(locale)),
   );
   const visits = await loadVisitIdentities(supabase, filteredVisits);
+  const canManage = profile.ministry_roles.includes("pastor");
+  const archivableVisits =
+    archived || !canManage
+      ? []
+      : visits
+          .filter((visit) => visit.pastor_id === profile.id)
+          .map((visit) => ({
+            id: visit.id,
+            revision: visit.revision,
+            memberName: visit.member_name,
+          }));
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 py-5">
         <h1 className="text-2xl font-semibold">{c.title}</h1>
-        {profile.ministry_roles.includes("pastor") && (
+        {canManage && (
           <Link
             href="/visitation/new"
             className="inline-flex min-h-11 items-center rounded-xl bg-[var(--app-brand)] px-4 py-2 text-sm font-semibold text-white"
@@ -100,120 +114,131 @@ export default async function VisitationPage({
           {locale === "uk" ? "Пошук" : "Search"}
         </button>
       </form>
-      {[
-        {
-          title: c.mine,
-          show: profile.ministry_roles.includes("pastor"),
-          items: visits.filter((v) => v.pastor_id === profile.id),
-        },
-        {
-          title: c.invitations,
-          show: profile.ministry_roles.includes("deacon"),
-          items: visits.filter((v) =>
-            v.visit_recipients.some((r) => r.deacon_id === profile.id),
-          ),
-        },
-      ]
-        .filter((g) => g.show)
-        .map((g) => (
-          <section key={g.title} className="mb-7">
-            <h2 className="mb-3 text-lg font-semibold">{g.title}</h2>
-            {!g.items.length && (
-              <p className="text-[var(--app-muted)]">
-                {query ? c.noResults : archived ? c.archiveEmpty : c.empty}
-              </p>
-            )}
-            <div className="space-y-3">
-              {g.items.map((v) => {
-                const r = v.visit_recipients.find(
-                  (r) => r.deacon_id === profile.id,
-                );
-                return (
-                  <article
-                    key={v.id}
-                    className="relative rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-4 hover:border-[var(--app-brand)]"
-                  >
-                    <Link
-                      href={"/visitation/" + v.id}
-                      aria-label={`${c.title}: ${v.member_name}`}
-                      className="absolute inset-0 z-0 rounded-2xl"
-                    />
-                    <div className="pointer-events-none relative z-10">
-                      <h3 className="text-lg font-semibold">
-                        <span className="pointer-events-auto">
-                          <VisitMemberLink
-                            personId={v.member_available ? v.person_id : null}
-                            name={v.member_name}
-                            photoPath={v.member_photo}
-                            showPhoto
-                            locale={locale}
-                          />
-                        </span>
-                      </h3>
-                      {v.member_phone && (
-                        <p className="mt-1 text-sm text-[var(--app-muted)]">
-                          {v.member_phone}
-                        </p>
+      <VisitBulkArchive items={archivableVisits} locale={locale}>
+        {[
+          {
+            title: c.mine,
+            show: canManage,
+            bulkSelectable: true,
+            items: visits.filter((v) => v.pastor_id === profile.id),
+          },
+          {
+            title: c.invitations,
+            show: profile.ministry_roles.includes("deacon"),
+            bulkSelectable: false,
+            items: visits.filter((v) =>
+              v.visit_recipients.some((r) => r.deacon_id === profile.id),
+            ),
+          },
+        ]
+          .filter((g) => g.show)
+          .map((g) => (
+            <section key={g.title} className="mb-7">
+              <h2 className="mb-3 text-lg font-semibold">{g.title}</h2>
+              {!g.items.length && (
+                <p className="text-[var(--app-muted)]">
+                  {query ? c.noResults : archived ? c.archiveEmpty : c.empty}
+                </p>
+              )}
+              <div className="space-y-3">
+                {g.items.map((v) => {
+                  const r = v.visit_recipients.find(
+                    (r) => r.deacon_id === profile.id,
+                  );
+                  return (
+                    <article
+                      key={v.id}
+                      className={`relative rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-4 hover:border-[var(--app-brand)] ${g.bulkSelectable && !archived ? "pr-14" : ""}`}
+                    >
+                      {g.bulkSelectable && !archived && (
+                        <VisitArchiveCheckbox
+                          id={v.id}
+                          memberName={v.member_name}
+                          locale={locale}
+                        />
                       )}
-                      <p className="my-2 flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--app-brand)]">
-                        <CalendarDays
-                          aria-hidden="true"
-                          className="size-4 shrink-0"
-                        />
-                        {formatVisitDate(v.scheduled_at, locale)}
-                        <ChevronRight
-                          aria-hidden="true"
-                          className="ml-auto size-4 shrink-0"
-                        />
-                      </p>
-                      <p className="text-sm text-[var(--app-muted)]">
-                        {c.requester}:{" "}
-                        <span className="pointer-events-auto">
-                          <VisitMemberLink
-                            personId={v.pastor_person_id}
-                            name={v.pastor_name}
-                            locale={locale}
-                          />
-                        </span>
-                      </p>
-                      <p className="mt-2 text-sm text-[var(--app-muted)]">
-                        {archived ? c.archived : c[v.status]}
-                      </p>
-                      <ul className="space-y-1 text-sm text-[var(--app-muted)]">
-                        {v.visit_recipients.map((recipient) => (
-                          <li key={recipient.deacon_id}>
-                            <span className="pointer-events-auto">
-                              <VisitMemberLink
-                                personId={recipient.deacon_person_id}
-                                name={recipient.deacon_name}
-                                locale={locale}
-                              />
-                            </span>
-                            {": "}
-                            {c[recipient.response]}
-                          </li>
-                        ))}
-                      </ul>
-                      {v.status === "open" &&
-                        v.visit_recipients.some(
-                          (r) => r.response === "accepted",
-                        ) && (
-                          <span className="block text-sm">{c.confirmed}</span>
-                        )}
-                      {r &&
-                        v.revision > 1 &&
-                        r.last_viewed_revision < v.revision && (
-                          <span className="mt-2 block font-semibold text-[var(--app-brand)]">
-                            {c.updated}
+                      <Link
+                        href={"/visitation/" + v.id}
+                        aria-label={`${c.title}: ${v.member_name}`}
+                        className="absolute inset-0 z-0 rounded-2xl"
+                      />
+                      <div className="pointer-events-none relative z-10">
+                        <h3 className="text-lg font-semibold">
+                          <span className="pointer-events-auto">
+                            <VisitMemberLink
+                              personId={v.member_available ? v.person_id : null}
+                              name={v.member_name}
+                              photoPath={v.member_photo}
+                              showPhoto
+                              locale={locale}
+                            />
                           </span>
+                        </h3>
+                        {v.member_phone && (
+                          <p className="mt-1 text-sm text-[var(--app-muted)]">
+                            {v.member_phone}
+                          </p>
                         )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+                        <p className="my-2 flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--app-brand)]">
+                          <CalendarDays
+                            aria-hidden="true"
+                            className="size-4 shrink-0"
+                          />
+                          {formatVisitDate(v.scheduled_at, locale)}
+                          <ChevronRight
+                            aria-hidden="true"
+                            className="ml-auto size-4 shrink-0"
+                          />
+                        </p>
+                        <p className="text-sm text-[var(--app-muted)]">
+                          {c.requester}:{" "}
+                          <span className="pointer-events-auto">
+                            <VisitMemberLink
+                              personId={v.pastor_person_id}
+                              name={v.pastor_name}
+                              locale={locale}
+                            />
+                          </span>
+                        </p>
+                        <p className="mt-2 text-sm text-[var(--app-muted)]">
+                          {archived ? c.archived : c[v.status]}
+                        </p>
+                        <ul className="space-y-1 text-sm text-[var(--app-muted)]">
+                          {v.visit_recipients.map((recipient) => (
+                            <li key={recipient.deacon_id}>
+                              <span className="pointer-events-auto">
+                                <VisitMemberLink
+                                  personId={recipient.deacon_person_id}
+                                  name={recipient.deacon_name}
+                                  locale={locale}
+                                />
+                              </span>
+                              {": "}
+                              {c[recipient.response]}
+                            </li>
+                          ))}
+                        </ul>
+                        {v.status === "open" &&
+                          v.visit_recipients.some(
+                            (r) => r.response === "accepted",
+                          ) && (
+                            <span className="block text-sm">{c.confirmed}</span>
+                          )}
+                        {r &&
+                          v.revision > 1 &&
+                          r.last_viewed_revision < v.revision && (
+                            <span className="mt-2 block font-semibold text-[var(--app-brand)]">
+                              {c.updated}
+                            </span>
+                          )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+      </VisitBulkArchive>
     </>
   );
 }
