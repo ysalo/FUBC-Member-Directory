@@ -39,11 +39,11 @@ export type DirectoryPerson = {
 };
 
 const gradients = [
-  "from-sky-500 to-blue-700",
-  "from-rose-400 to-fuchsia-700",
-  "from-amber-400 to-orange-700",
-  "from-emerald-400 to-teal-700",
-  "from-violet-400 to-indigo-700",
+  "from-stone-400 to-stone-700",
+  "from-neutral-400 to-neutral-700",
+  "from-zinc-400 to-zinc-700",
+  "from-stone-500 to-stone-800",
+  "from-neutral-500 to-neutral-800",
 ];
 const initials = (person: DirectoryPerson) =>
   `${person.firstName[0] ?? ""}${person.lastName[0] ?? ""}`.toLocaleUpperCase();
@@ -328,7 +328,7 @@ export default function DirectoryClient({
           className="native-enter native-shadow mx-auto flex h-full max-w-xl flex-col overflow-hidden bg-white sm:rounded-[2rem]"
         >
           <div className="native-scroll min-h-0 flex-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <div className="relative h-[62dvh] min-h-[360px] max-h-[600px] overflow-hidden bg-gradient-to-br from-[var(--app-brand)] to-[#07131d]">
+            <div className="relative h-[62dvh] min-h-[360px] max-h-[600px] overflow-hidden bg-gradient-to-br from-[var(--app-brand)] to-[#171716]">
               {selected.photoPath ? (
                 <button
                   onClick={() => setPhotoOpen(true)}
@@ -366,7 +366,7 @@ export default function DirectoryClient({
                 <button
                   onClick={returnToDirectory}
                   aria-label={copy.backToDirectory}
-                  className="grid size-11 shrink-0 place-items-center rounded-full border border-white/15 bg-[#07131d]/65 text-2xl font-medium text-white shadow-lg backdrop-blur-xl hover:bg-[#07131d]/80"
+                  className="grid size-11 shrink-0 place-items-center rounded-full border border-white/15 bg-[#171716]/65 text-2xl font-medium text-white shadow-lg backdrop-blur-xl hover:bg-[#171716]/80"
                 >
                   ←
                 </button>
@@ -529,7 +529,7 @@ export default function DirectoryClient({
             aria-modal="true"
             aria-label={`${selected.name} profile photo`}
             onClick={() => setPhotoOpen(false)}
-            className="native-fade fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-[#07131d]/96 p-4 backdrop-blur-sm"
+            className="native-fade fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-[#171716]/96 p-4 backdrop-blur-sm"
           >
             <button
               onClick={() => setPhotoOpen(false)}
@@ -812,7 +812,7 @@ export default function DirectoryClient({
                       <button
                         key={person.id}
                         onClick={() => openMember(person)}
-                        className="flex min-h-[68px] w-full items-center gap-3 py-2.5 pr-2 text-left hover:bg-[var(--app-brand-soft)] active:bg-[#d9e9f3]"
+                        className="flex min-h-[68px] w-full items-center gap-3 py-2.5 pr-2 text-left hover:bg-[var(--app-brand-soft)] active:bg-[var(--app-brand-soft)]"
                       >
                         <Avatar person={person} />
                         <span className="min-w-0 flex-1 text-[17px] font-medium text-[var(--app-ink)]">

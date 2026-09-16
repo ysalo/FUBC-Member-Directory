@@ -1,22 +1,40 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { useState } from "react";
 import LanguageSwitcher from "@/components/language-switcher";
 import { dictionaries, type Locale } from "@/lib/i18n";
 import { safeNextPath } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/browser";
 
-type Provider = "google" | "apple";
+type Provider = "google";
 function ProviderIcon({ provider }: { provider: Provider }) {
-  return provider === "google" ? (
-    <span aria-hidden className="text-lg font-bold text-blue-600">
-      G
-    </span>
-  ) : (
-    <span aria-hidden className="text-xl">
-      ●
-    </span>
+  return (
+    <svg
+      aria-hidden="true"
+      width="22"
+      height="22"
+      viewBox="0 0 48 48"
+      data-provider={provider}
+    >
+      <path
+        fill="#4285F4"
+        d="M43.6 24.5c0-1.5-.1-2.9-.4-4.3H24v8.1h11a9.4 9.4 0 0 1-4.1 6.2v5.2h6.7c3.9-3.6 6-8.9 6-15.2Z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.7-5.2c-1.8 1.2-4.1 1.9-6.8 1.9-5.3 0-9.8-3.6-11.4-8.4H5.7v5.4A20.4 20.4 0 0 0 24 44Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M12.6 27.4a12.2 12.2 0 0 1 0-7.8v-5.4H5.7a20 20 0 0 0 0 18.6l6.9-5.4Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M24 11.2c3 0 5.6 1 7.7 3l5.8-5.8A19.4 19.4 0 0 0 24 3 20.4 20.4 0 0 0 5.7 14.2l6.9 5.4C14.2 14.8 18.7 11.2 24 11.2Z"
+      />
+    </svg>
   );
 }
 
@@ -27,7 +45,6 @@ export default function LoginClient({ locale }: { locale: Locale }) {
   const [error, setError] = useState(
     searchParams.get("error") ? copy.signInFailed : "",
   );
-  const appleEnabled = process.env.NEXT_PUBLIC_ENABLE_APPLE_AUTH === "true";
   async function signIn(provider: Provider) {
     setLoading(provider);
     setError("");
@@ -43,54 +60,57 @@ export default function LoginClient({ locale }: { locale: Locale }) {
     }
   }
   return (
-    <main className="safe-page grid min-h-dvh place-items-center p-5">
-      <section className="native-enter native-shadow w-full max-w-sm rounded-[2rem] border border-white/80 bg-white/95 p-7 backdrop-blur">
-        <div className="flex items-start justify-between gap-4">
-          <div className="grid size-12 place-items-center rounded-2xl bg-[var(--app-brand)] text-xl font-bold text-white shadow-sm">
-            PD
-          </div>
-          <LanguageSwitcher locale={locale} />
+    <main className="login-page">
+      <div className="login-language">
+        <LanguageSwitcher locale={locale} />
+      </div>
+      <section
+        className="login-card native-enter"
+        aria-label={locale === "uk" ? "Вхід" : "Login"}
+      >
+        <div className="login-art" aria-hidden="true">
+          <span className="login-blob login-blob-one" />
+          <span className="login-blob login-blob-two" />
+          <span className="login-dot login-dot-one" />
+          <span className="login-dot login-dot-two" />
+          <span className="login-dot login-dot-three" />
+          <Image
+            className="login-logo"
+            src="/church-logo.jpg"
+            alt=""
+            width={900}
+            height={900}
+            priority
+          />
+          <svg
+            className="login-wave"
+            viewBox="0 0 400 80"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0 45C75 0 115 12 180 40S310 85 400 36V80H0Z"
+              fill="currentColor"
+            />
+          </svg>
         </div>
-        <p className="mt-6 text-sm font-semibold text-[var(--app-accent)]">
-          {copy.privateDirectory}
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-[-0.025em] text-[var(--app-ink)]">
-          {copy.welcome}
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-          {copy.loginHelp}
-        </p>
-        <div className="mt-7 space-y-3">
+        <div className="login-actions">
           <button
             onClick={() => signIn("google")}
             disabled={loading !== null}
-            className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+            className="login-google"
           >
             <ProviderIcon provider="google" />
             {loading === "google" ? copy.openingGoogle : copy.continueGoogle}
           </button>
-          {appleEnabled && (
-            <button
-              onClick={() => signIn("apple")}
-              disabled={loading !== null}
-              className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-black px-4 font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
+          {error && (
+            <p
+              role="alert"
+              className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700"
             >
-              <ProviderIcon provider="apple" />
-              {loading === "apple" ? copy.openingApple : copy.continueApple}
-            </button>
+              {error}
+            </p>
           )}
         </div>
-        {error && (
-          <p
-            role="alert"
-            className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700"
-          >
-            {error}
-          </p>
-        )}
-        <p className="mt-6 text-xs leading-5 text-slate-400">
-          {copy.noPassword}
-        </p>
       </section>
     </main>
   );

@@ -61,7 +61,7 @@ export default function BirthdayNotificationDemo({
             />
             <span
               aria-hidden="true"
-              className="flex h-8 w-[52px] items-center rounded-full bg-[var(--app-line)] p-0.5 peer-checked:bg-[#34c759] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-[var(--app-brand)]"
+              className="flex h-8 w-[52px] items-center rounded-full bg-[var(--app-line)] p-0.5 peer-checked:bg-[var(--app-primary)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-[var(--app-brand)]"
             >
               <span
                 className={`size-7 rounded-full bg-white shadow-sm ${enabled ? "translate-x-5" : "translate-x-0"}`}

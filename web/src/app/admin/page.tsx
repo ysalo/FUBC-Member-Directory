@@ -52,7 +52,7 @@ export default async function AdminPage() {
             {profile.role === "admin" && (
               <Link
                 href="/admin/accounts"
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[var(--app-brand-soft)] px-4 py-2.5 text-center font-semibold text-[var(--app-brand)] hover:bg-[#d9e9f3] sm:flex-none"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[var(--app-brand-soft)] px-4 py-2.5 text-center font-semibold text-[var(--app-brand)] hover:bg-[var(--app-brand-soft)] sm:flex-none"
               >
                 {t(locale, "accountRequests")}
                 {pendingCount ? ` (${pendingCount})` : ""}
@@ -103,7 +103,7 @@ export default async function AdminPage() {
                   <div className="flex shrink-0 items-center gap-2">
                     <Link
                       href={`/admin/${person.id}`}
-                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[var(--app-brand-soft)] px-3 py-2 text-sm font-semibold text-[var(--app-brand)] hover:bg-[#d9e9f3]"
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[var(--app-brand-soft)] px-3 py-2 text-sm font-semibold text-[var(--app-brand)] hover:bg-[var(--app-brand-soft)]"
                     >
                       {t(locale, "edit")}
                     </Link>
@@ -137,7 +137,7 @@ export default async function AdminPage() {
                     >
                       <Link
                         href={`/admin/${person.id}`}
-                        className="font-medium text-slate-500 hover:text-blue-700"
+                        className="font-medium text-slate-500 hover:text-[var(--app-brand)]"
                       >
                         {person.first_name} {person.last_name}
                       </Link>
@@ -166,7 +166,7 @@ export default async function AdminPage() {
                   <input
                     name="firstName"
                     required
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                   />
                 </label>
                 <label className="text-sm font-medium text-slate-700">
@@ -174,7 +174,7 @@ export default async function AdminPage() {
                   <input
                     name="lastName"
                     required
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                   />
                 </label>
               </div>
@@ -184,7 +184,7 @@ export default async function AdminPage() {
                   name="photo"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  className="mt-1 block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                  className="mt-1 block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--app-surface-muted)] file:px-3 file:py-2 file:font-semibold file:text-[var(--app-brand)] hover:file:bg-[var(--app-surface-muted)]"
                 />
                 <span className="mt-1 block text-xs font-normal text-slate-500">
                   {t(locale, "photoHelp")}
@@ -195,7 +195,7 @@ export default async function AdminPage() {
                 <input
                   name="dateOfBirth"
                   type="date"
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                 />
               </label>
               <label className="block text-sm font-medium text-slate-700">
@@ -203,7 +203,7 @@ export default async function AdminPage() {
                 <input
                   name="membershipJoinedAt"
                   type="date"
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                 />
               </label>
               <MemberStatusFields locale={locale} />
@@ -212,21 +212,21 @@ export default async function AdminPage() {
                 <input
                   name="phone"
                   type="tel"
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                 />
               </label>
               <label className="block text-sm font-medium text-slate-700">
                 {t(locale, "streetAddress")}
                 <input
                   name="addressLine1"
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                 />
               </label>
               <label className="block text-sm font-medium text-slate-700">
                 {t(locale, "addressLine2")}
                 <input
                   name="addressLine2"
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                 />
               </label>
               <div className="grid gap-3 min-[380px]:grid-cols-[1fr_80px]">
@@ -234,14 +234,14 @@ export default async function AdminPage() {
                   {t(locale, "city")}
                   <input
                     name="city"
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                   />
                 </label>
                 <label className="text-sm font-medium text-slate-700">
                   {t(locale, "state")}
                   <input
                     name="state"
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                   />
                 </label>
               </div>
@@ -249,7 +249,7 @@ export default async function AdminPage() {
                 {t(locale, "postalCode")}
                 <input
                   name="postalCode"
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]"
                 />
               </label>
               <button className="mt-2 w-full rounded-xl bg-[var(--app-brand)] px-4 py-3 font-semibold text-white shadow-sm hover:bg-[var(--app-brand-strong)]">

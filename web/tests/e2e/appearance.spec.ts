@@ -11,6 +11,7 @@ test("system appearance follows the device and explicit preference persists", as
   await page.evaluate(() => localStorage.setItem("directory-theme", "dark"));
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  const surface = page.locator(".bg-white").first();
-  await expect(surface).toHaveCSS("background-color", "rgb(25, 31, 40)");
+  expect(await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--app-surface").trim(),
+  )).toBe("#20201e");
 });

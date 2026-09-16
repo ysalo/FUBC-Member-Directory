@@ -1,6 +1,6 @@
 // Isolated browser fixtures render the real client components; no Supabase accounts or data are changed.
 import { createRequire } from "node:module";
-import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createServer } from "node:http";
 import { chromium, expect } from "@playwright/test";
@@ -15,13 +15,13 @@ await writeFile(
 );
 await writeFile(
   resolve(dir, "stubs.tsx"),
-  `import React from 'react';export const usePathname=()=>'/visitation';export const useRouter=()=>({push:(url)=>{window.destination=url;},refresh:()=>window.dispatchEvent(new Event('refresh-fixture'))});export default function Link({children,...props}){return <a {...props}>{children}</a>;}export async function pendingVisitCount(){return window.pending;}export async function mutateVisit(op,form){window.actions.push({op,...Object.fromEntries(form),deacons:form.getAll('deacon')});if(window.failNext){window.failNext=false;return {error:'Unable to save. Your draft has been retained.'};}if(op==='respond'){window.pending=1;window.demo.visit_recipients[0].response=form.get('decision');window.demo.visit_recipients[0].decline_reason=form.get('decision')==='declined'?form.get('reason'):'';}if(op==='close'){window.pending=0;window.demo.status=form.get('decision');}return {id:'saved-fixture'};}`,
+  `import React from 'react';export function createClient(){return {auth:{signOut:async()=>{window.signedOut=true;}}};}export const usePathname=()=>'/visitation';export const useRouter=()=>({push:(url)=>{window.destination=url;},replace:(url)=>{window.destination=url;},refresh:()=>window.dispatchEvent(new Event('refresh-fixture'))});export default function Link({children,...props}){return <a {...props}>{children}</a>;}export async function pendingVisitCount(){return window.pending;}export async function mutateVisit(op,form){window.actions.push({op,...Object.fromEntries(form),deacons:form.getAll('deacon')});if(window.failNext){window.failNext=false;return {error:'Unable to save. Your draft has been retained.'};}if(op==='respond'){window.pending=1;window.demo.visit_recipients[0].response=form.get('decision');window.demo.visit_recipients[0].decline_reason=form.get('decision')==='declined'?form.get('reason'):'';}if(op==='close'){window.pending=0;window.demo.status=form.get('decision');}return {id:'saved-fixture'};}`,
 );
 await writeFile(
   resolve(dir, "entry.tsx"),
   `import React,{useState,useEffect} from 'react';import{createRoot}from'react-dom/client';import VisitForm from ${JSON.stringify(resolve(root, "src/components/visit-form.tsx"))};import VisitControls from ${JSON.stringify(resolve(root, "src/components/visit-controls.tsx"))};import VisitDetails from ${JSON.stringify(resolve(root, "src/components/visit-details.tsx"))};import BottomNavigation from ${JSON.stringify(resolve(root, "src/components/bottom-navigation.tsx"))};
 window.actions=[];window.pending=2;window.demo={id:'visit',pastor_id:'pastor',pastor_name:'Fictional Pastor',person_id:'member',member_name:'A very long fictional member name for accessibility testing',member_address:'123 Example Street, Seattle, WA',location:'Church meeting room',scheduled_at:'2099-12-15T19:30:00Z',notes:'Discuss the upcoming visit',status:'open',revision:2,updated_fields:['location'],visit_recipients:[{deacon_id:'d1',deacon_name:'First Deacon',response:'accepted',decline_reason:'',last_viewed_revision:1},{deacon_id:'d2',deacon_name:'Second Deacon',response:'pending',decline_reason:'',last_viewed_revision:0}]};
-function App(){const[version,setVersion]=useState(0);useEffect(()=>{const update=()=>setVersion(v=>v+1);window.addEventListener('refresh-fixture',update);return()=>window.removeEventListener('refresh-fixture',update);},[]);const p=new URLSearchParams(location.search),mode=p.get('mode'),locale=p.get('locale')||'en',detail=mode==='deacon'||mode==='pastor',userId=mode==='deacon'?'d1':'pastor';return <><main className="mx-auto max-w-xl p-5 pb-28 bg-[var(--app-surface)] text-[var(--app-ink)]">{detail?<><VisitDetails visit={window.demo} locale={locale} userId={userId}/><p data-testid="response" className="sr-only">{window.demo.visit_recipients[0].response}</p><VisitControls visit={{...window.demo}} userId={userId} locale={locale} /></>:<><h1 className="mb-5 text-2xl font-semibold">{mode==='edit'?'Edit planned visit':'Plan a visit'}</h1><VisitForm member={mode==='new'?undefined:{id:'member',name:window.demo.member_name,address:window.demo.member_address,groupId:p.get('missing')?null:'group'}} members={mode==='new'?[{id:'member',name:'First member',photoPath:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jX1sAAAAASUVORK5CYII=',address:'First home',groupId:'group'},{id:'other',name:'Other member',photoPath:'/missing-photo.png',address:'Other home',groupId:null}]:[]} deacons={[{id:'d1',name:'First Deacon',group_id:'group'},{id:'d2',name:'Second Deacon',group_id:'group'},{id:'d3',name:'Other Deacon',group_id:null}]} visit={mode==='edit'?window.demo:undefined} locale={locale} submission="fixture-submission"/></>}</main><BottomNavigation role="member" isDeacon={mode==='deacon'} isPastor={mode!=='deacon'} locale={locale} fixed/></>};createRoot(document.getElementById('root')).render(<App/>);`,
+function App(){const[version,setVersion]=useState(0);useEffect(()=>{const update=()=>setVersion(v=>v+1);window.addEventListener('refresh-fixture',update);return()=>window.removeEventListener('refresh-fixture',update);},[]);const p=new URLSearchParams(location.search),mode=p.get('mode'),locale=p.get('locale')||'en',detail=mode==='deacon'||mode==='pastor',userId=mode==='deacon'?'d1':'pastor';return <><main className="mx-auto max-w-xl p-5 pb-28 bg-[var(--app-surface)] text-[var(--app-ink)]">{detail?<><VisitDetails visit={window.demo} locale={locale} userId={userId}/><p data-testid="response" className="sr-only">{window.demo.visit_recipients[0].response}</p><VisitControls visit={{...window.demo}} userId={userId} locale={locale} /></>:<><h1 className="mb-5 text-2xl font-semibold">{mode==='edit'?'Edit planned visit':'Plan a visit'}</h1><VisitForm member={mode==='new'?undefined:{id:'member',name:window.demo.member_name,address:window.demo.member_address,groupId:p.get('missing')?null:'group'}} members={mode==='new'?[{id:'member',name:'First member',photoPath:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jX1sAAAAASUVORK5CYII=',address:'First home',groupId:'group'},{id:'other',name:'Other member',photoPath:'/missing-photo.png',address:'Other home',groupId:null}]:[]} deacons={[{id:'d1',name:'First Deacon',group_id:'group'},{id:'d2',name:'Second Deacon',group_id:'group'},{id:'d3',name:'Other Deacon',group_id:null}]} visit={mode==='edit'?window.demo:undefined} locale={locale} submission="fixture-submission"/></>}</main><BottomNavigation role={p.get('role')||'member'} isDeacon={mode==='deacon'} isPastor={mode!=='deacon'} locale={locale} fixed/></>};createRoot(document.getElementById('root')).render(<App/>);`,
 );
 await new Promise((res, rej) => {
   const compiler = webpack({
@@ -41,11 +41,12 @@ await new Promise((res, rej) => {
           "src/components/member-photo.tsx",
         ),
         "next/navigation": resolve(dir, "stubs.tsx"),
+        "@/lib/supabase/browser": resolve(dir, "stubs.tsx"),
         "@/lib/i18n": resolve(root, "src/lib/i18n.ts"),
         "@/lib/group-copy": resolve(root, "src/lib/group-copy.ts"),
-        "@/components/language-switcher": resolve(dir, "stubs.tsx"),
-        "@/components/sign-out-button": resolve(dir, "stubs.tsx"),
-        "@/components/appearance-settings": resolve(dir, "stubs.tsx"),
+        "@/components/language-switcher": resolve(root, "src/components/language-switcher.tsx"),
+        "@/components/sign-out-button": resolve(root, "src/components/sign-out-button.tsx"),
+        "@/components/appearance-settings": resolve(root, "src/components/appearance-settings.tsx"),
       },
     },
     module: { rules: [{ test: /\.tsx?$/, use: resolve(dir, "loader.cjs") }] },
@@ -57,14 +58,11 @@ await new Promise((res, rej) => {
     else res();
   });
 });
-const cssDir = resolve(root, ".next/static/css");
-const css = (
-  await Promise.all(
-    (await readdir(cssDir))
-      .filter((f) => f.endsWith(".css"))
-      .map((f) => readFile(resolve(cssDir, f), "utf8")),
-  )
-).join("\n");
+const cssSource = resolve(root, "src/app/globals.css");
+const postcss = createRequire(require.resolve("@tailwindcss/postcss"))("postcss");
+const { css } = await postcss([
+  require("@tailwindcss/postcss")({ base: root }),
+]).process(await readFile(cssSource, "utf8"), { from: cssSource });
 const server = createServer(async (req, res) => {
   if (req.url === "/bundle.js") {
     res.setHeader("Content-Type", "text/javascript; charset=utf-8");
@@ -270,8 +268,67 @@ try {
         animations: "disabled",
       });
     }
+  // Exercise the real menu without touching authenticated accounts.
+  for (const locale of ["en", "uk"])
+    for (const theme of ["light", "dark"])
+      for (const width of [320, 390, 1280]) {
+        await page.setViewportSize({ width, height: width === 320 ? 568 : 812 });
+        await page.goto(url + "/?mode=pastor&locale=" + locale);
+        await page.evaluate((theme) => {
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.themePreference = theme;
+          document.documentElement.dataset.textSize = "large";
+        }, theme);
+        const trigger = page.getByRole("button", { name: locale === "uk" ? "Налаштування" : "Settings", exact: true });
+        await trigger.click();
+        const menu = page.getByRole("dialog");
+        await expect(menu).toBeVisible();
+        await expect(menu.getByRole("link")).toHaveCount(0);
+        expect(await page.evaluate(() => document.body.style.overflow)).toBe("hidden");
+        expect(await page.locator("#root").evaluate((root) => root.inert)).toBe(true);
+        expect(await menu.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+        await expect(menu.getByRole("button").first()).toBeFocused();
+        await page.keyboard.press("Shift+Tab");
+        await expect(menu.getByRole("button").last()).toBeFocused();
+        await page.keyboard.press("Tab");
+        await expect(menu.getByRole("button").first()).toBeFocused();
+        await page.screenshot({ path: resolve(dir, `menu-${locale}-${theme}-${width}.png`), animations: "disabled" });
+        const toggle = menu.getByRole("switch");
+        if (await toggle.getAttribute("aria-checked") === "true") await toggle.click();
+        await toggle.click();
+        await expect(toggle).toHaveAttribute("aria-checked", "true");
+        expect(await page.evaluate(() => localStorage.getItem("directory-theme"))).toBe("dark");
+        await page.keyboard.press("Escape");
+        await expect(menu).toHaveCount(0);
+        await expect(trigger).toBeFocused();
+        expect(await page.locator("#root").evaluate((root) => root.inert)).toBe(false);
+        expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
+        await trigger.click();
+        await page.mouse.click(2, 2);
+        await expect(menu).toHaveCount(0);
+      }
+  for (const role of ["member", "editor", "admin"]) {
+    await page.goto(url + "/?mode=deacon&role=" + role);
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    const menu = page.getByRole("dialog");
+    await expect(menu.getByRole("link")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link")).toHaveCount(role === "member" ? 3 : 4);
+    await expect(menu).toHaveCount(0);
+  }
+  await page.goto(url + "/?mode=pastor");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "System", exact: true }).click();
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.getByRole("switch")).toHaveAttribute("aria-checked", "true");
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect(page.getByRole("switch")).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByRole("button", { name: "English", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("dialog").getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.signedOut)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.destination)).toBe("/login");
   console.log(
-    "Visitation UI passed: recipient defaults/overrides, save failure/recovery, editing, response changes, Ukrainian, light/dark, large text, 320/375/460px.",
+    "Visitation UI passed: recipient defaults/overrides, save failure/recovery, editing, response changes, Ukrainian, light/dark, large text, 320/375/460px; menu roles, focus trap, dismissal, preferences, sign-out, 320/390/1280px.",
   );
 } finally {
   if (browser) await browser.close();

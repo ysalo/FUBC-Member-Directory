@@ -108,7 +108,7 @@ export default async function AccountsPage() {
                       className="rounded-2xl bg-white p-4 shadow-sm sm:p-5"
                     >
                       <div className="flex min-w-0 items-start gap-3">
-                        <div className="grid size-11 shrink-0 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">
+                        <div className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--app-surface-muted)] font-bold text-[var(--app-brand)]">
                           {accountName(account).slice(0, 1).toUpperCase()}
                         </div>
                         <div className="min-w-0">

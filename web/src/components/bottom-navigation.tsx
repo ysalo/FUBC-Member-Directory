@@ -9,6 +9,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import Link from "@/components/navigation-link";
 import LanguageSwitcher from "@/components/language-switcher";
@@ -68,6 +69,7 @@ export default function BottomNavigation({
     };
   }, [isDeacon, isPastor, pathname]);
   const dialog = useRef<HTMLElement>(null);
+  const overlay = useRef<HTMLDivElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const saved =
@@ -79,10 +81,16 @@ export default function BottomNavigation({
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const background = Array.from(document.body.children)
+      .filter((element): element is HTMLElement => element instanceof HTMLElement && element !== overlay.current)
+      .map((element) => ({ element, inert: element.inert }));
+    background.forEach(({ element }) => { element.inert = true; });
     const focusable = () =>
       Array.from(
         dialog.current?.querySelectorAll<HTMLElement>(
-          'button, a[href], input, select, [tabindex="0"]',
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), [tabindex="0"]',
         ) ?? [],
       );
     focusable()[0]?.focus();
@@ -103,6 +111,8 @@ export default function BottomNavigation({
     document.addEventListener("keydown", key);
     return () => {
       document.removeEventListener("keydown", key);
+      document.body.style.overflow = previousOverflow;
+      background.forEach(({ element, inert }) => { element.inert = inert; });
       previous?.focus();
     };
   }, [open]);
@@ -190,6 +200,8 @@ export default function BottomNavigation({
               setOpen(true);
             }}
             aria-expanded={open}
+            aria-haspopup="dialog"
+            aria-controls="directory-menu"
             className="bottom-navigation-item flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 font-medium text-[var(--app-muted)]"
           >
             <Menu className="bottom-navigation-icon" strokeWidth={1.75} />
@@ -197,39 +209,47 @@ export default function BottomNavigation({
           </button>
         </div>
       </nav>
-      {open && (
+      {open && createPortal(
         <div
-          className="native-fade fixed inset-0 z-[80] flex justify-end bg-[#07131d]/45"
+          ref={overlay}
+          className="menu-overlay native-fade fixed inset-0 z-[80] flex justify-end bg-black/35"
           onClick={() => setOpen(false)}
         >
           <aside
             ref={dialog}
+            id="directory-menu"
             role="dialog"
             aria-modal="true"
             aria-labelledby="settings-title"
             onClick={(e) => e.stopPropagation()}
-            className="safe-top safe-bottom native-enter flex h-dvh w-[min(88%,22rem)] flex-col overflow-y-auto bg-white px-5"
+            className="side-menu native-scroll flex min-h-0 w-[min(calc(100vw-24px),18rem)] flex-col overflow-y-auto rounded-3xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-[var(--app-line)] pb-3">
-              <h2 id="settings-title" className="text-xl font-bold">
-                {copy.settings}
-              </h2>
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--app-line)] px-2 pt-3 pb-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--app-surface-muted)]">
+                  <BookUser className="size-4" strokeWidth={1.5} />
+                </span>
+                <div>
+                  <h2 id="settings-title" className="text-xs font-semibold">{copy.privateDirectory}</h2>
+                  <p className="mt-0.5 text-xs text-[var(--app-muted)]">{copy.settings}</p>
+                </div>
+              </div>
               <button
                 aria-label={copy.closeSettings}
                 onClick={() => setOpen(false)}
-                className="grid size-11 place-items-center"
+                className="grid size-8 shrink-0 place-items-center rounded-xl text-[var(--app-muted)] hover:bg-[var(--app-surface-muted)]"
               >
-                <X className="size-5" />
+                <X className="size-4" />
               </button>
             </div>
-            <section className="border-b border-[var(--app-line)] py-5">
-              <h3 className="mb-3 font-medium">{copy.language}</h3>
-              <LanguageSwitcher locale={locale} />
-            </section>
             <AppearanceSettings locale={locale} />
-            <section className="py-5">
-              <h3 className="mb-3 font-medium">{copy.textSize}</h3>
-              <div className="grid grid-cols-2 gap-2">
+            <section className="px-2 py-3">
+              <h3 className="mb-2 text-xs font-medium text-[var(--app-muted)]">{copy.language}</h3>
+              <LanguageSwitcher locale={locale} variant="flags" />
+            </section>
+            <section className="px-2 pt-3 pb-5">
+              <h3 className="mb-2 text-xs font-medium text-[var(--app-muted)]">{copy.textSize}</h3>
+              <div className="inline-flex gap-1 rounded-lg bg-[var(--app-surface-muted)] p-0.5">
                 {["standard", "large"].map((size) => (
                   <button
                     key={size}
@@ -239,21 +259,22 @@ export default function BottomNavigation({
                       document.documentElement.dataset.textSize = size;
                       window.localStorage.setItem("directory-text-size", size);
                     }}
-                    className={`min-h-11 rounded-lg px-2 ${size === textSize ? "bg-[var(--app-surface-muted)] font-semibold" : "text-[var(--app-muted)]"}`}
+                    className={`menu-small-option min-h-8 rounded-md px-2 text-xs ${size === textSize ? "bg-[var(--app-surface)] font-semibold shadow-sm" : "text-[var(--app-muted)]"}`}
                   >
                     {size === "large" ? copy.largerText : copy.standardText}
                   </button>
                 ))}
               </div>
             </section>
-            <div className="mt-auto border-t border-[var(--app-line)] py-5">
+            <div className="mt-auto border-t border-[var(--app-line)] py-3">
               <SignOutButton
+                variant="menu"
                 label={copy.signOut}
                 loadingLabel={copy.signingOut}
               />
             </div>
           </aside>
-        </div>
+        </div>, document.body
       )}
     </>
   );

@@ -24,7 +24,7 @@ export default async function EditMemberPage({
   if (error || !person) notFound();
   const updateAction = updateMember.bind(null, id);
   const inputClass =
-    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600";
+    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--app-brand)]";
 
   return (
     <main className="safe-page min-h-dvh p-4 sm:p-8">
@@ -77,7 +77,7 @@ export default async function EditMemberPage({
               name="photo"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              className="mt-1 block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+              className="mt-1 block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--app-surface-muted)] file:px-3 file:py-2 file:font-semibold file:text-[var(--app-brand)] hover:file:bg-[var(--app-surface-muted)]"
             />
             <span className="mt-1 block text-xs font-normal text-slate-500">
               {t(locale, "replacementPhotoHelp")}

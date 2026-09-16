@@ -11,7 +11,8 @@ test("group routes require authentication", async ({ page }) => {
 
 test("shows SSO-only login without Apple by default", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
+  await expect(page.getByRole("heading")).toHaveCount(0);
+  await expect(page.locator(".login-logo")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
   ).toBeVisible();
@@ -20,7 +21,7 @@ test("shows SSO-only login without Apple by default", async ({ page }) => {
   ).toHaveCount(0);
   await expect(
     page.getByText("does not store a separate password"),
-  ).toBeVisible();
+  ).toHaveCount(0);
 });
 
 test("login has no horizontal overflow on supported viewports", async ({
@@ -43,14 +44,11 @@ test("language choice persists and localizes the login screen", async ({
   await page.goto("/login");
   await page.getByRole("button", { name: "УКР" }).click();
   await expect(
-    page.getByRole("heading", { name: "Ласкаво просимо" }),
-  ).toBeVisible();
-  await expect(
     page.getByRole("button", { name: "Продовжити з Google" }),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Ласкаво просимо" }),
+    page.getByRole("button", { name: "Продовжити з Google" }),
   ).toBeVisible();
   expect(
     (await page.context().cookies()).find(
