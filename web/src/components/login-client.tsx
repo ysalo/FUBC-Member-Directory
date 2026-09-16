@@ -46,15 +46,18 @@ export default function LoginClient({ locale }: { locale: Locale }) {
     searchParams.get("error") ? copy.signInFailed : "",
   );
   async function signIn(provider: Provider) {
+    if (loading) return;
     setLoading(provider);
     setError("");
+    try {
     const next = safeNextPath(searchParams.get("next"));
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error: authError } = await createClient().auth.signInWithOAuth({
       provider,
       options: { redirectTo },
     });
-    if (authError) {
+    if (authError) throw authError;
+    } catch {
       setLoading(null);
       setError(copy.providerUnavailable);
     }
@@ -95,13 +98,16 @@ export default function LoginClient({ locale }: { locale: Locale }) {
         </div>
         <div className="login-actions">
           <button
+            type="button"
             onClick={() => signIn("google")}
             disabled={loading !== null}
+            aria-busy={loading === "google"}
             className="login-google"
           >
             <ProviderIcon provider="google" />
             {loading === "google" ? copy.openingGoogle : copy.continueGoogle}
           </button>
+          <p role="status" className="sr-only">{loading === "google" ? copy.openingGoogle : ""}</p>
           {error && (
             <p
               role="alert"

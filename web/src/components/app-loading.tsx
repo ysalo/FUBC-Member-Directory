@@ -6,6 +6,10 @@ type Layout =
   | "visit-form"
   | "visit-edit"
   | "groups"
+  | "group-detail"
+  | "member"
+  | "member-edit"
+  | "login"
   | "management";
 function Bar({ className = "" }: { className?: string }) {
   return (
@@ -23,6 +27,53 @@ function SearchRow() {
   );
 }
 function Content({ layout }: { layout: Layout }) {
+  if (layout === "login")
+    return (
+      <div className="mx-auto max-w-md space-y-6 rounded-[2rem] border border-[var(--app-line)] p-7">
+        <Bar className="size-14 rounded-2xl" />
+        <Bar className="h-8 w-2/3" />
+        <Bar className="h-4" />
+        <Bar className="h-12 rounded-xl" />
+        <Bar className="h-12 rounded-xl" />
+        <Bar className="h-4 w-4/5" />
+      </div>
+    );
+  if (layout === "member")
+    return (
+      <>
+        <div className="relative h-[62dvh] min-h-[360px] max-h-[600px] bg-[var(--app-surface-muted)]">
+          <div className="safe-top px-4">
+            <Bar className="size-11 bg-[var(--app-line)]" />
+          </div>
+          <Bar className="absolute bottom-6 left-5 h-8 w-2/3 bg-[var(--app-line)]" />
+        </div>
+        <div className="space-y-6 p-5">
+          {[0, 1, 2].map((row) => (
+            <Bar key={row} className="h-12 w-full rounded-xl" />
+          ))}
+        </div>
+      </>
+    );
+  if (layout === "group-detail")
+    return (
+      <div className="safe-top space-y-5 px-4">
+        <Bar className="size-11" />
+        <Bar className="h-7 w-2/3" />
+        <div className="space-y-4 rounded-2xl border border-[var(--app-line)] p-4">
+          <Bar className="h-5 w-2/3" />
+          {[0, 1].map((row) => (
+            <div key={row} className="flex items-center gap-3">
+              <Bar className="size-10" />
+              <Bar className="h-5 w-2/3" />
+            </div>
+          ))}
+        </div>
+        <SearchRow />
+        {[0, 1, 2].map((row) => (
+          <Bar key={row} className="h-14 rounded-xl" />
+        ))}
+      </div>
+    );
   if (layout === "directory")
     return (
       <>
@@ -54,7 +105,11 @@ function Content({ layout }: { layout: Layout }) {
         ))}
       </>
     );
-  if (layout === "visit-form" || layout === "visit-edit")
+  if (
+    layout === "visit-form" ||
+    layout === "visit-edit" ||
+    layout === "member-edit"
+  )
     return (
       <>
         <Bar className="mb-4 size-11" />
@@ -66,7 +121,7 @@ function Content({ layout }: { layout: Layout }) {
               <Bar className="h-12 rounded-xl" />
             </div>
           ))}
-          {layout === "visit-edit" && (
+          {(layout === "visit-edit" || layout === "member-edit") && (
             <>
               <div>
                 <Bar className="mb-2 h-5 w-1/3" />
@@ -187,23 +242,31 @@ export default async function AppLoading({
       role="status"
       aria-busy="true"
       className={
-        inset ? "" : "min-h-dvh bg-[var(--app-surface)] text-[var(--app-ink)]"
+        inset
+          ? ""
+          : `${layout === "login" ? "w-full max-w-md" : "min-h-dvh"} bg-[var(--app-surface)] text-[var(--app-ink)]`
       }
     >
       <span className="sr-only">
         {locale === "uk" ? "Завантаження…" : "Loading…"}
       </span>
-      <div aria-hidden="true">
+      <div aria-hidden="true" className="motion-safe:animate-pulse">
         <Content layout={layout} />
       </div>
     </div>
   );
-  if (layout === "directory" && !inset)
+  if (["directory", "member", "group-detail"].includes(layout) && !inset)
     return (
       <div className="fixed inset-0 h-dvh overflow-hidden bg-[var(--app-bg)] sm:p-6">
         <div className="native-shadow mx-auto h-full max-w-xl overflow-hidden bg-[var(--app-surface)] sm:rounded-[2rem]">
           {body}
         </div>
+      </div>
+    );
+  if (layout === "login")
+    return (
+      <div className="safe-page grid min-h-dvh place-items-center p-5">
+        {body}
       </div>
     );
   return inset ? (

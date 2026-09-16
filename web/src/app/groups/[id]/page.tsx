@@ -4,6 +4,7 @@ import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { loadDirectory, loadDeaconGroups } from "@/lib/directory-data";
 import { churchToday } from "@/lib/birthdays";
+import { loadNavigationUser } from "@/lib/navigation-user";
 
 export default async function GroupPage({
   params,
@@ -36,6 +37,7 @@ export default async function GroupPage({
     <DirectoryClient
       key={group.id}
       members={members}
+      currentUser={await loadNavigationUser(supabase, profile)}
       role={profile.role}
       locale={locale}
       isDeacon={isDeacon}

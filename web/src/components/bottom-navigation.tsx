@@ -20,6 +20,8 @@ import { groupCopy } from "@/lib/group-copy";
 import type { AppRole } from "@/lib/auth";
 import { pendingVisitCount } from "@/app/visitation/actions";
 import { visitCopy } from "@/lib/visitation";
+import MemberPhoto from "@/components/member-photo";
+import type { NavigationUser } from "@/lib/navigation-user";
 
 export default function BottomNavigation({
   role,
@@ -27,12 +29,14 @@ export default function BottomNavigation({
   isPastor = false,
   locale,
   fixed = false,
+  currentUser,
 }: {
   role: AppRole;
   isDeacon: boolean;
   isPastor?: boolean;
   locale: Locale;
   fixed?: boolean;
+  currentUser: NavigationUser;
 }) {
   const pathname = usePathname();
   const copy = dictionaries[locale];
@@ -72,10 +76,11 @@ export default function BottomNavigation({
   const overlay = useRef<HTMLDivElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    const saved =
-      window.localStorage.getItem("directory-text-size") === "large"
-        ? "large"
-        : "standard";
+    let saved = "standard";
+    try {
+      if (window.localStorage.getItem("directory-text-size") === "large")
+        saved = "large";
+    } catch {}
     document.documentElement.dataset.textSize = saved;
   }, []);
   useEffect(() => {
@@ -116,17 +121,12 @@ export default function BottomNavigation({
       previous?.focus();
     };
   }, [open]);
-  if (
-    /^\/admin\/[^/]+$/.test(pathname) &&
-    !["/admin/accounts", "/admin/groups"].includes(pathname)
-  )
-    return null;
   const tabs = [
     {
       href: "/",
       label: labels.directory,
       Icon: BookUser,
-      active: pathname === "/",
+      active: pathname === "/" || pathname.startsWith("/members"),
     },
     {
       href: "/groups",
@@ -155,6 +155,14 @@ export default function BottomNavigation({
         ]
       : []),
   ];
+  const identity = <>
+    <MemberPhoto name={currentUser.name} photoPath={currentUser.photoPath} />
+    <span className="min-w-0">
+      <span className="block break-words text-xs font-semibold">{currentUser.name}</span>
+      {!currentUser.personId && <span className="block text-[10px] text-[var(--app-muted)]">{copy.notLinked}</span>}
+      <span className="block break-all text-[10px] text-[var(--app-muted)]">{currentUser.email}</span>
+    </span>
+  </>;
   return (
     <>
       <nav
@@ -225,14 +233,11 @@ export default function BottomNavigation({
             className="side-menu native-scroll flex min-h-0 w-[min(calc(100vw-24px),18rem)] flex-col overflow-y-auto rounded-3xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 shadow-2xl"
           >
             <div className="flex items-center justify-between gap-2 border-b border-[var(--app-line)] px-2 pt-3 pb-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--app-surface-muted)]">
-                  <BookUser className="size-4" strokeWidth={1.5} />
-                </span>
-                <div>
-                  <h2 id="settings-title" className="text-xs font-semibold">{copy.privateDirectory}</h2>
-                  <p className="mt-0.5 text-xs text-[var(--app-muted)]">{copy.settings}</p>
-                </div>
+              <h2 id="settings-title" className="sr-only">{copy.settings}</h2>
+              <div className="min-w-0 flex-1">
+                <p className="sr-only">{copy.signedInAs}</p>
+                {currentUser.personId ? <Link href={`/members/${currentUser.personId}`} onClick={() => setOpen(false)} className="flex min-w-0 items-center gap-2">{identity}</Link>
+                  : <div className="flex min-w-0 items-center gap-2">{identity}</div>}
               </div>
               <button
                 aria-label={copy.closeSettings}
@@ -257,7 +262,7 @@ export default function BottomNavigation({
                     onClick={() => {
                       setTextSize(size);
                       document.documentElement.dataset.textSize = size;
-                      window.localStorage.setItem("directory-text-size", size);
+                      try { window.localStorage.setItem("directory-text-size", size); } catch {}
                     }}
                     className={`menu-small-option min-h-8 rounded-md px-2 text-xs ${size === textSize ? "bg-[var(--app-surface)] font-semibold shadow-sm" : "text-[var(--app-muted)]"}`}
                   >

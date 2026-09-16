@@ -1,7 +1,9 @@
 import Link from "@/components/navigation-link";
 import { addMember, archiveMember, restoreMember } from "./actions";
 import { requireEditor } from "@/lib/auth";
-import LanguageSwitcher from "@/components/language-switcher";
+import BackButton from "@/components/back-button";
+import VisitMemberLink from "@/components/visit-member-link";
+import { loadVisitPhotos } from "@/lib/visit-photos";
 import { t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { groupCopy } from "@/lib/group-copy";
@@ -19,6 +21,10 @@ export default async function AdminPage() {
   if (error) throw new Error("Unable to load member records.");
   const activePeople = (people ?? []).filter((person) => !person.archived_at);
   const archivedPeople = (people ?? []).filter((person) => person.archived_at);
+  const photos = await loadVisitPhotos(
+    supabase,
+    activePeople.map((person) => person.id),
+  );
   const { count: pendingCount } =
     profile.role === "admin"
       ? await supabase
@@ -30,6 +36,11 @@ export default async function AdminPage() {
   return (
     <main className="safe-page min-h-dvh p-4 sm:p-8">
       <section className="native-enter mx-auto max-w-6xl">
+        <BackButton
+          href="/"
+          label={t(locale, "viewDirectory")}
+          className="mb-4"
+        />
         <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center">
           <div>
             <p className="font-medium text-[var(--app-accent)]">
@@ -48,7 +59,6 @@ export default async function AdminPage() {
             >
               {groupCopy(locale).groups}
             </Link>
-            <LanguageSwitcher locale={locale} />
             {profile.role === "admin" && (
               <Link
                 href="/admin/accounts"
@@ -58,12 +68,6 @@ export default async function AdminPage() {
                 {pendingCount ? ` (${pendingCount})` : ""}
               </Link>
             )}
-            <Link
-              href="/"
-              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[var(--app-brand)] px-4 py-2.5 text-center font-semibold text-white shadow-sm hover:bg-[var(--app-brand-strong)] sm:flex-none"
-            >
-              {t(locale, "viewDirectory")}
-            </Link>
           </div>
         </header>
         <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -89,7 +93,13 @@ export default async function AdminPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-900">
-                      {person.first_name} {person.last_name}
+                      <VisitMemberLink
+                        personId={person.id}
+                        name={`${person.first_name} ${person.last_name}`}
+                        photoPath={photos.get(person.id)}
+                        showPhoto
+                        locale={locale}
+                      />
                     </p>
                     <p className="truncate text-sm text-slate-500">
                       {[
@@ -135,11 +145,15 @@ export default async function AdminPage() {
                       key={person.id}
                       className="flex items-center justify-between gap-4 py-3"
                     >
+                      <VisitMemberLink
+                        name={`${person.first_name} ${person.last_name}`}
+                        locale={locale}
+                      />
                       <Link
                         href={`/admin/${person.id}`}
-                        className="font-medium text-slate-500 hover:text-[var(--app-brand)]"
+                        className="min-h-11 p-2 text-sm font-semibold text-[var(--app-brand)]"
                       >
-                        {person.first_name} {person.last_name}
+                        {t(locale, "edit")}
                       </Link>
                       <form action={restoreMember.bind(null, person.id)}>
                         <button className="min-h-11 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">

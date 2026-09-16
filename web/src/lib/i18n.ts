@@ -3,8 +3,8 @@ export type Locale = (typeof locales)[number];
 
 const en = {
   language: "Language",
-  settings: "Settings",
-  closeSettings: "Close settings",
+  settings: "Menu",
+  closeSettings: "Close menu",
   appearance: "Appearance",
   textSize: "Text size",
   standardText: "Standard",
@@ -93,8 +93,16 @@ const en = {
   approveAccess: "Approve access",
   noAccounts: "No accounts in this section.",
   welcome: "Welcome",
+  signIn: "Sign in",
+  createAccount: "Create account",
+  accountAction: "Account options",
+  createAccountHelp:
+    "Join your church directory with an account you already use.",
+  approvalRequired: "New accounts need administrator approval",
+  approvalHelp:
+    "Create your account with Google or an available provider. An administrator must approve it before you can view the directory.",
   loginHelp:
-    "Sign in with an identity provider. New accounts are reviewed before directory access is granted.",
+    "Reconnect with your church community. Sign in with the account you used to join.",
   continueGoogle: "Continue with Google",
   openingGoogle: "Opening Google…",
   continueApple: "Continue with Apple",
@@ -120,8 +128,8 @@ export type TranslationKey = keyof typeof en;
 
 const uk: Record<TranslationKey, string> = {
   language: "Мова",
-  settings: "Налаштування",
-  closeSettings: "Закрити налаштування",
+  settings: "Меню",
+  closeSettings: "Закрити меню",
   appearance: "Вигляд",
   textSize: "Розмір тексту",
   standardText: "Стандартний",
@@ -210,8 +218,16 @@ const uk: Record<TranslationKey, string> = {
   approveAccess: "Схвалити доступ",
   noAccounts: "У цьому розділі немає облікових записів.",
   welcome: "Ласкаво просимо",
+  signIn: "Увійти",
+  createAccount: "Створити обліковий запис",
+  accountAction: "Дії з обліковим записом",
+  createAccountHelp:
+    "Приєднайтеся до довідника церкви за допомогою наявного облікового запису.",
+  approvalRequired: "Нові облікові записи потребують схвалення адміністратора",
+  approvalHelp:
+    "Створіть обліковий запис через Google або іншого доступного постачальника. Адміністратор має схвалити його, перш ніж ви зможете переглядати довідник.",
   loginHelp:
-    "Увійдіть через постачальника облікових записів. Нові запити перевіряє адміністратор.",
+    "Будьте на зв’язку з громадою церкви. Увійдіть через обліковий запис, з яким ви приєдналися.",
   continueGoogle: "Продовжити з Google",
   openingGoogle: "Відкриваємо Google…",
   continueApple: "Продовжити з Apple",

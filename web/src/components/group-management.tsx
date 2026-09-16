@@ -5,14 +5,17 @@ import { Search } from "lucide-react";
 import { mutateGroup } from "@/app/admin/groups/actions";
 import { groupCopy, type DeaconGroup } from "@/lib/group-copy";
 import { dictionaries, type Locale } from "@/lib/i18n";
+import VisitMemberLink from "@/components/visit-member-link";
 
 type Person = {
   id: string;
   first_name: string;
   last_name: string;
   archived_at: string | null;
+  photoPath?: string;
 };
 type Eligible = { id: string; display_name: string; group_id: string | null };
+type MemberProfiles = Record<string, { personId: string; photoPath?: string }>;
 const field =
   "min-h-11 w-full min-w-0 rounded-lg border border-[var(--app-line)] bg-white px-3";
 const button =
@@ -22,14 +25,20 @@ function GroupEditor({
   group,
   eligible,
   locale,
+  memberProfiles,
 }: {
   group?: DeaconGroup;
   eligible: Eligible[];
   locale: Locale;
+  memberProfiles: MemberProfiles;
 }) {
   const copy = groupCopy(locale);
   const [pending, start] = useTransition();
   const [message, setMessage] = useState("");
+  const [selected, setSelected] = useState([
+    group?.deacons[0]?.id ?? "",
+    group?.deacons[1]?.id ?? "",
+  ]);
   const options = [
     ...eligible.filter(
       (deacon) => !deacon.group_id || deacon.group_id === group?.id,
@@ -52,7 +61,10 @@ function GroupEditor({
           try {
             const result = await mutateGroup("save", form);
             setMessage(result.error ?? copy.saved);
-            if (!result.error && !group) element.reset();
+            if (!result.error && !group) {
+              element.reset();
+              setSelected(["", ""]);
+            }
           } catch {
             setMessage(copy.failed);
           }
@@ -73,21 +85,44 @@ function GroupEditor({
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         {["firstDeacon", "secondDeacon"].map((name, index) => (
-          <label key={name} className="text-sm font-medium">
-            {index ? copy.secondDeacon : copy.firstDeacon}
-            <select
-              name={name}
-              defaultValue={group?.deacons[index]?.id ?? ""}
-              className={field + " mt-1"}
-            >
-              <option value="">{copy.none}</option>
-              {options.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.display_name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div key={name} className="min-w-0 text-sm font-medium">
+            <label>
+              {index ? copy.secondDeacon : copy.firstDeacon}
+              <select
+                name={name}
+                value={selected[index]}
+                onChange={(event) =>
+                  setSelected(
+                    selected.map((id, i) =>
+                      i === index ? event.target.value : id,
+                    ),
+                  )
+                }
+                className={field + " mt-1"}
+              >
+                <option value="">{copy.none}</option>
+                {options.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.display_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selected[index] && (
+              <div className="mt-2">
+                <VisitMemberLink
+                  personId={memberProfiles[selected[index]]?.personId}
+                  name={
+                    options.find((option) => option.id === selected[index])
+                      ?.display_name ?? copy.inactive
+                  }
+                  photoPath={memberProfiles[selected[index]]?.photoPath}
+                  showPhoto
+                  locale={locale}
+                />
+              </div>
+            )}
+          </div>
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-3">
@@ -143,7 +178,13 @@ function MemberAssignment({
       <input type="hidden" name="personId" value={person.id} />
       <input type="hidden" name="expectedGroup" value={original} />
       <p className="font-medium">
-        {person.first_name} {person.last_name}
+        <VisitMemberLink
+          personId={person.archived_at ? null : person.id}
+          name={`${person.first_name} ${person.last_name}`}
+          photoPath={person.photoPath}
+          showPhoto
+          locale={locale}
+        />
         {person.archived_at && (
           <span className="ml-2 text-xs text-[var(--app-muted)]">
             {copy.archived}
@@ -229,11 +270,13 @@ export default function GroupManagement({
   people,
   eligible,
   locale,
+  memberProfiles,
 }: {
   groups: DeaconGroup[];
   people: Person[];
   eligible: Eligible[];
   locale: Locale;
+  memberProfiles: MemberProfiles;
 }) {
   const copy = groupCopy(locale);
   const [query, setQuery] = useState("");
@@ -259,7 +302,11 @@ export default function GroupManagement({
       <p className="text-sm text-[var(--app-muted)]">{copy.guideline}</p>
       <section className="rounded-2xl bg-white p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-semibold">{copy.create}</h2>
-        <GroupEditor eligible={eligible} locale={locale} />
+        <GroupEditor
+          eligible={eligible}
+          locale={locale}
+          memberProfiles={memberProfiles}
+        />
       </section>
       <div className="grid gap-4 md:grid-cols-2">
         {groups.map((group) => (
@@ -281,6 +328,7 @@ export default function GroupManagement({
               group={group}
               eligible={eligible}
               locale={locale}
+              memberProfiles={memberProfiles}
             />
             {!group.memberIds.length && !group.deacons.length && (
               <DeleteGroup group={group} locale={locale} />
