@@ -1,0 +1,64 @@
+name: Verify native app
+
+on:
+  pull_request:
+  push:
+    branches: [main, feature/swiftui-app]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database:
+    name: New schema and authorization tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated backend test dependencies
+        working-directory: tools/backend
+        run: npx --yes pnpm@10 install --frozen-lockfile
+      - name: Run backend suite
+        working-directory: tools/backend
+        run: node --test schema.test.mjs
+      - name: Verify notification worker
+        run: node --test supabase/worker/*.test.mjs
+  ios:
+    name: iPhone Simulator build and tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report toolchain
+        run: xcodebuild -version
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate --spec ios/project.yml
+      - name: Choose an available iPhone Simulator
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; data=json.load(sys.stdin); devices=[d for runtime,items in data["devices"].items() if "iOS" in runtime for d in items if "iPhone" in d["name"]]; assert devices, "No iPhone Simulator installed"; print(devices[0]["udid"])')
+          echo "IOS_TEST_DEVICE=$DEVICE_ID" >> "$GITHUB_ENV"
+      - name: Build and test preview configuration
+        run: |
+          xcodebuild test \
+            -project ios/ChurchDirectory.xcodeproj \
+            -scheme ChurchDirectoryPreview \
+            -destination "platform=iOS Simulator,id=$IOS_TEST_DEVICE" \
+            -resultBundlePath TestResults/Native.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Preserve test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-test-results
+          path: TestResults
+          if-no-files-found: ignore

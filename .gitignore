@@ -1,4 +1,32 @@
-.yarn-cache/
-work/
-web/test-results/
-web/playwright-report/
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.mobileprovision
+ios/Configuration/Local.xcconfig
+ios/Configuration/Secrets.xcconfig
+ios/Configuration/Info.plist
+
+# Generated native projects and build products
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+.build/
+build/
+*.xcresult/
+xcuserdata/
+.DS_Store
+
+# Local database and tooling caches
+node_modules/
+.pnpm-store/
+supabase/.temp/
+supabase/.branches/
+coverage/
+test-results/
+TestResults/
+support/dist/
+__pycache__/
+.impeccable/config.local.json

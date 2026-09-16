@@ -1,0 +1,31 @@
+project_id = "church-directory-native"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.seed]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["churchdirectory://auth/callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+# Apple and Google provider configuration belongs to each staging/production
+# project. Native Apple ID-token audience must match the signed bundle ID.
+# Do not place OAuth secrets or signing keys in this file.

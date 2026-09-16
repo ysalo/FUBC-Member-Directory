@@ -1,0 +1,21 @@
+{
+  "schemaVersion":2,
+  "generatedAt":"2026-09-16T00:00:00Z",
+  "title":"Design System: Church Directory",
+  "extensions":{
+    "nativePlatform":"ios",
+    "semanticColors":{"action":"SwiftUI.Color.blue","content":"primary","supporting":"secondary","placeholder":"tertiary","error":"red","completed":"green"},
+    "dynamicTypography":{"body":"SwiftUI.Font.body","secondary":"SwiftUI.Font.subheadline"},
+    "motion":[{"name":"platform","value":"System navigation and sheet transitions","purpose":"Preserve native behavior and accessibility preferences"}],
+    "verification":"Source reviewed only; Simulator and hardware visual review pending"
+  },
+  "components":[],
+  "narrative":{
+    "northStar":"Familiar native care workflows",
+    "overview":"Apple-native lists and forms keep people and care tasks clear. SwiftUI controls preserve platform navigation and accessibility behavior.",
+    "keyCharacteristics":["System typography","Semantic appearance","Explicit state","Bilingual copy"],
+    "rules":[{"name":"Native controls","body":"Use system navigation, fields and confirmations.","section":"components"}],
+    "dos":["Verify with real native screenshots","Expose errors and recovery"],
+    "donts":["Do not claim preview is connected","Do not impose fixed interface font sizes"]
+  }
+}

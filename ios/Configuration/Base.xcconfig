@@ -1,0 +1,8 @@
+APP_BUNDLE_ID = org.example.churchdirectory
+SUPABASE_HOST =
+SUPABASE_PUBLISHABLE_KEY =
+DEVELOPMENT_TEAM =
+SUPPORT_EMAIL =
+SUPPORT_HOST =
+PRIVACY_HOST =
+#include? "Local.xcconfig"

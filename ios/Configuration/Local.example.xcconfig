@@ -1,0 +1,8 @@
+// Copy to Local.xcconfig; no credentials with elevated privileges belong here.
+APP_BUNDLE_ID = org.yourchurch.directory
+SUPABASE_HOST = your-staging-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_replace_with_staging_key
+DEVELOPMENT_TEAM = YOURTEAMID
+SUPPORT_EMAIL = support@yourchurch.org
+SUPPORT_HOST = support.yourchurch.org/index.html
+PRIVACY_HOST = support.yourchurch.org/privacy.html
