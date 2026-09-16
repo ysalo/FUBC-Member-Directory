@@ -7,7 +7,6 @@ import {
   Menu,
   X,
   CalendarDays,
-  ChevronRight,
   Languages,
   Type,
 } from "lucide-react";
@@ -231,15 +230,12 @@ export default function BottomNavigation({
                   <X className="size-5" />
                 </button>
               </div>
-              <section className="my-5 rounded-2xl border border-[var(--app-line)] bg-[var(--app-brand-soft)] p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                  {copy.signedInAs}
-                </p>
+              <section className="py-5">
                 {currentUser.personId ? (
                   <Link
                     href={`/members/${currentUser.personId}`}
                     onClick={() => setOpen(false)}
-                    className="flex min-h-11 items-center gap-3 rounded-xl"
+                    className="flex items-center gap-3 rounded-xl"
                   >
                     <MemberPhoto
                       name={currentUser.name}
@@ -249,14 +245,10 @@ export default function BottomNavigation({
                       <span className="block break-words font-semibold">
                         {currentUser.name}
                       </span>
-                      <span className="block text-xs text-[var(--app-brand)]">
-                        {copy.memberProfile}
+                      <span className="block break-all text-xs font-normal text-[var(--app-muted)]">
+                        {currentUser.email}
                       </span>
                     </span>
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="size-5 shrink-0"
-                    />
                   </Link>
                 ) : (
                   <div className="flex items-center gap-3">
@@ -266,17 +258,14 @@ export default function BottomNavigation({
                     />
                     <span className="min-w-0 break-words font-semibold">
                       {currentUser.name}
-                      <span className="block text-xs font-normal text-[var(--app-muted)]">
-                        {copy.notLinked}
+                      <span className="block break-all text-xs font-normal text-[var(--app-muted)]">
+                        {currentUser.email}
                       </span>
                     </span>
                   </div>
                 )}
-                <p className="mt-3 break-all text-sm text-[var(--app-muted)]">
-                  {currentUser.email}
-                </p>
               </section>
-              <section className="border-b border-[var(--app-line)] py-5">
+              <section className="border-y border-[var(--app-line)] py-4">
                 <h3 className="mb-3 flex items-center gap-2 font-medium">
                   <Languages aria-hidden="true" className="size-4" />
                   {copy.language}
@@ -284,7 +273,7 @@ export default function BottomNavigation({
                 <LanguageSwitcher locale={locale} />
               </section>
               <AppearanceSettings locale={locale} />
-              <section className="py-5">
+              <section className="py-4">
                 <h3 className="mb-3 flex items-center gap-2 font-medium">
                   <Type aria-hidden="true" className="size-4" />
                   {copy.textSize}
@@ -313,6 +302,7 @@ export default function BottomNavigation({
               </section>
               <div className="mt-auto border-t border-[var(--app-line)] py-5">
                 <SignOutButton
+                  destructive
                   label={copy.signOut}
                   loadingLabel={copy.signingOut}
                 />

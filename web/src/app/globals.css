@@ -2,17 +2,17 @@
 
 :root {
   color-scheme: light;
-  --app-bg: #edf2f7;
+  --app-bg: #f2f4ef;
   --app-surface: #ffffff;
-  --app-surface-muted: #f6f8fb;
-  --app-ink: #172033;
-  --app-muted: #697386;
-  --app-line: #dfe5ec;
-  --app-brand: #194a70;
-  --app-brand-strong: #123752;
-  --app-brand-soft: #e7f0f6;
-  --app-accent: #c7922f;
-  --app-accent-soft: #fbf2df;
+  --app-surface-muted: #f7f8f5;
+  --app-ink: #202922;
+  --app-muted: #69736a;
+  --app-line: #dce2da;
+  --app-brand: #3e6651;
+  --app-brand-strong: #2e4e3d;
+  --app-brand-soft: #e8f0e8;
+  --app-accent: #9a7440;
+  --app-accent-soft: #f8f0e3;
   --app-danger: #b42318;
   --app-shadow: 0 18px 60px rgb(23 32 51 / 10%);
 }
@@ -29,16 +29,16 @@ html[data-text-size="large"] {
 }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --app-bg: #10151c;
-  --app-surface: #191f28;
-  --app-surface-muted: #222a35;
-  --app-ink: #edf1f7;
-  --app-muted: #a7b2c3;
-  --app-line: #343e4c;
-  --app-brand: #96c7eb;
-  --app-brand-strong: #315f82;
-  --app-brand-soft: #263c50;
-  --app-accent-soft: #403522;
+  --app-bg: #151a16;
+  --app-surface: #1d241e;
+  --app-surface-muted: #273028;
+  --app-ink: #edf2eb;
+  --app-muted: #adb8ae;
+  --app-line: #3a463b;
+  --app-brand: #a7c9ad;
+  --app-brand-strong: #52785e;
+  --app-brand-soft: #2d4131;
+  --app-accent-soft: #443c2a;
   --app-danger: #ffaaa3;
   --app-shadow: 0 18px 60px rgb(0 0 0 / 25%);
 }
@@ -65,7 +65,7 @@ html[data-theme="dark"] .directory-search:focus-within {
   box-shadow: inset 0 -1px var(--app-brand);
 }
 html[data-theme="dark"] [class~="bg-[var(--app-brand)]"] {
-  background-color: #285579;
+  background-color: #52785e;
 }
 html[data-theme="dark"] :is(.bg-blue-50, .bg-blue-100) {
   background-color: var(--app-brand-soft);
@@ -139,7 +139,7 @@ textarea {
     background-color 160ms ease;
 }
 :focus-visible {
-  outline: 3px solid rgb(25 74 112 / 24%);
+  outline: 3px solid rgb(62 102 81 / 28%);
   outline-offset: 2px;
 }
 
@@ -148,7 +148,7 @@ textarea {
   transition: box-shadow 160ms ease;
 }
 .directory-search:focus-within {
-  box-shadow: inset 0 -1px rgb(25 74 112 / 35%);
+  box-shadow: inset 0 -1px rgb(62 102 81 / 40%);
 }
 .directory-search input:focus-visible {
   outline: none;
