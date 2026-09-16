@@ -3,6 +3,7 @@ import { requireActiveProfile } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { loadDirectory } from "@/lib/directory-data";
 import { churchToday } from "@/lib/birthdays";
+import { loadNavigationUser } from "@/lib/navigation-user";
 
 export default async function DirectoryPage() {
   const { supabase, profile } = await requireActiveProfile();
@@ -11,6 +12,7 @@ export default async function DirectoryPage() {
   return (
     <DirectoryClient
       members={members}
+      currentUser={await loadNavigationUser(supabase, profile)}
       today={churchToday()}
       role={profile.role}
       locale={locale}

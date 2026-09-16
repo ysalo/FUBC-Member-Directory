@@ -1,7 +1,7 @@
 import { CalendarDays, MapPin, FileText, Check, Clock, X } from "lucide-react";
 import { formatVisitDate, visitCopy, type Visit } from "@/lib/visitation";
 import type { Locale } from "@/lib/i18n";
-import MemberPhoto from "@/components/member-photo";
+import VisitMemberLink from "@/components/visit-member-link";
 
 export default function VisitDetails({
   visit: v,
@@ -23,12 +23,23 @@ export default function VisitDetails({
     <div className="space-y-5">
       <header>
         <p className="mb-1 text-sm text-[var(--app-muted)]">
-          {c.requester}: {v.pastor_name}
+          {c.requester}:{" "}
+          <VisitMemberLink
+            personId={v.pastor_person_id}
+            name={v.pastor_name}
+            photoPath={v.pastor_photo}
+            locale={locale}
+          />
         </p>
         <div className="flex items-center gap-3">
-          <MemberPhoto name={v.member_name} photoPath={v.member_photo} />
           <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight">
-            {v.member_name}
+            <VisitMemberLink
+              personId={v.member_available === false ? null : v.person_id}
+              name={v.member_name}
+              photoPath={v.member_photo}
+              showPhoto
+              locale={locale}
+            />
           </h1>
         </div>
         <span className="mt-3 inline-flex rounded-full bg-[var(--app-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--app-muted)]">
@@ -123,7 +134,13 @@ export default function VisitDetails({
               <div key={r.deacon_id} className="p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="min-w-0 break-words font-medium">
-                    {r.deacon_name}
+                    <VisitMemberLink
+                      personId={r.deacon_person_id}
+                      name={r.deacon_name}
+                      photoPath={r.deacon_photo}
+                      showPhoto
+                      locale={locale}
+                    />
                   </p>
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${r.response === "accepted" ? "bg-[var(--app-brand-soft)] text-[var(--app-brand)]" : r.response === "declined" ? "bg-red-50 text-red-700" : "bg-[var(--app-surface-muted)] text-[var(--app-muted)]"}`}

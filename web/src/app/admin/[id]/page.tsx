@@ -2,7 +2,9 @@ import Link from "@/components/navigation-link";
 import { notFound } from "next/navigation";
 import { requireEditor } from "@/lib/auth";
 import { updateMember } from "../actions";
-import LanguageSwitcher from "@/components/language-switcher";
+import BackButton from "@/components/back-button";
+import VisitMemberLink from "@/components/visit-member-link";
+import { loadVisitPhotos } from "@/lib/visit-photos";
 import { t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import MemberStatusFields from "@/components/member-status-fields";
@@ -22,6 +24,7 @@ export default async function EditMemberPage({
     .eq("id", id)
     .single();
   if (error || !person) notFound();
+  const photos = await loadVisitPhotos(supabase, [person.id]);
   const updateAction = updateMember.bind(null, id);
   const inputClass =
     "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-600";
@@ -30,22 +33,22 @@ export default async function EditMemberPage({
     <main className="safe-page min-h-dvh p-4 sm:p-8">
       <section className="native-enter mx-auto max-w-2xl">
         <header className="flex items-start gap-3 border-b border-slate-200 pb-6 sm:items-center sm:gap-4">
-          <Link
-            href="/admin"
-            aria-label={t(locale, "backToManagement")}
-            className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-2xl font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            ←
-          </Link>
+          <BackButton href="/admin" label={t(locale, "backToManagement")} />
           <div className="min-w-0 flex-1">
             <p className="font-medium text-[var(--app-accent)]">
               {t(locale, "directoryRecord")}
             </p>
             <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-              {t(locale, "editMember")} {person.first_name} {person.last_name}
+              {t(locale, "editMember")}{" "}
+              <VisitMemberLink
+                personId={person.archived_at ? null : person.id}
+                name={`${person.first_name} ${person.last_name}`}
+                photoPath={photos.get(person.id)}
+                showPhoto
+                locale={locale}
+              />
             </h1>
           </div>
-          <LanguageSwitcher locale={locale} />
         </header>
         <form
           action={updateAction}

@@ -5,7 +5,7 @@ import { getLocale } from "@/lib/locale";
 import { type Visit } from "@/lib/visitation";
 import VisitControls from "@/components/visit-controls";
 import VisitDetails from "@/components/visit-details";
-import { loadVisitPhotos } from "@/lib/visit-photos";
+import { loadVisitIdentities } from "@/lib/member-profile-data";
 
 export default async function VisitPage({
   params,
@@ -23,10 +23,7 @@ export default async function VisitPage({
     .maybeSingle();
   if (error) throw new Error("Unable to load visit");
   if (!data) notFound();
-  const v = data as Visit;
-  v.member_photo = (await loadVisitPhotos(supabase, [v.person_id])).get(
-    v.person_id,
-  );
+  const [v] = await loadVisitIdentities(supabase, [data as Visit]);
   return (
     <>
       <VisitBack locale={locale} />

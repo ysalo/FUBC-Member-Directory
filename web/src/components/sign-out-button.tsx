@@ -3,6 +3,7 @@ import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/browser";
+import { clearDirectoryViews } from "@/lib/directory-view";
 
 export default function SignOutButton({
   compact = false,
@@ -18,6 +19,7 @@ export default function SignOutButton({
   async function signOut() {
     setLoading(true);
     await createClient().auth.signOut();
+    clearDirectoryViews();
     router.replace("/login");
     router.refresh();
   }
