@@ -104,66 +104,71 @@ export default async function VisitationPage({
                 return (
                   <article
                     key={v.id}
-                    className="rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-4"
+                    className="relative rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface-muted)] p-4 hover:border-[var(--app-brand)]"
                   >
-                    <h3 className="text-lg font-semibold">
-                      <VisitMemberLink
-                        personId={v.member_available ? v.person_id : null}
-                        name={v.member_name}
-                        photoPath={v.member_photo}
-                        showPhoto
-                        locale={locale}
-                      />
-                    </h3>
                     <Link
                       href={"/visitation/" + v.id}
-                      className="my-2 flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-[var(--app-brand)] underline-offset-4 hover:underline"
-                    >
-                      <CalendarDays
-                        aria-hidden="true"
-                        className="size-4 shrink-0 text-[var(--app-brand)]"
-                      />
-                      {formatVisitDate(v.scheduled_at, locale)}
-                      <ChevronRight
-                        aria-hidden="true"
-                        className="ml-auto size-4 shrink-0"
-                      />
-                    </Link>
-                    <p className="text-sm text-[var(--app-muted)]">
-                      {c.requester}:{" "}
-                      <VisitMemberLink
-                        personId={v.pastor_person_id}
-                        name={v.pastor_name}
-                        locale={locale}
-                      />
-                    </p>
-                    <p className="mt-2 text-sm text-[var(--app-muted)]">
-                      {c[v.status]}
-                    </p>
-                    <ul className="space-y-1 text-sm text-[var(--app-muted)]">
-                      {v.visit_recipients.map((recipient) => (
-                        <li key={recipient.deacon_id}>
+                      aria-label={`${c.title}: ${v.member_name}`}
+                      className="absolute inset-0 z-0 rounded-2xl"
+                    />
+                    <div className="pointer-events-none relative z-10">
+                      <h3 className="text-lg font-semibold">{v.member_name}</h3>
+                      {v.member_phone && (
+                        <p className="mt-1 text-sm text-[var(--app-muted)]">
+                          {v.member_phone}
+                        </p>
+                      )}
+                      <p className="my-2 flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--app-brand)]">
+                        <CalendarDays
+                          aria-hidden="true"
+                          className="size-4 shrink-0"
+                        />
+                        {formatVisitDate(v.scheduled_at, locale)}
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="ml-auto size-4 shrink-0"
+                        />
+                      </p>
+                      <p className="text-sm text-[var(--app-muted)]">
+                        {c.requester}:{" "}
+                        <span className="pointer-events-auto">
                           <VisitMemberLink
-                            personId={recipient.deacon_person_id}
-                            name={recipient.deacon_name}
+                            personId={v.pastor_person_id}
+                            name={v.pastor_name}
                             locale={locale}
                           />
-                          {": "}
-                          {c[recipient.response]}
-                        </li>
-                      ))}
-                    </ul>
-                    {v.status === "open" &&
-                      v.visit_recipients.some(
-                        (r) => r.response === "accepted",
-                      ) && <span className="block text-sm">{c.confirmed}</span>}
-                    {r &&
-                      v.revision > 1 &&
-                      r.last_viewed_revision < v.revision && (
-                        <span className="mt-2 block font-semibold text-[var(--app-brand)]">
-                          {c.updated}
                         </span>
-                      )}
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--app-muted)]">
+                        {c[v.status]}
+                      </p>
+                      <ul className="space-y-1 text-sm text-[var(--app-muted)]">
+                        {v.visit_recipients.map((recipient) => (
+                          <li key={recipient.deacon_id}>
+                            <span className="pointer-events-auto">
+                              <VisitMemberLink
+                                personId={recipient.deacon_person_id}
+                                name={recipient.deacon_name}
+                                locale={locale}
+                              />
+                            </span>
+                            {": "}
+                            {c[recipient.response]}
+                          </li>
+                        ))}
+                      </ul>
+                      {v.status === "open" &&
+                        v.visit_recipients.some(
+                          (r) => r.response === "accepted",
+                        ) && <span className="block text-sm">{c.confirmed}</span>}
+                      {r &&
+                        v.revision > 1 &&
+                        r.last_viewed_revision < v.revision && (
+                          <span className="mt-2 block font-semibold text-[var(--app-brand)]">
+                            {c.updated}
+                          </span>
+                        )}
+                    </div>
                   </article>
                 );
               })}
