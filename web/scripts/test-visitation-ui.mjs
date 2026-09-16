@@ -365,7 +365,11 @@ try {
       await page.locator('input[name="time"]').fill("2099-12-15T12:30");
       await page.evaluate((t) => {
         document.documentElement.dataset.theme = t;
-        document.documentElement.dataset.textSize = "large";
+        document.documentElement.dataset.textSize = "125";
+        document.documentElement.style.setProperty(
+          "--directory-text-size",
+          "125%",
+        );
       }, theme);
       await expect(
         page.getByRole("button", { name: "Запланувати відвідування" }),
@@ -384,7 +388,11 @@ try {
       await page.locator('input[name="time"]').fill("2099-12-15T12:30");
       await page.evaluate((t) => {
         document.documentElement.dataset.theme = t;
-        document.documentElement.dataset.textSize = "large";
+        document.documentElement.dataset.textSize = "125";
+        document.documentElement.style.setProperty(
+          "--directory-text-size",
+          "125%",
+        );
       }, theme);
       expect(
         await page.evaluate(
@@ -430,7 +438,11 @@ try {
         await page.evaluate((theme) => {
           document.documentElement.dataset.theme = theme;
           document.documentElement.dataset.themePreference = theme;
-          document.documentElement.dataset.textSize = "large";
+          document.documentElement.dataset.textSize = "125";
+          document.documentElement.style.setProperty(
+            "--directory-text-size",
+            "125%",
+          );
         }, theme);
         const trigger = page.getByRole("button", {
           name: locale === "uk" ? "Меню" : "Menu",
@@ -442,7 +454,7 @@ try {
         const textSizeSlider = menu.getByRole("slider", {
           name: locale === "uk" ? "Розмір тексту" : "Text size",
         });
-        await expect(textSizeSlider).toHaveValue("1");
+        await expect(textSizeSlider).toHaveValue("125");
         expect(
           (await textSizeSlider.boundingBox()).height,
         ).toBeGreaterThanOrEqual(44);
@@ -495,6 +507,16 @@ try {
             .locator("..")
             .evaluate((node) => getComputedStyle(node).outlineStyle),
         ).toBe("solid");
+        await textSizeSlider.fill("117");
+        await expect(textSizeSlider).toHaveValue("117");
+        expect(
+          await page.evaluate(() => ({
+            size: document.documentElement.style.getPropertyValue(
+              "--directory-text-size",
+            ),
+            saved: localStorage.getItem("directory-text-size"),
+          })),
+        ).toEqual({ size: "117%", saved: "117" });
         await page.screenshot({
           path: resolve(dir, `menu-${locale}-${theme}-${width}-${height}.png`),
           animations: "disabled",

@@ -8,7 +8,7 @@ import {
   X,
   CalendarDays,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import Link from "@/components/navigation-link";
@@ -22,6 +22,22 @@ import { pendingVisitCount } from "@/app/visitation/actions";
 import { visitCopy } from "@/lib/visitation";
 import MemberPhoto from "@/components/member-photo";
 import type { NavigationUser } from "@/lib/navigation-user";
+
+const MIN_TEXT_SIZE = 100;
+const MAX_TEXT_SIZE = 125;
+
+function normalizeTextSize(value: string | null | undefined) {
+  if (value === "large") return 113;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return MIN_TEXT_SIZE;
+  return Math.min(MAX_TEXT_SIZE, Math.max(MIN_TEXT_SIZE, Math.round(parsed)));
+}
+
+function applyTextSize(value: number) {
+  const root = document.documentElement;
+  root.dataset.textSize = String(value);
+  root.style.setProperty("--directory-text-size", `${value}%`);
+}
 
 export default function BottomNavigation({
   role,
@@ -42,7 +58,7 @@ export default function BottomNavigation({
   const copy = dictionaries[locale];
   const labels = groupCopy(locale);
   const [open, setOpen] = useState(false);
-  const [textSize, setTextSize] = useState("standard");
+  const [textSize, setTextSize] = useState(MIN_TEXT_SIZE);
   const [pending, setPending] = useState<number | null>(null);
   useEffect(() => {
     if (!isDeacon && !isPastor) return;
@@ -76,12 +92,13 @@ export default function BottomNavigation({
   const overlay = useRef<HTMLDivElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    let saved = "standard";
+    let saved = MIN_TEXT_SIZE;
     try {
-      if (window.localStorage.getItem("directory-text-size") === "large")
-        saved = "large";
+      saved = normalizeTextSize(
+        window.localStorage.getItem("directory-text-size"),
+      );
     } catch {}
-    document.documentElement.dataset.textSize = saved;
+    applyTextSize(saved);
   }, []);
   useEffect(() => {
     if (!open) return;
@@ -218,9 +235,12 @@ export default function BottomNavigation({
             type="button"
             onClick={() => {
               setTextSize(
-                document.documentElement.dataset.textSize === "large"
-                  ? "large"
-                  : "standard",
+                normalizeTextSize(
+                  document.documentElement.dataset.textSize ??
+                    document.documentElement.style.getPropertyValue(
+                      "--directory-text-size",
+                    ),
+                ),
               );
               setOpen(true);
             }}
@@ -303,25 +323,25 @@ export default function BottomNavigation({
                   <div className="min-w-0 flex-1">
                     <input
                       type="range"
-                      min="0"
-                      max="1"
+                      min={MIN_TEXT_SIZE}
+                      max={MAX_TEXT_SIZE}
                       step="1"
-                      value={textSize === "large" ? 1 : 0}
+                      value={textSize}
                       aria-label={copy.textSize}
-                      aria-valuetext={
-                        textSize === "large"
-                          ? copy.largerText
-                          : copy.standardText
+                      aria-valuetext={`${textSize}%`}
+                      style={
+                        {
+                          "--text-size-progress": `${((textSize - MIN_TEXT_SIZE) / (MAX_TEXT_SIZE - MIN_TEXT_SIZE)) * 100}%`,
+                        } as CSSProperties
                       }
                       onChange={(event) => {
-                        const size =
-                          event.target.value === "1" ? "large" : "standard";
+                        const size = normalizeTextSize(event.target.value);
                         setTextSize(size);
-                        document.documentElement.dataset.textSize = size;
+                        applyTextSize(size);
                         try {
                           window.localStorage.setItem(
                             "directory-text-size",
-                            size,
+                            String(size),
                           );
                         } catch {}
                       }}
@@ -329,12 +349,16 @@ export default function BottomNavigation({
                     />
                     <div className="text-size-labels" aria-hidden="true">
                       <span
-                        className={textSize === "standard" ? "is-selected" : ""}
+                        className={
+                          textSize === MIN_TEXT_SIZE ? "is-selected" : ""
+                        }
                       >
                         {copy.standardText}
                       </span>
                       <span
-                        className={textSize === "large" ? "is-selected" : ""}
+                        className={
+                          textSize === MAX_TEXT_SIZE ? "is-selected" : ""
+                        }
                       >
                         {copy.largerText}
                       </span>

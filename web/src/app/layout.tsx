@@ -31,6 +31,11 @@ export default async function RootLayout({
             __html: `(function(){var r=document.documentElement,p='system';try{p=localStorage.getItem('directory-theme')||'system'}catch(e){}if(!['system','light','dark'].includes(p))p='system';r.dataset.themePreference=p;var m=matchMedia('(prefers-color-scheme: dark)');function apply(){r.dataset.theme=r.dataset.themePreference==='system'?(m.matches?'dark':'light'):r.dataset.themePreference}apply();m.addEventListener('change',apply)})()`,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var r=document.documentElement,v='100';try{v=localStorage.getItem('directory-text-size')||'100'}catch(e){}if(v==='large')v='113';var n=Math.round(Number(v));if(!Number.isFinite(n))n=100;n=Math.min(125,Math.max(100,n));r.dataset.textSize=String(n);r.style.setProperty('--directory-text-size',n+'%')})()`,
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

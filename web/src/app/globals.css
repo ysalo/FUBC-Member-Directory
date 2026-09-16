@@ -120,6 +120,7 @@
 
 :root {
   color-scheme: light;
+  --directory-text-size: 100%;
   --app-focus: #b8862c;
   --app-bg: #f7f5f0;
   --app-surface: #fffdf9;
@@ -144,9 +145,7 @@
 html {
   scroll-behavior: smooth;
   background: var(--app-bg);
-}
-html[data-text-size="large"] {
-  font-size: 112.5%;
+  font-size: var(--directory-text-size);
 }
 html[data-theme="dark"] {
   color-scheme: dark;
@@ -550,7 +549,11 @@ textarea {
 .text-size-range::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 999px;
-  background: var(--app-line);
+  background: linear-gradient(
+    to right,
+    var(--app-brand) 0 var(--text-size-progress),
+    var(--app-line) var(--text-size-progress) 100%
+  );
 }
 .text-size-range::-webkit-slider-thumb {
   width: 22px;
@@ -566,6 +569,11 @@ textarea {
   height: 4px;
   border-radius: 999px;
   background: var(--app-line);
+}
+.text-size-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--app-brand);
 }
 .text-size-range::-moz-range-thumb {
   width: 22px;
@@ -735,6 +743,29 @@ h1:not(.sr-only) {
     padding-block: 8px;
   }
 }
+@media (max-height: 600px) {
+  .menu-brand {
+    padding: 10px 0 4px;
+  }
+  .brand-wordmark {
+    font-size: 2rem;
+  }
+  .brand-caption {
+    margin-top: 4px;
+  }
+  .menu-header {
+    padding-block: 2px;
+  }
+  .menu-section {
+    padding-block: 3px;
+  }
+  .menu-section-title {
+    margin-bottom: 4px;
+  }
+  .menu-footer {
+    padding-block: 2px;
+  }
+}
 @media (max-height: 460px) and (min-width: 500px) {
   .side-menu {
     display: grid;
@@ -797,19 +828,19 @@ h1:not(.sr-only) {
 }
 @media (max-height: 460px) and (max-width: 499px) {
   .menu-brand {
-    padding: 4px 40px 2px;
+    padding: 1px 40px 0;
   }
   .brand-wordmark {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
   }
   .brand-caption {
     display: none;
   }
   .menu-header {
-    padding-block: 4px;
+    padding-block: 1px;
   }
   .menu-section {
-    padding-block: 6px;
+    padding-block: 2px;
   }
   .menu-section-title {
     margin-bottom: 4px;
@@ -818,7 +849,7 @@ h1:not(.sr-only) {
     padding-bottom: env(safe-area-inset-bottom);
   }
   .menu-footer {
-    padding-block: 4px;
+    padding-block: 0;
   }
 }
 
