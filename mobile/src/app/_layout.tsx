@@ -71,7 +71,7 @@ function AppNavigation() {
   return (
     <ThemeProvider value={navigationTheme}>
       <View style={{ backgroundColor: palette.background, flex: 1 }}>
-        <StatusBar style={preference === "system" ? "auto" : resolved === "dark" ? "light" : "dark"} />
+        <StatusBar style={resolved === "dark" ? "light" : "dark"} />
         {Platform.OS === "ios" ? <IosTabs /> : <Stack screenOptions={{ contentStyle: { backgroundColor: palette.background }, headerShown: false }} />}
       </View>
     </ThemeProvider>

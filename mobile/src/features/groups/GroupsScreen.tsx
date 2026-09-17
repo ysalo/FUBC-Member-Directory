@@ -44,6 +44,7 @@ export function GroupsScreen() {
   const openGroup = (group: MinistryGroup) => router.push({ pathname: "/groups/[groupId]", params: { groupId: group.id } });
 
   return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.screen} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
+    <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
 
     {state === "ready" && assigned ? <View style={styles.featuredSection}>
       <Text selectable style={[styles.sectionLabel, { color: palette.text }]}>{copy.myGroup}</Text>

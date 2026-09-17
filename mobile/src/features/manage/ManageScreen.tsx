@@ -87,7 +87,10 @@ export function ManageScreen() {
       keyExtractor={(item) => item.id}
       ListHeaderComponent={<>
         <View style={styles.heading}>
-          <View style={styles.flex} />
+          <View style={styles.flex}>
+            <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
+            <Text selectable style={[styles.subtitle, { color: palette.secondaryText }]}>{copy.subtitle}</Text>
+          </View>
           <Pressable accessibilityLabel={copy.addMember} accessibilityRole="button" onPress={() => router.push("/manage/member/new" as Href)} style={({ pressed }) => [styles.add, { backgroundColor: palette.accent }, pressed && styles.pressed]}>
             <Ionicons accessibilityElementsHidden color="#FFF" name="add" size={26} />
           </Pressable>

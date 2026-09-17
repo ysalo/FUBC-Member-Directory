@@ -54,6 +54,7 @@ export default function MenuRoute() {
   return (
     <View style={[styles.safe, { backgroundColor: palette.background }]}>
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
+        <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.menu.title}</Text>
         <View style={[styles.card, { backgroundColor: palette.surface }]}>
           <View style={styles.row}>
             <Ionicons color={palette.secondaryText} name="language-outline" size={24} />

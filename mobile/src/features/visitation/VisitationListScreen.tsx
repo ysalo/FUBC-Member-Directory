@@ -150,7 +150,7 @@ export function VisitationListScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={visitColors.accent} onRefresh={() => { setRefreshing(true); void load(true); }} />}
       >
         <View style={styles.titleRow}>
-          <View style={{ flex: 1 }} />
+          <Text accessibilityRole="header" selectable style={styles.title}>{c.title}</Text>
           <Pressable accessibilityLabel={c.refresh} accessibilityRole="button" onPress={() => void load()} style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}>
             <Ionicons accessibilityElementsHidden color={visitColors.text} name="refresh" size={22} />
           </Pressable>

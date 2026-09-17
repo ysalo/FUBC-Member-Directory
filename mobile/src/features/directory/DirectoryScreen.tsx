@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
@@ -41,6 +42,7 @@ function MemberRow({ item, ministry, onPress }: { item: Member; ministry: string
 }
 
 export function DirectoryScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { copy, locale } = useLocalization();
   const { palette } = useAppearance();
@@ -84,7 +86,8 @@ export function DirectoryScreen() {
   );
 
   const stickyOverview = (
-    <View style={[styles.stickyOverview, { backgroundColor: palette.background, borderBottomColor: palette.line }]}>
+    <View style={[styles.stickyOverview, { backgroundColor: palette.background, borderBottomColor: palette.line, paddingTop: Platform.OS === "web" ? 0 : insets.top }]}>
+      <View style={styles.titleRow}><Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.directory.title}</Text></View>
       <View style={[styles.searchField, { backgroundColor: palette.subtle }]}>
         <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={px(21)} style={styles.searchIcon} />
         <TextInput accessibilityLabel={copy.directory.searchLabel} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={copy.directory.search} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} />
