@@ -73,7 +73,7 @@ export function AccessGate({ children }: PropsWithChildren) {
     }
   }
   const compact = height < 650;
-  return <GateShell><View style={[styles.loginContent, compact && styles.loginContentCompact]}><Text accessibilityRole="header" selectable style={[styles.title, { color: accessColors.text }, compact && styles.titleCompact]}>{labels.title}</Text><Text selectable style={[styles.subtitle, { color: accessColors.text }]}>{labels.subtitle}</Text><View style={[styles.providers, compact && styles.providersCompact]}>{appleAuthEnabled ? <ProviderButton busy={busy === "apple"} icon="logo-apple" label={labels.apple} onPress={() => void signIn("apple")} /> : null}<ProviderButton busy={busy === "google"} icon="logo-google" label={labels.google} onPress={() => void signIn("google")} /></View>{authError ? <Text accessibilityLiveRegion="polite" selectable style={[styles.error, { backgroundColor: accessColors.warningSoft, color: accessColors.text }]}>{authError}</Text> : null}<Text selectable style={[styles.secure, { color: accessColors.secondaryText }]}>{labels.secure}</Text></View></GateShell>;
+  return <GateShell><View style={[styles.loginContent, compact && styles.loginContentCompact]}><Text accessibilityRole="header" selectable style={[styles.title, { color: accessColors.text }, compact && styles.titleCompact]}><Text style={styles.titleAccent}>F</Text>UBC</Text><Text selectable style={[styles.subtitle, { color: accessColors.text }]}>{labels.subtitle}</Text><View style={styles.brandRule}><View style={styles.brandRuleAccent} /></View><View style={[styles.providers, compact && styles.providersCompact]}>{appleAuthEnabled ? <ProviderButton busy={busy === "apple"} icon="logo-apple" label={labels.apple} onPress={() => void signIn("apple")} /> : null}<ProviderButton busy={busy === "google"} icon="logo-google" label={labels.google} onPress={() => void signIn("google")} /></View>{authError ? <Text accessibilityLiveRegion="polite" selectable style={[styles.error, { backgroundColor: accessColors.warningSoft, color: accessColors.text }]}>{authError}</Text> : null}<Text selectable style={[styles.secure, { color: accessColors.secondaryText }]}>{labels.secure}</Text></View></GateShell>;
 }
 
 function GateShell({ children }: PropsWithChildren) {
@@ -116,12 +116,13 @@ function State({ action, actionLabel, detail, icon, loading, progress, title }: 
 }
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  backdrop: { bottom: 0, left: 0, opacity: 0.14, position: "absolute", right: 0, top: 0 },
+  backdrop: { bottom: 0, left: 0, opacity: 0.26, position: "absolute", right: 0, top: 0 },
   content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24 },
   loginContent: { alignSelf: "center", maxWidth: 430, transform: [{ translateY: 32 }], width: "100%" }, loginContentCompact: { transform: [{ translateY: 0 }] },
-  title: { fontFamily: "Georgia", fontSize: 82, fontWeight: "400", letterSpacing: -3.2, lineHeight: 88, textAlign: "center" }, titleCompact: { fontSize: 62, lineHeight: 68 },
+  title: { fontFamily: "Georgia", fontSize: 82, fontWeight: "400", letterSpacing: -3.2, lineHeight: 88, textAlign: "center" }, titleAccent: { color: accessColors.accent, textShadowColor: "rgba(239,90,36,0.18)", textShadowOffset: { width: 3, height: 0 }, textShadowRadius: 0 }, titleCompact: { fontSize: 62, lineHeight: 68 },
   subtitle: { fontSize: 12, fontWeight: "600", letterSpacing: 3.2, lineHeight: 18, marginTop: 10, textAlign: "center", textTransform: "uppercase" },
-  providers: { gap: 10, marginTop: 40 }, providersCompact: { marginTop: 26 },
+  brandRule: { alignSelf: "center", backgroundColor: "rgba(23,27,32,0.16)", height: 1, marginTop: 24, overflow: "hidden", width: 78 }, brandRuleAccent: { backgroundColor: accessColors.accent, height: 1, width: 28 },
+  providers: { gap: 10, marginTop: 28 }, providersCompact: { marginTop: 22 },
   provider: { alignItems: "center", borderCurve: "continuous", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 12, justifyContent: "center", minHeight: 58, paddingHorizontal: 22 },
   providerText: { fontSize: 16, fontWeight: "700", textAlign: "center" }, googleIcon: { height: 24, width: 24 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.985 }] }, error: { borderCurve: "continuous", borderRadius: 12, fontSize: 14, lineHeight: 20, marginTop: 14, padding: 12, textAlign: "center" }, secure: { fontSize: 12, letterSpacing: 0.2, marginTop: 22, textAlign: "center" },

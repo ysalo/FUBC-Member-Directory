@@ -1,5 +1,5 @@
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
-import { Appearance, DynamicColorIOS, Platform, useColorScheme } from "react-native";
+import { Appearance, DynamicColorIOS, Platform } from "react-native";
 
 import { useSession } from "@/features/session/SessionProvider";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
@@ -49,13 +49,19 @@ const AppearanceContext = createContext<AppearanceValue | null>(null);
 
 export function AppearanceProvider({ children }: PropsWithChildren) {
   const session = useSession();
-  const systemScheme = useColorScheme();
+  const [systemScheme, setSystemScheme] = useState<"light" | "dark">(() => Appearance.getColorScheme() === "dark" ? "dark" : "light");
   const [preference, setPreferenceState] = useState<AppearancePreference>("system");
   const resolved = preference === "system" ? (systemScheme === "dark" ? "dark" : "light") : preference;
   // On iOS the native trait collection is the authoritative source for
   // "System". This keeps every authenticated screen aligned even when
   // Expo Go reports a stale/null JS color scheme during a theme transition.
   const palette = preference === "system" && Platform.OS === "ios" ? systemPalette : palettes[resolved];
+
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => setSystemScheme(colorScheme === "dark" ? "dark" : "light"));
+    setSystemScheme(Appearance.getColorScheme() === "dark" ? "dark" : "light");
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (!isBackendConfigured || session.status !== "ready") return;
