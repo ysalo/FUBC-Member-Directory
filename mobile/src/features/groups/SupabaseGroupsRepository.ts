@@ -31,7 +31,11 @@ export class SupabaseGroupsRepository implements GroupsRepository {
     const group = (await this.listGroups()).find((candidate) => candidate.id === groupId);
     if (!group) return null;
     const members = group.memberIds.length ? unwrap(await requireSupabase().from("people").select("id,name,photo_path").in("id", group.memberIds).is("archived_at", null).order("name")) : [];
-    const details = await Promise.all(members.map(async (member) => unwrap(await requireSupabase().rpc("member_profile_details", { p_person_id: member.id }))[0]));
+    const [details, designations] = await Promise.all([
+      Promise.all(members.map(async (member) => unwrap(await requireSupabase().rpc("member_profile_details", { p_person_id: member.id }))[0])),
+      members.length ? requireSupabase().from("ministry_accounts").select("person_id,designation").in("person_id", members.map((member) => member.id)) : Promise.resolve({ data: [], error: null }),
+    ]);
+    const memberDesignations = unwrap(designations);
     const deaconAccounts = group.responsibleDeaconIds.length ? unwrap(await requireSupabase().from("ministry_accounts").select("*").in("id", group.responsibleDeaconIds)) : [];
     const deaconPersonIds = deaconAccounts.flatMap((account) => account.person_id ? [account.person_id] : []);
     const deaconPeople = deaconPersonIds.length ? unwrap(await requireSupabase().from("people").select("id,name,photo_path").in("id", deaconPersonIds).is("archived_at", null)) : [];
@@ -41,7 +45,7 @@ export class SupabaseGroupsRepository implements GroupsRepository {
       const person = account?.person_id ? deaconPeople.find((candidate) => candidate.id === account.person_id) : null;
       return person ? [{ id: person.id, name: person.name, photo: person.photo_path ? photos.get(person.photo_path) : undefined, designation: "deacon" as const }] : [];
     });
-    return { ...group, members: members.map((member, index) => ({ id: member.id, name: member.name, photo: member.photo_path ? photos.get(member.photo_path) : undefined, isOrphan: details[index]?.orphan_status ?? undefined, isWidow: ["widowed", "widow", "вдова", "вдівець", "вдівець/вдова"].includes((details[index]?.marital_status ?? "").toLocaleLowerCase()) })), responsibleDeacons };
+    return { ...group, members: members.map((member, index) => { const designation = memberDesignations.find((account) => account.person_id === member.id)?.designation; return { id: member.id, name: member.name, photo: member.photo_path ? photos.get(member.photo_path) : undefined, designation: designation === "pastor" || designation === "deacon" ? designation : undefined, isOrphan: details[index]?.orphan_status ?? undefined, isWidow: ["widowed", "widow", "вдова", "вдівець", "вдівець/вдова"].includes((details[index]?.marital_status ?? "").toLocaleLowerCase()) }; }), responsibleDeacons };
   }
   async getAuthorizedBirthdays(groupId: string): Promise<AuthorizedBirthday[]> {
     const actor = activeAccount();

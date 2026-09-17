@@ -9,6 +9,7 @@ import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
+import { LeadershipBadge } from "@/features/members/leadership-badge";
 
 import { getDirectoryVisitCount, listDirectory } from "./directory-repository";
 import type { Member } from "./members";
@@ -24,7 +25,7 @@ function SummaryAction({ accent, label, onPress, ring = false }: { accent: strin
   );
 }
 
-function MemberRow({ item, ministry, onPress }: { item: Member; ministry: string; onPress: () => void }) {
+function MemberRow({ item, locale, ministry, onPress }: { item: Member; locale: "en" | "uk"; ministry: string; onPress: () => void }) {
   const { palette } = useAppearance();
   return (
     <Pressable accessibilityHint={`Opens ${item.name}’s member profile`} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.memberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }, pressed && styles.pressed]}>
@@ -33,7 +34,7 @@ function MemberRow({ item, ministry, onPress }: { item: Member; ministry: string
         <Text numberOfLines={1} style={[styles.memberName, { color: palette.text }]}>{item.name}</Text>
         <Text numberOfLines={1} style={[styles.memberMinistry, { color: palette.secondaryText }]}>{ministry}</Text>
         {item.phone ? <Text numberOfLines={1} selectable style={[styles.memberPhone, { color: palette.secondaryText }]}>{item.phone}</Text> : null}
-        {item.designation !== "none" ? <View style={[styles.specialBadge, { backgroundColor: palette.subtle }]}><Text style={[styles.specialBadgeText, { color: palette.text }]}>{item.designation === "pastor" ? "Pastor" : "Deacon"}</Text></View> : null}
+        {item.designation !== "none" ? <LeadershipBadge designation={item.designation} locale={locale} /> : null}
         <CareStatusBadges isOrphan={item.isOrphan} isWidow={item.isWidow} />
       </View>
       <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={px(22)} />
@@ -124,7 +125,7 @@ export function DirectoryScreen() {
           {sections.length === 0 ? empty : sections.map((section) => (
             <View key={section.title}>
               <Text style={[styles.sectionLetter, { color: palette.secondaryText }]}>{section.title}</Text>
-              {section.data.map((item) => <MemberRow item={item} key={item.id} ministry={locale === "uk" ? item.ministryUk : item.ministry} onPress={() => router.push(`/members/${item.id}` as never)} />)}
+              {section.data.map((item) => <MemberRow item={item} key={item.id} locale={locale} ministry={locale === "uk" ? item.ministryUk : item.ministry} onPress={() => router.push(`/members/${item.id}` as never)} />)}
             </View>
           ))}
           {summary}
@@ -143,7 +144,7 @@ export function DirectoryScreen() {
         keyboardShouldPersistTaps="handled"
         initialNumToRender={12}
         ListEmptyComponent={empty}
-        renderItem={({ item }) => <MemberRow item={item} ministry={locale === "uk" ? item.ministryUk : item.ministry} onPress={() => router.push(`/members/${item.id}` as never)} />}
+        renderItem={({ item }) => <MemberRow item={item} locale={locale} ministry={locale === "uk" ? item.ministryUk : item.ministry} onPress={() => router.push(`/members/${item.id}` as never)} />}
         renderSectionHeader={({ section }) => <Text style={[styles.sectionLetter, { color: palette.secondaryText }]}>{section.title}</Text>}
         removeClippedSubviews={false}
         sections={sections}
@@ -205,8 +206,6 @@ const styles = StyleSheet.create({
   memberName: { color: "#090F19", fontSize: px(18), fontWeight: "600", letterSpacing: px(0.3) },
   memberMinistry: { color: "#737477", fontSize: px(16), marginTop: px(2) },
   memberPhone: { fontSize: px(14), marginTop: px(2) },
-  specialBadge: { alignSelf: "flex-start", borderRadius: px(8), marginTop: px(4), paddingHorizontal: px(7), paddingVertical: px(2) },
-  specialBadgeText: { fontSize: px(12), fontWeight: "700" },
   filterRow: { alignItems: "center", flexDirection: "row", gap: px(7), marginHorizontal: px(20), marginTop: px(10) },
   filterChip: { borderRadius: px(16), minHeight: px(34), justifyContent: "center", paddingHorizontal: px(12) },
   filterChipText: { fontSize: px(13), fontWeight: "700" },
