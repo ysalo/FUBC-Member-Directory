@@ -65,7 +65,7 @@ export function DirectoryScreen() {
     const needle = query.trim().toLocaleLowerCase();
     const surname = (name: string) => name.trim().split(/\s+/).at(-1) ?? name;
     const sorted = directoryMembers
-      .filter((member) => filters.every((filter) => filter === "orphan" ? member.isOrphan : filter === "widow" ? member.isWidow : member.designation === filter))
+      .filter((member) => filters.length === 0 || filters.some((filter) => filter === "orphan" ? member.isOrphan : filter === "widow" ? member.isWidow : member.designation === filter))
       .filter((member) => !needle || `${member.name} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase().includes(needle))
       .sort((a, b) => surname(a.name).localeCompare(surname(b.name), locale) || a.name.localeCompare(b.name, locale));
     return sorted.reduce<Array<{ title: string; data: Member[] }>>((groups, member) => {
