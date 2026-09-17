@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
-import { type Href, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { type Href, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -17,7 +17,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
   const { locale } = useLocalization(); const copy = getMemberCopy(locale);
   const [profile, setProfile] = useState<MemberProfile | null | undefined>(); const [failed, setFailed] = useState(false);
   const load = () => { setProfile(undefined); setFailed(false); memberProfileRepository.getProfile(memberId).then(setProfile).catch(() => { setFailed(true); setProfile(null); }); };
-  useEffect(load, [memberId]);
+  useFocusEffect(useCallback(load, [memberId]));
   const open = async (url: string) => { try { if (await Linking.canOpenURL(url)) await Linking.openURL(url); } catch { /* Native service unavailable. */ } };
   if (profile === undefined) return <ProfileState loading title={copy.loading} />;
   if (!profile || failed) return <ProfileState action={failed ? load : undefined} detail={failed ? undefined : copy.unavailableDetail} title={failed ? copy.error : copy.unavailable} />;
@@ -35,13 +35,13 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
   return <View style={[styles.root, { backgroundColor: palette.background }]}><ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
     <View style={[styles.hero, { paddingTop: insets.top }]}><Image accessibilityLabel={`${name} ${copy.profile}`} contentFit="cover" source={profile.photo} style={StyleSheet.absoluteFill} /><View style={styles.heroShade} />
       <Pressable accessibilityLabel={copy.back} onPress={() => router.back()} style={[styles.floatingButton, { top: insets.top + 12 }]}><Ionicons color="#FFF" name="chevron-back" size={24} /></Pressable>
-      <View style={styles.heroCopy}><Text accessibilityRole="header" style={styles.name}>{name}</Text>{profile.designation !== "none" ? <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(13,18,22,0.7)", borderRadius: 8, marginTop: 8, paddingHorizontal: 9, paddingVertical: 4 }}><Text style={{ color: "#FFF", fontSize: 13, fontWeight: "800" }}>{profile.designation === "pastor" ? "Pastor" : "Deacon"}</Text></View> : null}<View style={styles.ministryRow}>{ministries.map((ministry, index) => <Text key={`${profile.id}:hero-ministry:${index}`} style={styles.heroPillText}>{ministry}</Text>)}</View><CareStatusBadges isOrphan={profile.isOrphan} isWidow={isWidow} /></View>
+      <View style={styles.heroCopy}><Text accessibilityRole="header" style={styles.name}>{name}</Text><View style={styles.ministryRow}>{ministries.map((ministry, index) => <Text key={`${profile.id}:hero-ministry:${index}`} style={styles.heroPillText}>{ministry}</Text>)}</View><CareStatusBadges isOrphan={profile.isOrphan} isWidow={isWidow} /></View>
     </View>
     <View style={styles.body}>
       {canRequestVisit ? <Pressable onPress={() => router.push({ pathname: "/visitation/new", params: { person: memberId } } as Href)} style={({ pressed }) => [styles.visitButton, { backgroundColor: palette.accent }, pressed && styles.pressed]}><Ionicons color="#FFF" name="calendar-outline" size={21} /><Text style={styles.visitButtonText}>{copy.requestVisit}</Text></Pressable> : null}
       <Section title={copy.contact}><View style={styles.actions}>{profile.phone ? <Action icon="call-outline" label={copy.call} onPress={() => void open(`tel:${profile.phone!.replace(/[^+\d]/g, "")}`)} /> : null}{isLeadership && profile.email ? <Action icon="mail-outline" label={copy.email} onPress={() => void open(`mailto:${profile.email}`)} /> : null}{profile.address ? <Action icon="map-outline" label={copy.maps} onPress={() => void open(`https://maps.apple.com/?q=${encodeURIComponent(profile.address!)}`)} /> : null}</View>{profile.phone ? <Text selectable style={[styles.phone, { color: palette.text }]}>{profile.phone}</Text> : null}{profile.address ? <Text style={[styles.address, { color: palette.secondaryText }]}>{profile.address}</Text> : null}</Section>
       <Section title={copy.details}>{profile.birthDate ? <Fact label={copy.birthday} value={formatDate(profile.birthDate)} /> : null}{age !== null ? <Fact label={copy.age} value={String(age)} /> : null}{profile.membershipJoinedAt ? <Fact label={copy.memberSince} value={formatDate(profile.membershipJoinedAt)} /> : null}{profile.maritalStatus ? <Fact label={copy.maritalStatus} value={profile.maritalStatus} /> : null}{profile.membershipGroupId ? <Pressable accessibilityHint={copy.openGroup} accessibilityLabel={`${copy.group}: ${group || "—"}`} accessibilityRole="button" onPress={() => router.push(`/groups/${profile.membershipGroupId}` as never)} style={({ pressed }) => pressed && styles.pressedRow}><Fact disclosure label={copy.group} last={!profile.responsibilityGroupId} value={group || "—"} /></Pressable> : <Fact label={copy.group} last={!profile.responsibilityGroupId} value={group || "—"} />}{profile.responsibilityGroupId ? <Pressable accessibilityHint={copy.openGroup} accessibilityLabel={`${copy.responsibleFor}: ${responsibilityGroup || "—"}`} accessibilityRole="button" onPress={() => router.push(`/groups/${profile.responsibilityGroupId}` as never)} style={({ pressed }) => pressed && styles.pressedRow}><Fact disclosure label={copy.responsibleFor} last value={responsibilityGroup || "—"} /></Pressable> : null}</Section>
-      <Section title={copy.ministries}><View style={styles.bodyList}>{ministries.map((ministry, index) => <Text key={`${profile.id}:detail-ministry:${index}`} style={[styles.bodyListText, { color: palette.text }]}>{ministry}</Text>)}</View></Section>
+      <Section title={copy.ministries}><View style={styles.bodyList}>{profile.designation !== "none" ? <View style={{ alignSelf: "flex-start", backgroundColor: palette.accentSoft, borderRadius: 9, paddingHorizontal: 10, paddingVertical: 6 }}><Text style={{ color: palette.accent, fontSize: 13, fontWeight: "800" }}>{profile.designation === "pastor" ? (locale === "uk" ? "Пастор" : "Pastor") : (locale === "uk" ? "Диякон" : "Deacon")}</Text></View> : null}{ministries.map((ministry, index) => <Text key={`${profile.id}:detail-ministry:${index}`} style={[styles.bodyListText, { color: palette.text }]}>{ministry}</Text>)}</View></Section>
     </View>
   </ScrollView></View>;
 }

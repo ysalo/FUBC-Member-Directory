@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -28,7 +28,7 @@ export function GroupsScreen() {
     void groupsRepository.listGroups().then(setGroups).then(() => setState("ready")).catch(() => setState("error"));
   };
 
-  useEffect(load, []);
+  useFocusEffect(useCallback(load, []));
 
   const account = session.status === "ready" ? session.account : null;
   const isDeacon = account?.designation === "deacon";
@@ -44,7 +44,6 @@ export function GroupsScreen() {
   const openGroup = (group: MinistryGroup) => router.push({ pathname: "/groups/[groupId]", params: { groupId: group.id } });
 
   return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.screen} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
-    <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
 
     {state === "ready" && assigned ? <View style={styles.featuredSection}>
       <Text selectable style={[styles.sectionLabel, { color: palette.text }]}>{copy.myGroup}</Text>

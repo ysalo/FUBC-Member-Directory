@@ -5,6 +5,9 @@ import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
 import { initialManagementState, managementReducer } from "./model";
 import type { GroupManagementState, ManagedDeacon, ManagedGroup, ManagedMember, ManagedMinistry, ManagementAction, ManagementState } from "./model";
 
+const reservedDesignationNames = new Set(["pastor", "deacon", "пастор", "диякон"]);
+export const isDesignationMinistry = (name: string) => reservedDesignationNames.has(name.trim().toLocaleLowerCase());
+
 export class SupabaseManagementRepository {
   async load(): Promise<ManagementState> {
     const actor = activeAccount();
@@ -74,10 +77,10 @@ export class SupabaseManagementRepository {
       unwrap(await requireSupabase().rpc("update_account", {
         p_id: snapshot.id,
         p_revision: snapshot.revision,
-        p_status: action.type === "set-account-status" ? action.status : snapshot.status,
+        p_status: action.type === "unlink-account" ? "pending" : action.type === "set-account-status" ? action.status : snapshot.status,
         p_role: action.type === "set-account-role" ? action.role : snapshot.role,
-        p_designation: action.type === "set-account-designation" ? action.designation : snapshot.designation ?? "none",
-        p_person_id: action.type === "link-account" ? action.personId : snapshot.personId ?? null,
+        p_designation: action.type === "unlink-account" ? "none" : action.type === "set-account-designation" ? action.designation : snapshot.designation ?? "none",
+        p_person_id: action.type === "unlink-account" ? null : action.type === "link-account" ? action.personId : snapshot.personId ?? null,
       }));
     }
     return action.type === "toggle-member-archive" ? this.load() : this.loadAccount(action.accountId);
@@ -89,11 +92,12 @@ export class SupabaseManagementRepository {
   async listMinistries(): Promise<ManagedMinistry[]> {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
     const rows = unwrap(await requireSupabase().from("ministries").select("*").order("name"));
-    return rows.map((row) => ({ id: row.id, name: row.name, nameUk: row.name_uk, archived: Boolean(row.archived_at), revision: row.revision }));
+    return rows.filter((row) => !isDesignationMinistry(row.name) && !isDesignationMinistry(row.name_uk ?? "")).map((row) => ({ id: row.id, name: row.name, nameUk: null, archived: Boolean(row.archived_at), revision: row.revision }));
   }
   async saveMinistry(ministry: { id?: string | null; revision?: number | null; name: string; nameUk?: string | null; archived?: boolean }) {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
-    return unwrap(await requireSupabase().rpc("save_ministry", { p_id: ministry.id ?? null, p_revision: ministry.revision ?? null, p_name: ministry.name, p_name_uk: ministry.nameUk ?? null, p_archived: ministry.archived ?? false }));
+    if (isDesignationMinistry(ministry.name)) throw new Error("Pastor and Deacon are account designations, not ministries.");
+    return unwrap(await requireSupabase().rpc("save_ministry", { p_id: ministry.id ?? null, p_revision: ministry.revision ?? null, p_name: ministry.name, p_name_uk: null, p_archived: ministry.archived ?? false }));
   }
   async saveMemberDetails(member: { id?: string | null; revision?: number | null; name: string; birthday?: string | null; ministryIds?: string[]; phone?: string | null; address?: string | null }) {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");

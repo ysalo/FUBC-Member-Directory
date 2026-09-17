@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -54,7 +54,7 @@ export function DirectoryScreen() {
     setLoadState("loading");
     Promise.all([listDirectory(), getDirectoryVisitCount()]).then(([nextMembers, nextVisitCount]) => { setDirectoryMembers(nextMembers); setVisitCount(nextVisitCount); setLoadState("ready"); }).catch(() => setLoadState("error"));
   };
-  useEffect(loadDirectory, []);
+  useFocusEffect(useCallback(loadDirectory, []));
 
   const sections = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -85,7 +85,6 @@ export function DirectoryScreen() {
 
   const stickyOverview = (
     <View style={[styles.stickyOverview, { backgroundColor: palette.background, borderBottomColor: palette.line }]}>
-      <View style={styles.titleRow}><Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.directory.title}</Text></View>
       <View style={[styles.searchField, { backgroundColor: palette.subtle }]}>
         <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={px(21)} style={styles.searchIcon} />
         <TextInput accessibilityLabel={copy.directory.searchLabel} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={copy.directory.search} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} />

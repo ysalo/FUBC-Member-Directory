@@ -1,7 +1,7 @@
 // @ts-nocheck — Expo Router's generated route union lags newly added nested management routes.
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { type Href, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type Href, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -64,7 +64,7 @@ export function ManageScreen() {
       .finally(() => setLoading(false));
   }, [allowed]);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const approvalQueue = useMemo(() => pendingAccounts(state.accounts), [state.accounts]);
   const data = useMemo(() => panel === "members" ? state.members : accountsAllowed ? orderedAccounts(state.accounts) : [], [accountsAllowed, panel, state]);
@@ -87,10 +87,7 @@ export function ManageScreen() {
       keyExtractor={(item) => item.id}
       ListHeaderComponent={<>
         <View style={styles.heading}>
-          <View style={styles.flex}>
-            <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
-            <Text selectable style={[styles.subtitle, { color: palette.secondaryText }]}>{copy.subtitle}</Text>
-          </View>
+          <View style={styles.flex} />
           <Pressable accessibilityLabel={copy.addMember} accessibilityRole="button" onPress={() => router.push("/manage/member/new" as Href)} style={({ pressed }) => [styles.add, { backgroundColor: palette.accent }, pressed && styles.pressed]}>
             <Ionicons accessibilityElementsHidden color="#FFF" name="add" size={26} />
           </Pressable>
@@ -107,7 +104,7 @@ export function ManageScreen() {
           <Shortcut detail={copy.ministriesDetail} icon="layers-outline" label={copy.ministries} onPress={() => router.push("/manage/ministries" as Href)} />
         </View>
 
-        {accountsAllowed && !loading && !failure ? <ApprovalQueue accounts={approvalQueue} onOpen={openAccount} /> : null}
+        {accountsAllowed && !loading && !failure && approvalQueue.length > 0 ? <ApprovalQueue accounts={approvalQueue} onOpen={openAccount} /> : null}
       </>}
       ListEmptyComponent={loading
         ? <StateView detail={copy.loadingDetail} icon="sync-outline" loading title={copy.loading} />

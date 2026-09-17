@@ -9,7 +9,7 @@ export type DeleteAccountRequest = {
 export type DeleteAccountResult = { deletedAccountId: string; selfDeleted: boolean };
 
 export function adminDeleteHref(accountId: string, displayName: string): string {
-  return `/account/delete?admin=true&targetAccountId=${encodeURIComponent(accountId)}&displayName=${encodeURIComponent(displayName)}`;
+  return `/manage/account/${encodeURIComponent(accountId)}/delete?admin=true&targetAccountId=${encodeURIComponent(accountId)}&displayName=${encodeURIComponent(displayName)}`;
 }
 
 /**

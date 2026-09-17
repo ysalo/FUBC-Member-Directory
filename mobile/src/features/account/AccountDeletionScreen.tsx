@@ -37,16 +37,15 @@ export function AccountDeletionScreen() {
     setBusy(true); setError(null);
     try {
       await deleteAccount({ confirmation: confirmation.trim(), ...(isAdminDelete ? { targetAccountId: params.targetAccountId } : {}) });
-      if (isAdminDelete) router.back();
+      if (isAdminDelete) router.replace("/manage" as Href);
       else router.replace("/(directory)" as Href);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "";
       setError(/last active administrator|final administrator/i.test(message) ? "final-admin" : "failed");
     } finally { setBusy(false); }
   }
-  return <View style={[styles.screen, { backgroundColor: palette.background, paddingTop: insets.top }]}>
+  return <View style={[styles.screen, { backgroundColor: palette.background }]}>
     <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]} keyboardShouldPersistTaps="handled">
-      <Pressable accessibilityLabel={labels.back} accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace("/menu" as Href)} style={styles.back}><Ionicons color={palette.accent} name="chevron-back" size={20} /><Text style={[styles.backText, { color: palette.accent }]}>{labels.back}</Text></Pressable>
       <View style={[styles.icon, { backgroundColor: palette.accentSoft }]}><Ionicons accessibilityElementsHidden color={palette.accent} name="trash-outline" size={28} /></View>
       <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{title}</Text>
       <Text selectable style={[styles.detail, { color: palette.secondaryText }]}>{detail}</Text>

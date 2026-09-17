@@ -17,6 +17,14 @@ test("the final active administrator cannot be demoted", () => {
   assert.equal(next.accounts.find((account) => account.id === "a-2")?.role, "admin");
 });
 
+test("unlinking returns an account to approval and clears its designation", () => {
+  const state = { members: [], accounts: [{ id: "a", name: "Leader", email: "leader@example.com", status: "active", role: "member", designation: "deacon", personId: "p" }] };
+  const next = source.managementReducer(state, { type: "unlink-account", accountId: "a" });
+  assert.equal(next.accounts[0].status, "pending");
+  assert.equal(next.accounts[0].designation, "none");
+  assert.equal(next.accounts[0].personId, null);
+});
+
 test("managed account option grids provide stable React keys", async () => {
   const sourceText = await readFile(new URL("../src/features/manage/AccountDetailScreen.tsx", import.meta.url), "utf8");
   assert.match(sourceText, /key=\{value\}/);

@@ -80,7 +80,8 @@ export type ManagementAction =
   | { type: "set-account-status"; accountId: string; status: ManagedAccount["status"] }
   | { type: "set-account-role"; accountId: string; role: ManagedAccount["role"] }
   | { type: "set-account-designation"; accountId: string; designation: NonNullable<ManagedAccount["designation"]> }
-  | { type: "link-account"; accountId: string; personId: string | null };
+  | { type: "link-account"; accountId: string; personId: string | null }
+  | { type: "unlink-account"; accountId: string };
 
 export function managementReducer(state: ManagementState, action: ManagementAction): ManagementState {
   switch (action.type) {
@@ -112,6 +113,11 @@ export function managementReducer(state: ManagementState, action: ManagementActi
       return {
         ...state,
         accounts: state.accounts.map((account) => account.id === action.accountId ? { ...account, personId: action.personId } : account),
+      };
+    case "unlink-account":
+      return {
+        ...state,
+        accounts: state.accounts.map((account) => account.id === action.accountId ? { ...account, designation: "none", personId: null, status: "pending" } : account),
       };
     default:
       return state;

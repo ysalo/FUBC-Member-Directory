@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import { type AppearancePreference, useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -27,7 +27,7 @@ export default function MenuRoute() {
   const [linkedMember, setLinkedMember] = useState<MemberProfile | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (session.status !== "ready" || !session.account.personId) {
       setLinkedMember(null);
       return;
@@ -38,7 +38,7 @@ export default function MenuRoute() {
       .then((profile) => { if (active) setLinkedMember(profile); })
       .catch(() => { if (active) setLinkedMember(null); });
     return () => { active = false; };
-  }, [session]);
+  }, [session]));
 
   const submitSignOut = async () => {
     if (signingOut) return;
@@ -54,8 +54,6 @@ export default function MenuRoute() {
   return (
     <View style={[styles.safe, { backgroundColor: palette.background }]}>
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
-        <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.menu.title}</Text>
-
         <View style={[styles.card, { backgroundColor: palette.surface }]}>
           <View style={styles.row}>
             <Ionicons color={palette.secondaryText} name="language-outline" size={24} />

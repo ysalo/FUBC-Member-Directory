@@ -9,10 +9,11 @@ export class SupabaseMemberProfileRepository implements MemberProfileRepository 
     const { data: person, error } = await client.from("people").select("*").eq("id", memberId).is("archived_at", null).maybeSingle();
     if (error) throw new Error(error.message);
     if (!person) return null;
-    const [groupResult, detailResult, designationResult] = await Promise.all([
+    const [groupResult, detailResult, designationResult, ministryLinksResult] = await Promise.all([
       person.membership_group_id ? client.from("deacon_groups").select("id,name").eq("id", person.membership_group_id).single() : null,
       client.rpc("member_profile_details", { p_person_id: memberId }),
       client.from("ministry_accounts").select("id,designation").eq("person_id", memberId).maybeSingle(),
+      client.from("person_ministries").select("ministry_id").eq("person_id", memberId),
     ]);
     const groupRow = groupResult ? unwrap(groupResult) : null;
     const group = groupRow?.name ?? "";
@@ -27,6 +28,9 @@ export class SupabaseMemberProfileRepository implements MemberProfileRepository 
         if (!responsibleGroupResult.error) responsibilityGroup = responsibleGroupResult.data;
       }
     }
-    return { id: person.id, name: person.name, nameUk: person.name, photo: person.photo_path ? photos.get(person.photo_path) ?? {} : {}, phone: person.phone ?? undefined, email: designation !== "none" ? person.email ?? undefined : undefined, address: details?.address ?? undefined, birthDate: details?.birth_date ?? undefined, membershipJoinedAt: details?.membership_joined_at ?? undefined, maritalStatus: details?.marital_status ?? undefined, isOrphan: details?.orphan_status ?? undefined, designation, membershipGroup: group, membershipGroupUk: group, membershipGroupId: groupRow?.id, responsibilityGroup: responsibilityGroup?.name, responsibilityGroupUk: responsibilityGroup?.name, responsibilityGroupId: responsibilityGroup?.id, ministries: person.ministry ? [person.ministry] : [], ministriesUk: person.ministry_uk || person.ministry ? [person.ministry_uk || person.ministry] : [] };
+    const ministryIds = ministryLinksResult.error ? [] : (ministryLinksResult.data ?? []).map((link) => link.ministry_id);
+    const ministryResult = ministryIds.length ? await client.from("ministries").select("id,name,archived_at").in("id", ministryIds).is("archived_at", null).order("name") : null;
+    const ministryNames = ministryResult && !ministryResult.error ? ministryResult.data.map((ministry) => ministry.name) : (person.ministry ? [person.ministry] : []);
+    return { id: person.id, name: person.name, nameUk: person.name, photo: person.photo_path ? photos.get(person.photo_path) ?? {} : {}, phone: person.phone ?? undefined, email: designation !== "none" ? person.email ?? undefined : undefined, address: details?.address ?? undefined, birthDate: details?.birth_date ?? undefined, membershipJoinedAt: details?.membership_joined_at ?? undefined, maritalStatus: details?.marital_status ?? undefined, isOrphan: details?.orphan_status ?? undefined, designation, membershipGroup: group, membershipGroupUk: group, membershipGroupId: groupRow?.id, responsibilityGroup: responsibilityGroup?.name, responsibilityGroupUk: responsibilityGroup?.name, responsibilityGroupId: responsibilityGroup?.id, ministries: ministryNames, ministriesUk: ministryNames };
   }
 }
