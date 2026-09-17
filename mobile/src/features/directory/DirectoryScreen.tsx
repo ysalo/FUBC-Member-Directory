@@ -2,7 +2,7 @@ import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -50,7 +50,9 @@ export function DirectoryScreen() {
   const [directoryMembers, setDirectoryMembers] = useState<Member[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "error" | "ready">("loading");
   const [visitCount, setVisitCount] = useState(0);
-  const [filter, setFilter] = useState<"all" | "orphan" | "widow">("all");
+  type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor";
+  const [filters, setFilters] = useState<DirectoryFilter[]>([]);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const loadDirectory = () => {
     setLoadState("loading");
@@ -62,7 +64,7 @@ export function DirectoryScreen() {
     const needle = query.trim().toLocaleLowerCase();
     const surname = (name: string) => name.trim().split(/\s+/).at(-1) ?? name;
     const sorted = directoryMembers
-      .filter((member) => filter === "all" || (filter === "orphan" ? member.isOrphan : member.isWidow))
+      .filter((member) => filters.every((filter) => filter === "orphan" ? member.isOrphan : filter === "widow" ? member.isWidow : member.designation === filter))
       .filter((member) => !needle || `${member.name} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase().includes(needle))
       .sort((a, b) => surname(a.name).localeCompare(surname(b.name), locale) || a.name.localeCompare(b.name, locale));
     return sorted.reduce<Array<{ title: string; data: Member[] }>>((groups, member) => {
@@ -72,7 +74,15 @@ export function DirectoryScreen() {
       else groups.push({ title, data: [member] });
       return groups;
     }, []);
-  }, [directoryMembers, filter, locale, query]);
+  }, [directoryMembers, filters, locale, query]);
+
+  const filterOptions: Array<{ id: DirectoryFilter; label: string }> = [
+    { id: "orphan", label: locale === "uk" ? "Сироти" : "Orphans" },
+    { id: "widow", label: locale === "uk" ? "Вдови та вдівці" : "Widows & widowers" },
+    { id: "deacon", label: locale === "uk" ? "Диякони" : "Deacons" },
+    { id: "pastor", label: locale === "uk" ? "Пастори" : "Pastors" },
+  ];
+  const toggleFilter = (filter: DirectoryFilter) => setFilters((current) => current.includes(filter) ? current.filter((value) => value !== filter) : [...current, filter]);
 
   const summary = (
     <View>
@@ -91,8 +101,9 @@ export function DirectoryScreen() {
       <View style={[styles.searchField, { backgroundColor: palette.subtle }]}>
         <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={px(21)} style={styles.searchIcon} />
         <TextInput accessibilityLabel={copy.directory.searchLabel} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={copy.directory.search} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} />
-        <Pressable accessibilityLabel={locale === "uk" ? "Фільтр" : "Filter"} accessibilityRole="button" onPress={() => Alert.alert(locale === "uk" ? "Фільтр" : "Filter", undefined, [{ text: locale === "uk" ? "Усі" : "All", onPress: () => setFilter("all") }, { text: locale === "uk" ? "Сироти" : "Orphans", onPress: () => setFilter("orphan") }, { text: locale === "uk" ? "Вдови" : "Widows", onPress: () => setFilter("widow") }, { text: locale === "uk" ? "Скасувати" : "Cancel", style: "cancel" }])} style={styles.filterButton}><Ionicons accessibilityElementsHidden color={filter === "all" ? palette.secondaryText : palette.accent} name="funnel-outline" size={px(19)} /></Pressable>
+        <Pressable accessibilityLabel={locale === "uk" ? "Фільтри" : "Filters"} accessibilityRole="button" accessibilityState={{ expanded: filterOpen }} onPress={() => setFilterOpen((open) => !open)} style={styles.filterButton}><Ionicons accessibilityElementsHidden color={filters.length === 0 ? palette.secondaryText : palette.accent} name="options-outline" size={px(21)} />{filters.length ? <View style={[styles.filterCount, { backgroundColor: palette.accent }]}><Text style={styles.filterCountText}>{filters.length}</Text></View> : null}</Pressable>
       </View>
+      {filterOpen ? <View accessibilityViewIsModal style={[styles.filterPopover, { backgroundColor: palette.elevated, borderColor: palette.line }]}><View style={styles.filterPopoverHeader}><Text accessibilityRole="header" style={[styles.filterPopoverTitle, { color: palette.text }]}>{locale === "uk" ? "Фільтри" : "Filters"}</Text>{filters.length ? <Pressable accessibilityRole="button" onPress={() => setFilters([])} style={styles.clearButton}><Text style={[styles.clearText, { color: palette.accent }]}>{locale === "uk" ? "Очистити" : "Clear"}</Text></Pressable> : null}</View>{filterOptions.map((option) => { const selected = filters.includes(option.id); return <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: selected }} key={option.id} onPress={() => toggleFilter(option.id)} style={styles.filterOption}><View style={[styles.checkbox, { backgroundColor: selected ? palette.accent : "transparent", borderColor: selected ? palette.accent : palette.line }]}>{selected ? <Ionicons accessibilityElementsHidden color="#FFF" name="checkmark" size={15} /> : null}</View><Text style={[styles.filterOptionText, { color: palette.text }]}>{option.label}</Text></Pressable>; })}<Pressable accessibilityRole="button" onPress={() => setFilterOpen(false)} style={[styles.doneButton, { backgroundColor: palette.accent }]}><Text style={styles.doneText}>{locale === "uk" ? "Готово" : "Done"}</Text></Pressable></View> : null}
     </View>
   );
 
@@ -161,7 +172,7 @@ const styles = StyleSheet.create({
     shadowOffset: { height: px(2), width: 0 },
     shadowOpacity: Platform.OS === "ios" ? 0.08 : 0,
     shadowRadius: px(5),
-    zIndex: 2,
+    zIndex: 5,
   },
   titleRow: { paddingHorizontal: px(20), paddingTop: px(22) },
   title: { color: "#292D31", fontSize: px(48), fontWeight: "800", letterSpacing: px(-1.7), lineHeight: px(56) },
@@ -169,7 +180,14 @@ const styles = StyleSheet.create({
   searchField: { alignItems: "center", borderRadius: px(14), flexDirection: "row", marginHorizontal: px(20), marginTop: px(12), minHeight: px(44), paddingHorizontal: px(17) },
   searchIcon: { marginRight: px(13) },
   searchInput: { color: "#22262A", flex: 1, fontSize: px(14), paddingVertical: px(12) },
-  filterButton: { alignItems: "center", justifyContent: "center", minHeight: px(36), minWidth: px(36) },
+  filterButton: { alignItems: "center", justifyContent: "center", minHeight: px(40), minWidth: px(40), position: "relative" },
+  filterCount: { alignItems: "center", borderRadius: px(8), height: px(16), justifyContent: "center", position: "absolute", right: px(-2), top: px(1), width: px(16) },
+  filterCountText: { color: "#FFF", fontSize: px(10), fontWeight: "800" },
+  filterPopover: { borderCurve: "continuous", borderRadius: px(16), borderWidth: StyleSheet.hairlineWidth, elevation: 8, marginTop: px(7), padding: px(12), position: "absolute", right: px(20), shadowColor: "#000", shadowOffset: { height: px(4), width: 0 }, shadowOpacity: 0.18, shadowRadius: px(12), top: "100%", width: px(244), zIndex: 20 },
+  filterPopoverHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: px(34), paddingHorizontal: px(4) },
+  filterPopoverTitle: { fontSize: px(17), fontWeight: "800" }, clearButton: { justifyContent: "center", minHeight: px(36), paddingLeft: px(12) }, clearText: { fontSize: px(14), fontWeight: "700" },
+  filterOption: { alignItems: "center", flexDirection: "row", gap: px(11), minHeight: px(44), paddingHorizontal: px(4) }, checkbox: { alignItems: "center", borderRadius: px(6), borderWidth: 1.5, height: px(23), justifyContent: "center", width: px(23) }, filterOptionText: { flex: 1, fontSize: px(15), fontWeight: "600" },
+  doneButton: { alignItems: "center", borderRadius: px(11), justifyContent: "center", marginTop: px(7), minHeight: px(42) }, doneText: { color: "#FFF", fontSize: px(15), fontWeight: "800" },
   visitationPanel: { borderRadius: px(16), marginHorizontal: px(18), marginTop: px(12), paddingBottom: px(10), paddingHorizontal: px(10), paddingTop: px(14) },
   panelHeadingRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", paddingBottom: px(8), paddingHorizontal: px(1) },
   panelHeading: { color: "#111722", fontSize: px(21), fontWeight: "800", letterSpacing: px(-0.35) },

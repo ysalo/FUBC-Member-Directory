@@ -2,7 +2,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -27,6 +27,7 @@ const labels = {
     waiting: "Waiting for approval", waitingDetail: "Signed-in people who need an administrator’s review.", allCaughtUp: "No accounts are waiting for approval.",
     emptyMembers: "No members yet", emptyMembersDetail: "Add the first person to start the directory.", emptyAccounts: "No accounts found", emptyAccountsDetail: "New sign-ins will appear here.",
     opensAccount: "Opens account access settings", opensMember: "Opens member management",
+    searchMembers: "Search people", searchAccounts: "Search accounts", noMatches: "No matching people", noMatchesDetail: "Try a different name, group, or email.",
   },
   uk: {
     title: "Керування", subtitle: "Підтримуйте довідник і доступ в актуальному стані.", members: "Учасники", accounts: "Облікові записи",
@@ -37,6 +38,7 @@ const labels = {
     waiting: "Очікують схвалення", waitingDetail: "Користувачі, які вже ввійшли й потребують перевірки адміністратора.", allCaughtUp: "Немає облікових записів, що очікують схвалення.",
     emptyMembers: "Учасників ще немає", emptyMembersDetail: "Додайте першу людину, щоб почати довідник.", emptyAccounts: "Облікових записів не знайдено", emptyAccountsDetail: "Нові користувачі з’являться тут після входу.",
     opensAccount: "Відкриває налаштування доступу", opensMember: "Відкриває керування учасником",
+    searchMembers: "Пошук людей", searchAccounts: "Пошук облікових записів", noMatches: "Людей не знайдено", noMatchesDetail: "Спробуйте інше ім’я, групу або електронну адресу.",
   },
 } as const;
 
@@ -53,6 +55,7 @@ export function ManageScreen() {
   const [state, setState] = useState<ManagementState>(() => isBackendConfigured ? { members: [], accounts: [] } : initialManagementState);
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const load = useCallback(() => {
     if (!allowed) return;
@@ -67,7 +70,11 @@ export function ManageScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const approvalQueue = useMemo(() => pendingAccounts(state.accounts), [state.accounts]);
-  const data = useMemo(() => panel === "members" ? state.members : accountsAllowed ? orderedAccounts(state.accounts) : [], [accountsAllowed, panel, state]);
+  const data = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase(locale);
+    const source = panel === "members" ? state.members : accountsAllowed ? orderedAccounts(state.accounts) : [];
+    return source.filter((item) => !needle || (panel === "members" ? `${(item as ManagedMember).name} ${(item as ManagedMember).group}` : `${(item as ManagedAccount).name} ${(item as ManagedAccount).email}`).toLocaleLowerCase(locale).includes(needle));
+  }, [accountsAllowed, locale, panel, query, state]);
   const openAccount = (accountId: string) => {
     router.push(managedAccountRoute(accountId));
   };
@@ -102,6 +109,8 @@ export function ManageScreen() {
           </Pressable>)}
         </View>
 
+        <View style={[styles.search, { backgroundColor: palette.subtle }]}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} /><TextInput accessibilityLabel={panel === "members" ? copy.searchMembers : copy.searchAccounts} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={panel === "members" ? copy.searchMembers : copy.searchAccounts} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} /></View>
+
         <View style={styles.shortcuts}>
           <Shortcut detail={copy.groupsDetail} icon="people-outline" label={copy.groups} onPress={() => router.push("/manage/groups" as Href)} />
           <Shortcut detail={copy.ministriesDetail} icon="layers-outline" label={copy.ministries} onPress={() => router.push("/manage/ministries" as Href)} />
@@ -113,6 +122,7 @@ export function ManageScreen() {
         ? <StateView detail={copy.loadingDetail} icon="sync-outline" loading title={copy.loading} />
         : failure
           ? <StateView action={load} actionLabel={copy.retry} detail={failure} icon="cloud-offline-outline" title={copy.error} />
+          : query.trim() ? <StateView detail={copy.noMatchesDetail} icon="search-outline" title={copy.noMatches} />
           : <StateView detail={panel === "members" ? copy.emptyMembersDetail : copy.emptyAccountsDetail} icon={panel === "members" ? "person-add-outline" : "key-outline"} title={panel === "members" ? copy.emptyMembers : copy.emptyAccounts} />}
       renderItem={({ item }) => panel === "members"
         ? <MemberRow item={item as ManagedMember} onPress={() => router.push(`/manage/member/${item.id}` as Href)} />
@@ -171,7 +181,7 @@ export function ManageScreen() {
     return <View style={[styles.status, { backgroundColor }]}><Text style={[styles.statusText, { color: tone === "attention" ? palette.accent : palette.secondaryText }]}>{label}</Text></View>;
   }
 
-  function StateView({ action, actionLabel, detail, icon, loading: busy, title }: { action?: () => void; actionLabel?: string; detail: string; icon: "cloud-offline-outline" | "key-outline" | "lock-closed-outline" | "person-add-outline" | "sync-outline"; loading?: boolean; title: string }) {
+  function StateView({ action, actionLabel, detail, icon, loading: busy, title }: { action?: () => void; actionLabel?: string; detail: string; icon: "cloud-offline-outline" | "key-outline" | "lock-closed-outline" | "person-add-outline" | "search-outline" | "sync-outline"; loading?: boolean; title: string }) {
     return <View accessibilityLiveRegion="polite" style={styles.state}>
       <View style={[styles.stateIcon, { backgroundColor: palette.accentSoft }]}>{busy ? <ActivityIndicator color={palette.accent} /> : <Ionicons accessibilityElementsHidden color={palette.accent} name={icon} size={27} />}</View>
       <Text accessibilityRole="header" selectable style={[styles.stateTitle, { color: palette.text }]}>{title}</Text>
@@ -186,6 +196,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 42, fontWeight: "800", letterSpacing: -1.3 }, subtitle: { fontSize: 15, lineHeight: 21, marginTop: 3 }, flex: { flex: 1, minWidth: 0 },
   add: { alignItems: "center", borderCurve: "continuous", borderRadius: 15, height: 46, justifyContent: "center", width: 46 }, segmented: { borderCurve: "continuous", borderRadius: 13, flexDirection: "row", marginTop: 14, padding: 3 },
   segment: { alignItems: "center", borderCurve: "continuous", borderRadius: 10, flex: 1, minHeight: 40, justifyContent: "center", paddingHorizontal: 10 }, segmentText: { fontSize: 15, fontWeight: "700" },
+  search: { alignItems: "center", borderRadius: 13, flexDirection: "row", gap: 9, marginTop: 4, minHeight: 46, paddingHorizontal: 13 }, searchInput: { flex: 1, fontSize: 16, paddingVertical: 10 },
   shortcuts: { gap: 8, marginTop: 4 }, shortcut: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 11, minHeight: 66, paddingHorizontal: 12, paddingVertical: 10 },
   shortcutIcon: { alignItems: "center", borderRadius: 10, height: 38, justifyContent: "center", width: 38 }, shortcutTitle: { fontSize: 16, fontWeight: "700" }, shortcutDetail: { fontSize: 13, lineHeight: 17, marginTop: 2 },
   approval: { borderCurve: "continuous", borderRadius: 16, marginBottom: 4, marginTop: 6, overflow: "hidden", paddingHorizontal: 14, paddingTop: 14 }, approvalHeading: { alignItems: "flex-start", flexDirection: "row", gap: 11, paddingBottom: 13 },

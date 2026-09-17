@@ -51,7 +51,7 @@ export class SupabaseManagementRepository {
     const [personResult, groupsResult, detailsResult] = await Promise.all([
       client.from("people").select("*").eq("id", id).maybeSingle(),
       client.from("deacon_groups").select("*"),
-      client.rpc("management_member_details", { p_person_id: id }),
+      client.rpc("management_member_care_details", { p_person_id: id }),
     ]);
     if (personResult.error) throw new Error(personResult.error.message);
     if (!personResult.data) return null;
@@ -59,7 +59,7 @@ export class SupabaseManagementRepository {
     const groups = unwrap(groupsResult);
     const details = unwrap(detailsResult)[0];
     const photos = await privatePhotoSources([row.photo_path]);
-    return { id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), revision: row.revision, birthday: details?.birth_date ?? null, address: details?.address ?? null, ministryIds: details?.ministry_ids ?? [], phone: row.phone, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined };
+    return { id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), revision: row.revision, birthday: details?.birth_date ?? null, address: details?.address ?? null, isOrphan: Boolean(details?.orphan_status), isWidow: ["widow", "widowed", "вдова", "вдівець", "вдівець/вдова"].includes(details?.marital_status?.trim().toLocaleLowerCase() ?? ""), ministryIds: details?.ministry_ids ?? [], phone: row.phone, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined };
   }
   async apply(state: ManagementState, action: ManagementAction): Promise<ManagementState> {
     const actor = activeAccount();
@@ -99,9 +99,9 @@ export class SupabaseManagementRepository {
     if (isDesignationMinistry(ministry.name)) throw new Error("Pastor and Deacon are account designations, not ministries.");
     return unwrap(await requireSupabase().rpc("save_ministry", { p_id: ministry.id ?? null, p_revision: ministry.revision ?? null, p_name: ministry.name, p_name_uk: null, p_archived: ministry.archived ?? false }));
   }
-  async saveMemberDetails(member: { id?: string | null; revision?: number | null; name: string; birthday?: string | null; ministryIds?: string[]; phone?: string | null; address?: string | null }) {
+  async saveMemberDetails(member: { id?: string | null; revision?: number | null; name: string; birthday?: string | null; ministryIds?: string[]; phone?: string | null; address?: string | null; isOrphan?: boolean; isWidow?: boolean }) {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
-    return unwrap(await requireSupabase().rpc("save_person", { p_id: member.id ?? null, p_revision: member.revision ?? null, p_data: { name: member.name, birth_date: member.birthday ?? null, ministry_ids: member.ministryIds ?? [], phone: member.phone ?? null, address: member.address ?? null } }));
+    return unwrap(await requireSupabase().rpc("save_person", { p_id: member.id ?? null, p_revision: member.revision ?? null, p_data: { name: member.name, birth_date: member.birthday ?? null, ministry_ids: member.ministryIds ?? [], phone: member.phone ?? null, address: member.address ?? null, orphan_status: member.isOrphan ?? false, widow_status: member.isWidow ?? false } }));
   }
   async saveAccount(args: Database["public"]["Functions"]["update_account"]["Args"]) {
     if (!canManageAccounts(activeAccount())) throw new Error("Not authorized.");

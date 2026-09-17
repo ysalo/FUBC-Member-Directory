@@ -35,6 +35,7 @@ export type Database = {
       update_account: { Args: { p_id: string; p_revision: number; p_status: AccountStatus; p_role: AccessRole; p_designation: MinistryDesignation; p_person_id: string | null }; Returns: ProfileRow };
       save_ministry: { Args: { p_id: string | null; p_revision: number | null; p_name: string; p_name_uk: string | null; p_archived: boolean }; Returns: { id: string; name: string; name_uk: string | null; archived_at: string | null; revision: number } };
       management_member_details: { Args: { p_person_id: string }; Returns: { person_id: string; birth_date: string | null; address: string | null; ministry_ids: string[] }[] };
+      management_member_care_details: { Args: { p_person_id: string }; Returns: { person_id: string; birth_date: string | null; address: string | null; marital_status: string | null; orphan_status: boolean | null; ministry_ids: string[] }[] };
       management_accounts: { Args: Record<string, never>; Returns: { id: string; person_id: string | null; display_name: string; email: string; status: AccountStatus; role: AccessRole; designation: MinistryDesignation; revision: number; created_at: string }[] };
       save_visit: { Args: { p_id: string | null; p_revision: number | null; p_submission_id: string; p_person_id: string; p_scheduled_at: string; p_location: string; p_notes: string; p_deacon_ids: string[] }; Returns: VisitRow };
       respond_to_visit: { Args: { p_id: string; p_revision: number; p_response: string; p_reason: string | null }; Returns: VisitRow };

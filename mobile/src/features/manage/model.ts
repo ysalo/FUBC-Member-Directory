@@ -8,6 +8,8 @@ export type ManagedMember = {
   ministryIds?: string[];
   phone?: string | null;
   address?: string | null;
+  isOrphan?: boolean;
+  isWidow?: boolean;
   photoPath?: string | null;
   photo?: import("react-native").ImageSourcePropType;
 };

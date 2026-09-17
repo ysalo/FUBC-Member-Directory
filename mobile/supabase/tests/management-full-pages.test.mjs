@@ -35,6 +35,7 @@ before(async () => {
     "20260917060000_group_one_shared_deacons.sql",
     "20260917070000_pastor_ministry_name.sql",
     "20260917080000_link_group_one_deacon_profiles.sql",
+    "20260917100000_manage_care_status.sql",
   ]) await db.exec(await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
   await db.query("insert into auth.users(id,email) values($1,'admin@example.com'),($2,'editor@example.com'),($3,'member@example.com')", [ids.admin, ids.editor, ids.member]);
   await db.exec(`update public.profiles set status='active',role='admin' where id='${ids.admin}';
@@ -46,12 +47,26 @@ test("editor manages ministry catalog and complete member details without exposi
   const ministry = (await as("editor", "select * from public.save_ministry(null,null,'Music','Музика',false)")).rows[0];
   const member = (await as("editor", `select * from public.save_person(null,null,jsonb_build_object(
     'name','Олена Коваль','birth_date','1990-04-12','phone','253-555-0110','address','Tacoma, WA','ministry_ids',jsonb_build_array($1::text)))`, [ministry.id])).rows[0];
-  const details = (await as("editor", "select * from public.management_member_details($1)", [member.id])).rows[0];
+  const details = (await as("editor", "select * from public.management_member_care_details($1)", [member.id])).rows[0];
   assert.equal(new Date(details.birth_date).toISOString().slice(0, 10), "1990-04-12");
   assert.equal(details.address, "Tacoma, WA");
   assert.deepEqual(details.ministry_ids, [ministry.id]);
   await assert.rejects(as("editor", "select * from public.people_private"), /permission denied/);
   await assert.rejects(as("member", "select * from public.management_member_details($1)", [member.id]), /Not authorized/);
+});
+
+test("editor updates orphan and widow status through the managed member contract", async () => {
+  const member = (await db.query("select id,revision from public.people where name='Олена Коваль'")).rows[0];
+  await as("editor", "select * from public.save_person($1,$2,jsonb_build_object('name','Олена Коваль','orphan_status',true,'widow_status',true))", [member.id, member.revision]);
+  const details = (await as("editor", "select * from public.management_member_care_details($1)", [member.id])).rows[0];
+  assert.equal(details.orphan_status, true);
+  assert.equal(details.marital_status, "widowed");
+
+  const revision = (await db.query("select revision from public.people where id=$1", [member.id])).rows[0].revision;
+  await as("editor", "select * from public.save_person($1,$2,jsonb_build_object('name','Олена Коваль','orphan_status',false,'widow_status',false))", [member.id, revision]);
+  const cleared = (await as("editor", "select * from public.management_member_care_details($1)", [member.id])).rows[0];
+  assert.equal(cleared.orphan_status, false);
+  assert.equal(cleared.marital_status, null);
 });
 
 test("the pastoral care ministry is normalized to Pastor in both languages", async () => {
