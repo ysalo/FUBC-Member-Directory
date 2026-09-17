@@ -120,7 +120,7 @@ export class SupabaseManagementRepository {
     const groups = unwrap(groupsResult), people = unwrap(peopleResult), responsibilityMembers = unwrap(responsibilityMembersResult), assignments = unwrap(assignmentsResult), accounts = unwrap(accountsResult);
     const linkedIds = accounts.flatMap((account) => account.person_id ? [account.person_id] : []);
     const linkedPeople = people.filter((person) => linkedIds.includes(person.id));
-    const photos = await privatePhotoSources(linkedPeople.map((person) => person.photo_path));
+    const photos = await privatePhotoSources(linkedPeople.map((person) => person.photo_path)).catch(() => new Map());
     const managedGroups: ManagedGroup[] = groups.map((group) => ({
       id: group.id,
       name: group.name,

@@ -14,7 +14,7 @@ import { errorMessage, withTimeout } from "@/lib/async-state";
 import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
 import { isBackendConfigured } from "@/lib/supabase";
 import { managementRepository } from "./management-repository";
-import { managedAccountHref } from "./route-params";
+import { managedAccountRoute } from "./route-params";
 import { initialManagementState, orderedAccounts, pendingAccounts, type ManagedAccount, type ManagedMember, type ManagementState } from "./model";
 
 const labels = {
@@ -69,7 +69,7 @@ export function ManageScreen() {
   const approvalQueue = useMemo(() => pendingAccounts(state.accounts), [state.accounts]);
   const data = useMemo(() => panel === "members" ? state.members : accountsAllowed ? orderedAccounts(state.accounts) : [], [accountsAllowed, panel, state]);
   const openAccount = (accountId: string) => {
-    router.push(managedAccountHref(accountId) as Href);
+    router.push(managedAccountRoute(accountId));
   };
 
   if (!allowed) {

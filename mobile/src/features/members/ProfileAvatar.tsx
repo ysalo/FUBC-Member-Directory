@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 
 type ProfileAvatarProps = {
@@ -10,6 +11,8 @@ type ProfileAvatarProps = {
 };
 
 export function ProfileAvatar({ name, source, size = 40, backgroundColor, textColor }: ProfileAvatarProps) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [source]);
   const hasSource = Boolean(source && (typeof source !== "object" || Array.isArray(source) || Object.keys(source).length > 0));
   const initials = name
     .trim()
@@ -19,8 +22,8 @@ export function ProfileAvatar({ name, source, size = 40, backgroundColor, textCo
     .map((part) => part[0]?.toLocaleUpperCase())
     .join("") || "?";
 
-  return hasSource ? (
-    <Image accessibilityLabel={`${name} profile photo`} contentFit="cover" source={source as never} style={{ borderRadius: size / 2, height: size, width: size }} />
+  return hasSource && !failed ? (
+    <Image accessibilityLabel={`${name} profile photo`} contentFit="cover" onError={() => setFailed(true)} source={source as never} style={{ borderRadius: size / 2, height: size, width: size }} />
   ) : (
     <View accessibilityLabel={`${name} initials`} style={[styles.fallback, { backgroundColor, borderRadius: size / 2, height: size, width: size }]}>
       <Text style={[styles.initials, { color: textColor, fontSize: Math.max(13, size * 0.38) }]}>{initials}</Text>

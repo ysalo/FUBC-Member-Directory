@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
-import { ProfileAvatar } from "@/features/members/ProfileAvatar";
+import { DeaconProfileRow } from "./deacon-profile-row";
 import { getGroupsCopy } from "./groups-copy";
 import { partitionGroups } from "./groups-display";
 import { groupsRepository, type MinistryGroup } from "./groups-repository";
@@ -62,30 +62,37 @@ export function GroupsScreen() {
     {state === "loading" ? <State icon="sync-outline" title={copy.loading} />
       : state === "error" ? <State action={load} icon="cloud-offline-outline" title={copy.error} actionLabel={copy.retry} />
         : filtered.length === 0 ? <State icon="people-outline" title={assigned && !query.trim() ? copy.noOtherGroups : copy.noGroups} detail={assigned && !query.trim() ? copy.noOtherGroupsDetail : copy.noGroupsDetail} />
-          : <View style={[styles.list, { backgroundColor: palette.surface, borderColor: palette.line }]}>{filtered.map((group, index) => <GroupRow group={group} key={group.id} last={index === filtered.length - 1} locale={locale} onPress={() => openGroup(group)} />)}</View>}
+          : <View style={styles.list}>{filtered.map((group) => <GroupRow group={group} key={group.id} locale={locale} onPress={() => openGroup(group)} />)}</View>}
   </ScrollView>;
 }
 
-function GroupRow({ featured = false, group, last = false, locale, onPress }: { featured?: boolean; group: MinistryGroup; last?: boolean; locale: "en" | "uk"; onPress: () => void }) {
+function GroupRow({ featured = false, group, locale, onPress }: { featured?: boolean; group: MinistryGroup; locale: "en" | "uk"; onPress: () => void }) {
   const { palette } = useAppearance();
+  const router = useRouter();
   const copy = getGroupsCopy(locale);
   const name = locale === "uk" ? group.nameUk : group.name;
   const description = locale === "uk" ? group.descriptionUk : group.description;
+  const deacons = group.responsibleDeacons ?? [];
 
-  const deaconNames = group.responsibleDeacons?.map((deacon) => deacon.name).join(", ") ?? "";
-
-  return <Pressable accessibilityHint={copy.openGroup} accessibilityLabel={`${name}, ${copy.memberCount(group.memberIds.length)}${deaconNames ? `, ${copy.responsibleDeacons}: ${deaconNames}` : ""}`} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [featured ? styles.featuredCard : styles.row, featured ? { backgroundColor: palette.accentSoft } : !last && { borderBottomColor: palette.line, borderBottomWidth: StyleSheet.hairlineWidth }, pressed && styles.pressed]}>
-    <View style={[featured ? styles.featuredIcon : styles.rowIcon, { backgroundColor: featured ? palette.accent : palette.subtle }]}>
-      <Ionicons accessibilityElementsHidden color={featured ? "#FFF" : palette.accent} name={featured ? "people" : "people-outline"} size={featured ? 25 : 20} />
+  return <View style={[styles.groupCard, { backgroundColor: featured ? palette.accentSoft : palette.surface, borderColor: palette.line }]}>
+    <Pressable accessibilityHint={copy.openGroup} accessibilityLabel={`${name}, ${copy.memberCount(group.memberIds.length)}`} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.groupHeader, featured && styles.featuredHeader, pressed && styles.pressed]}>
+      <View style={[featured ? styles.featuredIcon : styles.rowIcon, { backgroundColor: featured ? palette.accent : palette.subtle }]}>
+        <Ionicons accessibilityElementsHidden color={featured ? "#FFF" : palette.accent} name={featured ? "people" : "people-outline"} size={featured ? 25 : 20} />
+      </View>
+      <View style={styles.cardCopy}>
+        <Text selectable numberOfLines={2} style={[featured ? styles.featuredName : styles.groupName, { color: palette.text }]}>{name}</Text>
+        {description ? <Text selectable numberOfLines={2} style={[styles.description, { color: palette.secondaryText }]}>{description}</Text> : null}
+        <Text selectable style={[styles.meta, { color: featured ? palette.accent : palette.secondaryText }]}>{copy.memberCount(group.memberIds.length)}</Text>
+      </View>
+      <Ionicons accessibilityElementsHidden color={featured ? palette.accent : palette.secondaryText} name="chevron-forward" size={featured ? 24 : 20} />
+    </Pressable>
+    <View style={[styles.deaconSection, { borderTopColor: palette.line }]}>
+      <Text accessibilityRole="header" selectable style={[styles.deaconHeading, { color: palette.secondaryText }]}>{copy.responsibleDeacons}</Text>
+      {deacons.length ? <View style={[styles.deaconList, { backgroundColor: featured ? palette.elevated : palette.subtle }]}>
+        {deacons.map((deacon, index) => <DeaconProfileRow accessibilityHint={copy.openDeaconProfile} deacon={deacon} key={deacon.id} roleLabel={copy.deacon} last={index === deacons.length - 1} onPress={() => router.push({ pathname: "/(directory)/members/[memberId]", params: { memberId: deacon.id } })} />)}
+      </View> : <Text selectable style={[styles.noDeacons, { color: palette.secondaryText }]}>{copy.noDeaconsAssigned}</Text>}
     </View>
-    <View style={styles.cardCopy}>
-      <Text selectable numberOfLines={2} style={[featured ? styles.featuredName : styles.groupName, { color: palette.text }]}>{name}</Text>
-      {description ? <Text selectable numberOfLines={2} style={[styles.description, { color: palette.secondaryText }]}>{description}</Text> : null}
-      <Text selectable style={[styles.meta, { color: featured ? palette.accent : palette.secondaryText }]}>{copy.memberCount(group.memberIds.length)}</Text>
-      {group.responsibleDeacons?.length ? <View style={styles.deacons}><View style={styles.deaconAvatars}>{group.responsibleDeacons.slice(0, 2).map((deacon) => <ProfileAvatar backgroundColor={palette.subtle} key={deacon.id} name={deacon.name} source={deacon.photo} size={24} textColor={palette.accent} />)}</View><Text selectable numberOfLines={2} style={[styles.deaconNames, { color: palette.secondaryText }]}>{copy.responsibleDeacons}: {deaconNames}</Text></View> : null}
-    </View>
-    <Ionicons accessibilityElementsHidden color={featured ? palette.accent : palette.secondaryText} name="chevron-forward" size={featured ? 24 : 20} />
-  </Pressable>;
+  </View>;
 }
 
 export function State({ action, actionLabel, detail, icon, title }: { action?: () => void; actionLabel?: string; detail?: string; icon: "sync-outline" | "cloud-offline-outline" | "people-outline"; title: string }) {
@@ -103,23 +110,25 @@ const styles = StyleSheet.create({
   title: { fontSize: 36, fontWeight: "800", letterSpacing: -1 },
   featuredSection: { gap: 9 },
   sectionLabel: { fontSize: 20, fontWeight: "800", letterSpacing: -.25 },
-  featuredCard: { alignItems: "center", borderCurve: "continuous", borderRadius: 16, flexDirection: "row", gap: 14, minHeight: 126, padding: 18 },
+  groupCard: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
+  groupHeader: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 80, paddingHorizontal: 14, paddingVertical: 12 },
+  featuredHeader: { minHeight: 112, padding: 18 },
   featuredIcon: { alignItems: "center", borderRadius: 24, height: 48, justifyContent: "center", width: 48 },
   featuredName: { fontSize: 23, fontWeight: "800", letterSpacing: -.35 },
   browseHeading: { gap: 10 },
   search: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, flexDirection: "row", gap: 10, minHeight: 46, paddingHorizontal: 14 },
   input: { flex: 1, fontSize: 16, paddingVertical: 11 },
-  list: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
-  row: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 76, paddingHorizontal: 14, paddingVertical: 10 },
+  list: { gap: 12 },
   rowIcon: { alignItems: "center", borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
   pressed: { opacity: .65 },
   cardCopy: { flex: 1, gap: 3 },
   groupName: { fontSize: 17, fontWeight: "700" },
   description: { fontSize: 14, lineHeight: 18 },
   meta: { fontSize: 13, fontWeight: "700", marginTop: 2 },
-  deacons: { alignItems: "center", flexDirection: "row", gap: 7, marginTop: 4 },
-  deaconAvatars: { flexDirection: "row", gap: 3 },
-  deaconNames: { flex: 1, fontSize: 12, fontWeight: "600", lineHeight: 16 },
+  deaconSection: { borderTopWidth: StyleSheet.hairlineWidth, gap: 8, paddingHorizontal: 12, paddingVertical: 12 },
+  deaconHeading: { fontSize: 13, fontWeight: "700", paddingHorizontal: 2, textTransform: "uppercase" },
+  deaconList: { borderCurve: "continuous", borderRadius: 12, overflow: "hidden" },
+  noDeacons: { fontSize: 14, lineHeight: 20, paddingHorizontal: 2, paddingBottom: 2 },
   state: { alignItems: "center", gap: 9, paddingHorizontal: 28, paddingTop: 36 },
   stateTitle: { fontSize: 19, fontWeight: "700", textAlign: "center" },
   stateDetail: { fontSize: 15, textAlign: "center" },

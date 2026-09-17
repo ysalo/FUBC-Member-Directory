@@ -30,13 +30,25 @@ test("managed account routes normalize Expo's runtime parameter shapes", () => {
   assert.equal(routeParams.accountIdFromPathname("/manage/account/account-id"), "account-id");
   assert.equal(routeParams.accountIdFromPathname("/manage/account/account%20id"), "account id");
   assert.equal(routeParams.accountIdFromPathname("/manage/account"), null);
+  assert.equal(routeParams.resolveAccountId(" preferred-id ", "/manage/account/stale-id"), "preferred-id");
+  assert.equal(routeParams.resolveAccountId(undefined, "/manage/account/account%20id"), "account id");
+  assert.equal(routeParams.resolveAccountId(undefined, "/manage/account"), null);
   assert.equal(routeParams.managedAccountHref(" account-id "), "/manage/account/account-id");
+  assert.deepEqual(routeParams.managedAccountRoute(" account/id "), { pathname: "/manage/account/[accountId]", params: { accountId: "account/id" } });
 });
 
 test("managed account detail uses the durable route id", async () => {
   const screen = await readFile(new URL("../src/features/manage/AccountDetailScreen.tsx", import.meta.url), "utf8");
-  assert.match(screen, /normalizeAccountId\(params\.accountId\)/);
+  assert.match(screen, /resolveAccountId\(params\.accountId, pathname\)/);
   assert.doesNotMatch(screen, /getManagedAccountSelection|selectedAccountId/);
+});
+
+test("managed account failures provide a route back to the account list", async () => {
+  const screen = await readFile(new URL("../src/features/manage/AccountDetailScreen.tsx", import.meta.url), "utf8");
+  assert.match(screen, /kind: "invalid" \| "missing" \| "load"/);
+  assert.match(screen, /router\.replace\("\/manage"\)/);
+  assert.match(screen, /This account link is invalid/);
+  assert.match(screen, /This account is no longer available/);
 });
 
 test("dynamic account routes render their Expo management screens", async () => {
@@ -55,6 +67,14 @@ test("manage navigation is only rendered for active editors and administrators",
   assert.match(layout, /showManage[\s\S]*canManageDirectory\(session\.account\)/);
   assert.match(layout, /showManage \? <NativeTabs\.Trigger name="manage">/);
   assert.match(webTabs, /tab\.labelKey !== "manage"[\s\S]*canManageDirectory\(session\.account\)/);
+});
+
+test("the manage stack anchors restored account routes to its landing screen", async () => {
+  const layout = await readFile(new URL("../src/app/manage/_layout.tsx", import.meta.url), "utf8");
+  assert.match(layout, /unstable_settings/);
+  assert.match(layout, /anchor: "index"/);
+  assert.ok(layout.indexOf('<Stack.Screen name="index"') < layout.indexOf('<Stack.Screen name="account/\[accountId\]"'));
+  assert.doesNotMatch(layout, /disablePopToTop/);
 });
 
 test("pending sign-ins are promoted into a newest-first approval queue", () => {
@@ -76,7 +96,7 @@ test("management keeps pending approvals visible and preserves actionable load f
   assert.match(screen, /pendingAccounts\(state\.accounts\)/);
   assert.match(screen, /Waiting for approval/);
   assert.match(screen, /setFailure\(errorMessage\(cause\)\)/);
-  assert.match(screen, /router\.push\(managedAccountHref\(accountId\)/);
+  assert.match(screen, /router\.push\(managedAccountRoute\(accountId\)\)/);
   assert.match(repository, /privatePhotoSources[\s\S]*\.catch\(\(\) => new Map\(\)\)/);
   assert.match(gate, /Opening your directory/);
   assert.match(gate, /Church access/);

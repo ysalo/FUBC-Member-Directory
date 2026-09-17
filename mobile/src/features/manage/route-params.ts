@@ -13,8 +13,16 @@ export function accountIdFromPathname(pathname: string) {
   }
 }
 
+export function resolveAccountId(value: string | string[] | undefined, pathname: string) {
+  return normalizeAccountId(value) ?? accountIdFromPathname(pathname);
+}
+
 export function managedAccountHref(accountId: string) {
   const normalized = accountId.trim();
   const encoded = encodeURIComponent(normalized);
   return `/manage/account/${encoded}` as const;
+}
+
+export function managedAccountRoute(accountId: string) {
+  return { pathname: "/manage/account/[accountId]" as const, params: { accountId: accountId.trim() } };
 }

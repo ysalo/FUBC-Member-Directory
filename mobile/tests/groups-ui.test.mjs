@@ -39,13 +39,28 @@ test("deacon profiles show both belonging and responsibility groups", async () =
 });
 
 test("group cards identify their responsible deacons", async () => {
-  const [screen, repository] = await Promise.all([
+  const [screen, row, repository, copy] = await Promise.all([
     readFile(new URL("../src/features/groups/GroupsScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/groups/deacon-profile-row.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/features/groups/SupabaseGroupsRepository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/groups/groups-copy.ts", import.meta.url), "utf8"),
   ]);
   assert.match(repository, /responsibleDeacons:/);
   assert.match(repository, /ministry_accounts/);
   assert.match(screen, /copy\.responsibleDeacons/);
-  assert.match(screen, /deaconNames/);
-  assert.match(screen, /<ProfileAvatar/);
+  assert.match(screen, /deacons\.map/);
+  assert.doesNotMatch(screen, /\.slice\(0, 2\)|deaconNames/);
+  assert.match(screen, /<DeaconProfileRow/);
+  assert.match(screen, /pathname: "\/\(directory\)\/members\/\[memberId\]"/);
+  assert.match(screen, /copy\.noDeaconsAssigned/);
+  assert.match(row, /<ProfileAvatar/);
+  assert.match(row, /accessibilityHint=\{accessibilityHint\}/);
+  assert.match(copy, /openDeaconProfile: "Opens deacon profile"/);
+  assert.match(copy, /openDeaconProfile: "Відкриває профіль диякона"/);
+});
+
+test("profile avatars fall back to initials when an image fails", async () => {
+  const avatar = await readFile(new URL("../src/features/members/ProfileAvatar.tsx", import.meta.url), "utf8");
+  assert.match(avatar, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.match(avatar, /hasSource && !failed/);
 });
