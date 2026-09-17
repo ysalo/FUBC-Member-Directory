@@ -9,10 +9,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
   useEffect(() => startSession(), []);
   return <SessionContext.Provider value={state}>{children}</SessionContext.Provider>;
 }
-
 export function useSession() {
   const state = useContext(SessionContext);
   if (!state) throw new Error("useSession must be used inside SessionProvider");
   return state;
 }
-

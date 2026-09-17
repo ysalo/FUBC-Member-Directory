@@ -80,7 +80,7 @@ export default function MenuRoute() {
           </View>
         </View>
 
-        {isBackendConfigured && session.status === "ready" ? <View style={[styles.accountCard, { backgroundColor: palette.surface }]}> 
+        {isBackendConfigured && session.status === "ready" ? <View style={[styles.accountCard, { backgroundColor: palette.surface }]}>
           <Text style={[styles.sectionLabel, { color: palette.secondaryText }]}>{labels.account}</Text>
           <Pressable
             accessibilityHint={linkedMember ? labels.linkedMember : undefined}
