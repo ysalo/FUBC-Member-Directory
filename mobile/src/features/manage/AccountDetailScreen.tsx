@@ -1,5 +1,6 @@
+import { Text } from "@/features/accessibility/app-text";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";

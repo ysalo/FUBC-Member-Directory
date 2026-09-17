@@ -1,5 +1,6 @@
+import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";

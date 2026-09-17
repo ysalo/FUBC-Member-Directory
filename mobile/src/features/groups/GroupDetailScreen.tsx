@@ -1,7 +1,8 @@
+import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";

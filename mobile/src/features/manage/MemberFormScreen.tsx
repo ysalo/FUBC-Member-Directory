@@ -1,8 +1,9 @@
+import { Text, TextInput } from "@/features/accessibility/app-text";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";

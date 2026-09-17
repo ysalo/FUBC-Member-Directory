@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text } from "@/features/accessibility/app-text";
+import { StyleSheet, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";

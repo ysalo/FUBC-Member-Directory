@@ -1,8 +1,9 @@
 // @ts-nocheck — Expo Router's generated route union lags newly added nested management routes.
+import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";

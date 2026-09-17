@@ -1,5 +1,6 @@
+import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 

@@ -1,6 +1,7 @@
+import { Text } from "@/features/accessibility/app-text";
 import { Ionicons, type IoniconsIconName } from "@react-native-vector-icons/ionicons";
 import type { PropsWithChildren, ReactNode } from "react";
-import { ActivityIndicator, DynamicColorIOS, Platform, Pressable, StyleSheet, Text, View, type ColorValue } from "react-native";
+import { ActivityIndicator, DynamicColorIOS, Platform, Pressable, StyleSheet, View, type ColorValue } from "react-native";
 
 const adaptive = (light: string, dark: string, token: string): ColorValue => {
   if (Platform.OS === "ios") return DynamicColorIOS({ light, dark });

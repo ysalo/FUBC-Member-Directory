@@ -1,6 +1,7 @@
+import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 
 import { type AppearancePreference, useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -11,10 +12,11 @@ import { useSession } from "@/features/session/SessionProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
 import { signOut } from "@/lib/session";
 import { isBackendConfigured } from "@/lib/supabase";
+import { type TextSizePreference, useTextSize } from "@/features/accessibility/TextSizeProvider";
 
 const accountCopy = {
-  en: { account: "Account", linkedMember: "View member profile", signOut: "Sign out", signingOut: "Signing out…", signOutError: "Unable to sign out. Please try again.", advanced: "Advanced", advancedDetail: "Permanent account actions", delete: "Delete account" },
-  uk: { account: "Обліковий запис", linkedMember: "Переглянути профіль учасника", signOut: "Вийти", signingOut: "Вихід…", signOutError: "Не вдалося вийти. Спробуйте ще раз.", advanced: "Додатково", advancedDetail: "Незворотні дії з обліковим записом", delete: "Видалити обліковий запис" },
+  en: { account: "Account", linkedMember: "View member profile", signOut: "Sign out", signingOut: "Signing out…", signOutError: "Unable to sign out. Please try again.", advanced: "Advanced", advancedDetail: "Permanent account actions", delete: "Delete account", textSize: "Text size", small: "Small", standard: "Standard", large: "Large" },
+  uk: { account: "Обліковий запис", linkedMember: "Переглянути профіль учасника", signOut: "Вийти", signingOut: "Вихід…", signOutError: "Не вдалося вийти. Спробуйте ще раз.", advanced: "Додатково", advancedDetail: "Незворотні дії з обліковим записом", delete: "Видалити обліковий запис", textSize: "Розмір тексту", small: "Малий", standard: "Стандартний", large: "Великий" },
 } as const;
 
 export default function MenuRoute() {
@@ -23,6 +25,7 @@ export default function MenuRoute() {
   const session = useSession();
   const { palette, preference, setPreference } = useAppearance();
   const labels = accountCopy[locale];
+  const { preference: textSize, setPreference: setTextSize } = useTextSize();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [linkedMember, setLinkedMember] = useState<MemberProfile | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -57,13 +60,13 @@ export default function MenuRoute() {
         <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.menu.title}</Text>
         <View style={[styles.card, { backgroundColor: palette.surface }]}>
           <View style={styles.row}>
-            <Ionicons color={palette.secondaryText} name="language-outline" size={24} />
+            <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="language-outline" size={24} />
             <Text style={[styles.rowLabel, { color: palette.text }]}>{copy.menu.language}</Text>
             <View accessibilityRole="tablist" style={[styles.languagePicker, { backgroundColor: palette.subtle }]}>
-              <Pressable accessibilityRole="tab" accessibilityState={{ selected: locale === "en" }} onPress={() => setLocale("en")} style={[styles.languageOption, locale === "en" && { backgroundColor: palette.elevated }]}>
+              <Pressable accessibilityLabel="English" accessibilityRole="tab" accessibilityState={{ selected: locale === "en" }} onPress={() => setLocale("en")} style={[styles.languageOption, locale === "en" && { backgroundColor: palette.elevated }]}>
                 <Text style={[styles.languageText, { color: locale === "en" ? palette.accent : palette.secondaryText }]}>EN</Text>
               </Pressable>
-              <Pressable accessibilityRole="tab" accessibilityState={{ selected: locale === "uk" }} onPress={() => setLocale("uk")} style={[styles.languageOption, locale === "uk" && { backgroundColor: palette.elevated }]}>
+              <Pressable accessibilityLabel="Українська" accessibilityRole="tab" accessibilityState={{ selected: locale === "uk" }} onPress={() => setLocale("uk")} style={[styles.languageOption, locale === "uk" && { backgroundColor: palette.elevated }]}>
                 <Text style={[styles.languageText, { color: locale === "uk" ? palette.accent : palette.secondaryText }]}>UA</Text>
               </Pressable>
             </View>
@@ -72,9 +75,18 @@ export default function MenuRoute() {
           <View style={[styles.separator, { backgroundColor: palette.line }]} />
 
           <View style={styles.appearanceRow}>
-            <View style={styles.appearanceHeading}><Ionicons color={palette.secondaryText} name="contrast-outline" size={24} /><Text style={[styles.rowLabel, { color: palette.text }]}>{copy.menu.appearance}</Text></View>
+            <View style={styles.appearanceHeading}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="contrast-outline" size={24} /><Text style={[styles.rowLabel, { color: palette.text }]}>{copy.menu.appearance}</Text></View>
             <View accessibilityRole="tablist" style={[styles.appearancePicker, { backgroundColor: palette.subtle }]}>
               {(["system", "light", "dark"] as AppearancePreference[]).map((option) => <Pressable accessibilityRole="tab" accessibilityState={{ selected: preference === option }} key={option} onPress={() => setPreference(option)} style={[styles.appearanceOption, preference === option && { backgroundColor: palette.elevated }]}><Text style={[styles.appearanceText, { color: preference === option ? palette.accent : palette.secondaryText }]}>{copy.menu[option]}</Text></Pressable>)}
+            </View>
+          </View>
+
+          <View style={[styles.separator, { backgroundColor: palette.line }]} />
+
+          <View style={styles.appearanceRow}>
+            <View style={styles.appearanceHeading}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="text-outline" size={24} /><Text style={[styles.rowLabel, { color: palette.text }]}>{labels.textSize}</Text></View>
+            <View accessibilityLabel={labels.textSize} accessibilityRole="tablist" style={[styles.appearancePicker, { backgroundColor: palette.subtle }]}>
+              {(["small", "standard", "large"] as TextSizePreference[]).map((option) => <Pressable accessibilityLabel={labels[option]} accessibilityRole="tab" accessibilityState={{ selected: textSize === option }} key={option} onPress={() => setTextSize(option)} style={[styles.appearanceOption, textSize === option && { backgroundColor: palette.elevated }]}><Text style={[styles.textSizeSample, option === "small" && styles.textSizeSmall, option === "large" && styles.textSizeLarge, { color: textSize === option ? palette.accent : palette.secondaryText }]}>Aa</Text><Text numberOfLines={1} style={[styles.textSizeLabel, { color: textSize === option ? palette.accent : palette.secondaryText }]}>{labels[option]}</Text></Pressable>)}
             </View>
           </View>
         </View>
@@ -91,17 +103,17 @@ export default function MenuRoute() {
             <ProfileAvatar backgroundColor={palette.accentSoft} name={linkedMember ? (locale === "uk" ? linkedMember.nameUk : linkedMember.name) : session.account.displayName} source={linkedMember?.photo} textColor={palette.accent} size={58} />
             <View style={styles.identityCopy}>
               <Text selectable style={[styles.accountTitle, { color: palette.text }]}>{linkedMember ? (locale === "uk" ? linkedMember.nameUk : linkedMember.name) : session.account.displayName}</Text>
-              {linkedMember ? <View style={styles.linkedRow}><Text style={[styles.accountName, { color: palette.accent }]}>{labels.linkedMember}</Text><Ionicons color={palette.accent} name="chevron-forward" size={16} /></View> : null}
+              {linkedMember ? <View style={styles.linkedRow}><Text style={[styles.accountName, { color: palette.accent }]}>{labels.linkedMember}</Text><Ionicons accessibilityElementsHidden color={palette.accent} name="chevron-forward" size={16} /></View> : null}
             </View>
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityState={{ busy: signingOut, disabled: signingOut }} disabled={signingOut} onPress={() => void submitSignOut()} style={({ pressed }) => [styles.accountAction, { borderTopColor: palette.line }, pressed && styles.pressed]}>{signingOut ? <ActivityIndicator color={palette.danger} size="small" /> : <Ionicons color={palette.danger} name="log-out-outline" size={20} />}<Text style={[styles.accountActionText, { color: palette.danger }]}>{signingOut ? labels.signingOut : labels.signOut}</Text></Pressable>
-          <Pressable accessibilityRole="button" accessibilityState={{ expanded: advancedOpen }} onPress={() => setAdvancedOpen((open) => !open)} style={[styles.accountAction, { borderTopColor: palette.line }]}><Ionicons color={palette.secondaryText} name="settings-outline" size={20} /><View style={styles.advancedCopy}><Text style={[styles.accountActionText, { color: palette.text }]}>{labels.advanced}</Text><Text selectable style={[styles.advancedDetail, { color: palette.secondaryText }]}>{labels.advancedDetail}</Text></View><Ionicons color={palette.secondaryText} name={advancedOpen ? "chevron-up" : "chevron-down"} size={18} /></Pressable>
-          {advancedOpen ? <Pressable accessibilityRole="button" onPress={() => router.push("/account/delete" as never)} style={[styles.deleteAction, { borderTopColor: palette.line }]}><Ionicons color={palette.danger} name="trash-outline" size={20} /><Text style={[styles.deleteText, { color: palette.danger }]}>{labels.delete}</Text></Pressable> : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ busy: signingOut, disabled: signingOut }} disabled={signingOut} onPress={() => void submitSignOut()} style={({ pressed }) => [styles.accountAction, { borderTopColor: palette.line }, pressed && styles.pressed]}>{signingOut ? <ActivityIndicator color={palette.danger} size="small" /> : <Ionicons accessibilityElementsHidden color={palette.danger} name="log-out-outline" size={20} />}<Text style={[styles.accountActionText, { color: palette.danger }]}>{signingOut ? labels.signingOut : labels.signOut}</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: advancedOpen }} onPress={() => setAdvancedOpen((open) => !open)} style={[styles.accountAction, { borderTopColor: palette.line }]}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="settings-outline" size={20} /><View style={styles.advancedCopy}><Text style={[styles.accountActionText, { color: palette.text }]}>{labels.advanced}</Text><Text selectable style={[styles.advancedDetail, { color: palette.secondaryText }]}>{labels.advancedDetail}</Text></View><Ionicons accessibilityElementsHidden color={palette.secondaryText} name={advancedOpen ? "chevron-up" : "chevron-down"} size={18} /></Pressable>
+          {advancedOpen ? <Pressable accessibilityRole="button" onPress={() => router.push("/account/delete" as never)} style={[styles.deleteAction, { borderTopColor: palette.line }]}><Ionicons accessibilityElementsHidden color={palette.danger} name="trash-outline" size={20} /><Text style={[styles.deleteText, { color: palette.danger }]}>{labels.delete}</Text></Pressable> : null}
         </View> : null}
 
         <View style={[styles.licenseCard, { backgroundColor: palette.surface }]}>
           <View style={styles.licenseHeading}>
-            <Ionicons color={palette.secondaryText} name="document-text-outline" size={24} />
+            <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="document-text-outline" size={24} />
             <Text style={[styles.licenseTitle, { color: palette.text }]}>{copy.menu.licenses}</Text>
           </View>
           <Text style={[styles.licenseDetail, { color: palette.secondaryText }]}>{copy.menu.licenseDetail}</Text>
@@ -122,13 +134,13 @@ const styles = StyleSheet.create({
   appearanceRow: { gap: 10, padding: 16 },
   appearanceHeading: { alignItems: "center", flexDirection: "row" },
   appearancePicker: { borderRadius: 11, flexDirection: "row", padding: 2 },
-  appearanceOption: { alignItems: "center", borderRadius: 9, flex: 1, justifyContent: "center", minHeight: 36 },
+  appearanceOption: { alignItems: "center", borderRadius: 9, flex: 1, justifyContent: "center", minHeight: 44, paddingVertical: 5 },
   appearanceText: { fontSize: 13, fontWeight: "600" },
   rowLabel: { color: "#20252A", flex: 1, fontSize: 17, fontWeight: "600", marginLeft: 13 },
   rowValue: { color: "#6F7174", fontSize: 16 },
   separator: { backgroundColor: "#DFDCD5", height: StyleSheet.hairlineWidth, marginLeft: 53 },
   languagePicker: { backgroundColor: "#E1DED7", borderRadius: 10, flexDirection: "row", padding: 2 },
-  languageOption: { alignItems: "center", borderRadius: 8, justifyContent: "center", minHeight: 32, width: 44 },
+  languageOption: { alignItems: "center", borderRadius: 8, justifyContent: "center", minHeight: 44, width: 48 },
   languageText: { color: "#686B6E", fontSize: 14, fontWeight: "600" },
   languageTextActive: { color: "#EF5A24" },
   licenseCard: { backgroundColor: "#FAF9F6", borderRadius: 16, marginTop: 16, padding: 16 },
@@ -150,4 +162,5 @@ const styles = StyleSheet.create({
   deleteAction: { alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 10, marginTop: 14, minHeight: 44, paddingTop: 10 },
   deleteText: { color: "#A13E34", fontSize: 15, fontWeight: "600" },
   pressed: { opacity: 0.68 },
+  textSizeSample: { fontSize: 16, fontWeight: "800", lineHeight: 18 }, textSizeSmall: { fontSize: 13 }, textSizeLarge: { fontSize: 20, lineHeight: 22 }, textSizeLabel: { fontSize: 11, fontWeight: "700", marginTop: 2 },
 });

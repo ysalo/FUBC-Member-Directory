@@ -1,3 +1,4 @@
+import { Text } from "@/features/accessibility/app-text";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { StatusBar } from "expo-status-bar";
@@ -9,6 +10,7 @@ import { SessionProvider } from "@/features/session/SessionProvider";
 import { AppearanceProvider, useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { canManageDirectory } from "@/lib/permissions";
+import { TextSizeProvider, useTextSize } from "@/features/accessibility/TextSizeProvider";
 
 import "./global.css";
 
@@ -19,11 +21,12 @@ function IosTabs() {
   const { palette, preference, resolved } = useAppearance();
   const session = useSession();
   const showManage = session.status === "ready" && canManageDirectory(session.account);
+  const { scale } = useTextSize();
   return (
     <NativeTabs
       tintColor={accent}
       iconColor={{ default: palette.secondaryText, selected: accent }}
-      labelStyle={{ default: { color: palette.secondaryText, fontSize: 10 }, selected: { color: accent, fontSize: 10 } }}
+      labelStyle={{ default: { color: palette.secondaryText, fontSize: 10 * scale }, selected: { color: accent, fontSize: 10 * scale } }}
       backgroundColor={palette.chrome}
       blurEffect={preference === "system" ? "systemMaterial" : resolved === "dark" ? "systemMaterialDark" : "systemMaterialLight"}
       disableTransparentOnScrollEdge
@@ -79,5 +82,5 @@ function AppNavigation() {
 }
 
 export default function RootLayout() {
-  return <LocalizationProvider><SessionProvider><AppearanceProvider><AccessGate><AppNavigation /></AccessGate></AppearanceProvider></SessionProvider></LocalizationProvider>;
+  return <LocalizationProvider><SessionProvider><AppearanceProvider><TextSizeProvider><AccessGate><AppNavigation /></AccessGate></TextSizeProvider></AppearanceProvider></SessionProvider></LocalizationProvider>;
 }

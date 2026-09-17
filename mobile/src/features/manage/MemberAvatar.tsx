@@ -1,6 +1,7 @@
+import { Text } from "@/features/accessibility/app-text";
 import { Image } from "expo-image";
 import type { ImageSourcePropType } from "react-native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 type MemberAvatarProps = {
   name: string;

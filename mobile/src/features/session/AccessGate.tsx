@@ -1,3 +1,4 @@
+import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import Constants from "expo-constants";
 import { Image } from "expo-image";
@@ -5,7 +6,7 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
 import { type PropsWithChildren, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLocalization } from "@/features/localization/LocalizationProvider";

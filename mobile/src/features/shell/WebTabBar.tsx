@@ -1,6 +1,7 @@
+import { Text } from "@/features/accessibility/app-text";
 import { Ionicons, type IoniconsIconName } from "@react-native-vector-icons/ionicons";
 import { usePathname, useRouter } from "expo-router";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";

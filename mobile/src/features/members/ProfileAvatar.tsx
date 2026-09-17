@@ -1,6 +1,7 @@
+import { Text } from "@/features/accessibility/app-text";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
+import { StyleSheet, View, type ImageSourcePropType } from "react-native";
 
 type ProfileAvatarProps = {
   name: string;

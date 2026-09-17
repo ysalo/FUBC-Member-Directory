@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
+import { useTextSize } from "@/features/accessibility/TextSizeProvider";
 
 export const unstable_settings = {
   anchor: "index",
@@ -9,7 +10,8 @@ export const unstable_settings = {
 export default function ManageLayout() {
   const { palette } = useAppearance();
   const { locale } = useLocalization();
-  return <Stack screenOptions={{ contentStyle: { backgroundColor: palette.background }, headerBackButtonDisplayMode: "minimal", headerStyle: { backgroundColor: palette.background }, headerTintColor: palette.accent, headerTitleStyle: { color: palette.text }, headerShown: false }}>
+  const { scale } = useTextSize();
+  return <Stack screenOptions={{ contentStyle: { backgroundColor: palette.background }, headerBackButtonDisplayMode: "minimal", headerStyle: { backgroundColor: palette.background }, headerTintColor: palette.accent, headerTitleStyle: { color: palette.text, fontSize: 17 * scale }, headerShown: false }}>
     <Stack.Screen name="index" options={{ headerShown: false }} />
     <Stack.Screen name="account/[accountId]" options={{ headerShown: true, title: locale === "uk" ? "Обліковий запис" : "Account" }} />
     <Stack.Screen name="account/[accountId]/link" options={{ headerShown: true, title: locale === "uk" ? "Пов’язати учасника" : "Link member" }} />

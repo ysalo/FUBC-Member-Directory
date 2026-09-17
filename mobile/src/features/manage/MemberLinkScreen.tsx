@@ -1,5 +1,6 @@
+import { Text, TextInput } from "@/features/accessibility/app-text";
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";

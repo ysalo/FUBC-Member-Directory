@@ -5,7 +5,25 @@ import test from "node:test";
 test("group detail uses a standalone native switch instead of an unhosted SwiftUI control", async () => {
   const source = await readFile(new URL("../src/features/groups/GroupDetailScreen.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /from ["']@expo\/ui["']/);
-  assert.match(source, /StyleSheet, Switch, Text/);
+  assert.match(source, /StyleSheet, Switch, View/);
+  assert.match(source, /accessibility\/app-text/);
+});
+
+test("the app-wide text size preference scales text, inputs, and native tab labels", async () => {
+  const [provider, primitives, layout, menu] = await Promise.all([
+    readFile(new URL("../src/features/accessibility/TextSizeProvider.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/accessibility/app-text.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/_layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/menu.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(provider, /SecureStore\.setItemAsync/);
+  assert.match(provider, /small: 0\.9, standard: 1, large: 1\.18/);
+  assert.match(primitives, /fontSize \* scale/);
+  assert.match(primitives, /lineHeight \* scale/);
+  assert.match(primitives, /NativeTextInput/);
+  assert.match(layout, /<TextSizeProvider>/);
+  assert.match(layout, /fontSize: 10 \* scale/);
+  assert.match(menu, /labels\.textSize/);
 });
 
 test("public group UI omits the redundant membership-group wording", async () => {
