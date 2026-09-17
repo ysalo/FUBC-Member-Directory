@@ -1,0 +1,7 @@
+import type { AppLocale } from "@/features/localization/LocalizationProvider";
+
+export const memberCopy = {
+  en: { profile: "Profile", contact: "Contact", call: "Call", email: "Email", maps: "Maps", group: "Belongs to", responsibleFor: "Responsible for", openGroup: "Opens this group", ministries: "Ministries", details: "Member details", birthday: "Birthday", age: "Age", memberSince: "Member since", maritalStatus: "Marital status", requestVisit: "Request visit", loading: "Loading profile…", error: "We couldn’t load this profile.", unavailable: "This profile is unavailable", unavailableDetail: "It may have been removed or you may no longer have access.", retry: "Try again", back: "Directory" },
+  uk: { profile: "Профіль", contact: "Контакти", call: "Зателефонувати", email: "Ел. пошта", maps: "Карти", group: "Належить до", responsibleFor: "Відповідає за", openGroup: "Відкриває цю групу", ministries: "Служіння", details: "Відомості про учасника", birthday: "День народження", age: "Вік", memberSince: "Член церкви з", maritalStatus: "Сімейний стан", requestVisit: "Запланувати відвідування", loading: "Завантаження профілю…", error: "Не вдалося завантажити профіль.", unavailable: "Цей профіль недоступний", unavailableDetail: "Можливо, його видалено або ви більше не маєте доступу.", retry: "Спробувати ще раз", back: "Довідник" },
+} as const;
+export const getMemberCopy = (locale: AppLocale) => memberCopy[locale];

@@ -1,0 +1,44 @@
+html {
+  color-scheme: light dark;
+  --app-background: #f1f0eb;
+  --app-surface: #faf9f6;
+  --app-subtle: #e2dfd9;
+  --app-line: #d8d5ce;
+  --app-text: #171b20;
+  --app-secondaryText: #686b70;
+  --app-accent: #ef5a24;
+  --app-accentSoft: #fce6dd;
+  --app-danger: #b42318;
+  --app-dangerSoft: #fce8e6;
+  --app-success: #237a46;
+  --app-successSoft: #ddefe2;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    --app-background: #111315;
+    --app-surface: #1a1d20;
+    --app-subtle: #292d31;
+    --app-line: #34383d;
+    --app-text: #f4f1ea;
+    --app-secondaryText: #b2b4b7;
+    --app-accent: #ff8052;
+    --app-accentSoft: #4a2820;
+    --app-danger: #ff8b82;
+    --app-dangerSoft: #492422;
+    --app-success: #74c88d;
+    --app-successSoft: #1e3a29;
+  }
+}
+
+html,
+body {
+  background: var(--app-background);
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+div::-webkit-scrollbar {
+  display: none;
+}

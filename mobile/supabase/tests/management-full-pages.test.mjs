@@ -1,0 +1,161 @@
+import test, { after, before } from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { PGlite } from "@electric-sql/pglite";
+
+const db = new PGlite();
+const ids = {
+  admin: "10000000-0000-4000-8000-000000000001",
+  editor: "10000000-0000-4000-8000-000000000002",
+  member: "10000000-0000-4000-8000-000000000003",
+};
+
+async function as(account, sql, params = []) {
+  await db.exec("set role authenticated");
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [ids[account]]);
+  try { return await db.query(sql, params); } finally { await db.exec("reset role"); }
+}
+
+before(async () => {
+  await db.exec(`
+    create role anon; create role authenticated; create role service_role; create schema auth; create schema storage;
+    grant usage on schema public,auth,storage to authenticated;
+    create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}');
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
+    alter table storage.objects enable row level security;
+    grant select,insert,update,delete on storage.objects to authenticated;
+  `);
+  for (const migration of [
+    "20260916000000_initial.sql", "20260916010000_mobile_repository_contracts.sql",
+    "20260916020000_operational_hardening.sql", "20260917010000_member_profile_details.sql",
+    "20260917020000_directory_active_members.sql", "20260917030000_management_repairs.sql",
+    "20260917040000_management_full_pages.sql", "20260917050000_group_birthday_notifications.sql",
+    "20260917060000_group_one_shared_deacons.sql",
+    "20260917070000_pastor_ministry_name.sql",
+    "20260917080000_link_group_one_deacon_profiles.sql",
+  ]) await db.exec(await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
+  await db.query("insert into auth.users(id,email) values($1,'admin@example.com'),($2,'editor@example.com'),($3,'member@example.com')", [ids.admin, ids.editor, ids.member]);
+  await db.exec(`update public.profiles set status='active',role='admin' where id='${ids.admin}';
+    update public.profiles set status='active',role='editor' where id='${ids.editor}';`);
+});
+after(async () => db.close());
+
+test("editor manages ministry catalog and complete member details without exposing private tables", async () => {
+  const ministry = (await as("editor", "select * from public.save_ministry(null,null,'Music','Музика',false)")).rows[0];
+  const member = (await as("editor", `select * from public.save_person(null,null,jsonb_build_object(
+    'name','Олена Коваль','birth_date','1990-04-12','phone','253-555-0110','address','Tacoma, WA','ministry_ids',jsonb_build_array($1::text)))`, [ministry.id])).rows[0];
+  const details = (await as("editor", "select * from public.management_member_details($1)", [member.id])).rows[0];
+  assert.equal(new Date(details.birth_date).toISOString().slice(0, 10), "1990-04-12");
+  assert.equal(details.address, "Tacoma, WA");
+  assert.deepEqual(details.ministry_ids, [ministry.id]);
+  await assert.rejects(as("editor", "select * from public.people_private"), /permission denied/);
+  await assert.rejects(as("member", "select * from public.management_member_details($1)", [member.id]), /Not authorized/);
+});
+
+test("the pastoral care ministry is normalized to Pastor in both languages", async () => {
+  const ministry = (await db.query("insert into public.ministries(name,name_uk) values('Pastoral Care','Пасторське служіння') returning id")).rows[0];
+  const member = (await db.query("insert into public.people(name,ministry,ministry_uk) values('Pastor label member','Pastoral Care','Пасторське служіння') returning id")).rows[0];
+  await db.query("insert into public.person_ministries(person_id,ministry_id) values($1,$2)", [member.id, ministry.id]);
+  await db.exec(await readFile(new URL("../migrations/20260917070000_pastor_ministry_name.sql", import.meta.url), "utf8"));
+  assert.deepEqual((await db.query("select name,name_uk from public.ministries where id=$1", [ministry.id])).rows[0], { name: "Pastor", name_uk: "Пастор" });
+  assert.deepEqual((await db.query("select ministry,ministry_uk from public.people where id=$1", [member.id])).rows[0], { ministry: "Pastor", ministry_uk: "Пастор" });
+});
+
+test("account approval requires a unique linked member and account email is admin-only", async () => {
+  const person = (await db.query("select id from public.people where name='Олена Коваль'")).rows[0];
+  const rows = (await as("admin", "select * from public.management_accounts()")).rows;
+  assert.equal(rows.find((row) => row.id === ids.member).email, "member@example.com");
+  await assert.rejects(as("editor", "select * from public.management_accounts()"), /Not authorized/);
+  await assert.rejects(as("admin", "select * from public.update_account($1,1,'active','member','none',null)", [ids.member]), /Link a member/);
+  const approved = (await as("admin", "select * from public.update_account($1,1,'active','member','none',$2)", [ids.member, person.id])).rows[0];
+  assert.equal(approved.status, "active");
+  await assert.rejects(as("admin", "select * from public.update_account($1,1,'active','editor','none',$2)", [ids.editor, person.id]), /already linked/);
+});
+
+test("only an assigned deacon can persist birthday notification preferences", async () => {
+  const linked = (await db.query("insert into public.people(name) values('Linked deacon') returning id")).rows[0];
+  const group = (await db.query("insert into public.deacon_groups(name,kind) values('Group test','membership') returning id")).rows[0];
+  await db.query("update public.profiles set designation='deacon',person_id=$2 where id=$1", [ids.editor, linked.id]);
+  await db.query("insert into public.deacon_group_deacons(group_id,account_id,slot) values($1,$2,1)", [group.id, ids.editor]);
+  assert.equal((await as("editor", "select public.group_birthday_notification_setting($1) as enabled", [group.id])).rows[0].enabled, false);
+  await as("editor", "select public.set_group_birthday_notifications($1,true)", [group.id]);
+  assert.equal((await as("editor", "select public.group_birthday_notification_setting($1) as enabled", [group.id])).rows[0].enabled, true);
+  await assert.rejects(as("member", "select public.group_birthday_notification_setting($1)", [group.id]), /Not authorized/);
+});
+
+test("group one requires both selected linked deacons and assigns exactly two", async () => {
+  const groupId = "70000000-0000-4000-8000-000000000001";
+  await db.query("insert into public.deacon_groups(id,name,kind) values($1,$2,'membership')", [groupId, "група один"]);
+
+  // The migration ran before these accounts existed, so the group starts with
+  // no leaders. Re-running it is the same repeatable operation used by seed.
+  const migration = await readFile(new URL("../migrations/20260917060000_group_one_shared_deacons.sql", import.meta.url), "utf8");
+  await db.exec(migration);
+  assert.deepEqual((await db.query("select account_id,slot from public.deacon_group_deacons where group_id=$1", [groupId])).rows, []);
+
+  const slav = "10000000-0000-4000-8000-000000000011";
+  const alina = "10000000-0000-4000-8000-000000000012";
+  const slavPerson = (await db.query("insert into public.people(name) values('Yaroslav Salo') returning id")).rows[0].id;
+  await db.query("insert into auth.users(id,email) values($1,'slav.salo@gmail.com')", [slav]);
+  await db.query("update public.profiles set status='active',designation='deacon',person_id=$2 where id=$1", [slav, slavPerson]);
+  await assert.rejects(db.exec(migration), /Both selected Group 1 deacon accounts must exist/);
+  await db.exec("rollback");
+
+  const alinaPerson = (await db.query("insert into public.people(name) values('Alina Belashov') returning id")).rows[0].id;
+  await db.query("insert into auth.users(id,email) values($1,'alinabelashov@gmail.com')", [alina]);
+  await db.query("update public.profiles set status='active',designation='deacon',person_id=$2 where id=$1", [alina, alinaPerson]);
+  await db.exec(migration);
+  assert.deepEqual((await db.query("select account_id,slot from public.deacon_group_deacons where group_id=$1 order by slot", [groupId])).rows, [
+    { account_id: slav, slot: 1 },
+    { account_id: alina, slot: 2 },
+  ]);
+});
+
+test("the profile repair targets Група один and makes both assigned deacons visible through linked members", async () => {
+  const groupId = "70000000-0000-4000-8000-000000000001";
+  const slav = "10000000-0000-4000-8000-000000000011";
+  const alina = "10000000-0000-4000-8000-000000000012";
+  await db.query("delete from public.deacon_group_deacons where account_id in ($1,$2)", [slav, alina]);
+  await db.exec(await readFile(new URL("../migrations/20260917080000_link_group_one_deacon_profiles.sql", import.meta.url), "utf8"));
+  const rows = (await db.query(`
+    select a.account_id,a.slot,p.person_id,person.name
+    from public.deacon_group_deacons a
+    join public.ministry_accounts p on p.id=a.account_id
+    join public.people person on person.id=p.person_id
+    where a.group_id=$1 order by a.slot
+  `, [groupId])).rows;
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map(({ account_id, slot }) => ({ account_id, slot })), [
+    { account_id: slav, slot: 1 },
+    { account_id: alina, slot: 2 },
+  ]);
+  assert.ok(rows.every((row) => row.person_id && row.name));
+});
+
+test("a leader may belong elsewhere but cannot duplicate inside the led group", async () => {
+  const groupId = "70000000-0000-4000-8000-000000000002";
+  await db.query("insert into public.deacon_groups(id,name,kind) values($1,'Group invariant','membership')", [groupId]);
+  const slav = "10000000-0000-4000-8000-000000000011";
+  const personId = (await db.query("select person_id from public.profiles where id=$1", [slav])).rows[0].person_id;
+  await db.query("update public.people set membership_group_id=$2 where id=$1", [personId, groupId]);
+  assert.equal((await db.query("select membership_group_id from public.people where id=$1", [personId])).rows[0].membership_group_id, groupId);
+  await assert.rejects(
+    db.query("update public.people set membership_group_id='70000000-0000-4000-8000-000000000001' where id=$1", [personId]),
+    /cannot also be an ordinary member/,
+  );
+  await assert.rejects(
+    db.query("insert into public.deacon_group_members(group_id,person_id) values('70000000-0000-4000-8000-000000000001',$1)", [personId]),
+    /cannot also be an ordinary member/,
+  );
+});
+
+test("saving a group atomically moves its selected deacon from the prior group", async () => {
+  const target = (await db.query("insert into public.deacon_groups(name,kind) values('Move target','membership') returning *")).rows[0];
+  const editorPerson = (await db.query("select person_id from public.profiles where id=$1", [ids.editor])).rows[0].person_id;
+  assert.ok(editorPerson);
+  await as("editor", "select * from public.save_group($1,$2,$3,'membership',false,$4,$5)", [target.id, target.revision, target.name, [ids.editor], []]);
+  const assignments = (await db.query("select group_id from public.deacon_group_deacons where account_id=$1", [ids.editor])).rows;
+  assert.deepEqual(assignments, [{ group_id: target.id }]);
+});

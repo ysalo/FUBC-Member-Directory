@@ -1,0 +1,63 @@
+import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import type { ComponentProps } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppearance } from "@/features/appearance/AppearanceProvider";
+import { useLocalization } from "@/features/localization/LocalizationProvider";
+import { managementRepository } from "./management-repository";
+import { MemberAvatar } from "./MemberAvatar";
+import type { ManagedMember, ManagedMinistry } from "./model";
+import { managedAccountHref } from "./route-params";
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+type PhotoMimeType = "image/jpeg" | "image/png" | "image/webp";
+type PendingPhoto = { uri: string; bytes: ArrayBuffer; mimeType: PhotoMimeType };
+
+export function MemberFormScreen() {
+  const { memberId, accountId } = useLocalSearchParams<{ memberId?: string; accountId?: string }>();
+  const editing = Boolean(memberId);
+  const router = useRouter(); const { palette } = useAppearance(); const { locale } = useLocalization();
+  const [member, setMember] = useState<ManagedMember | null>(null); const [ministries, setMinistries] = useState<ManagedMinistry[]>([]);
+  const [name, setName] = useState(""); const [birthday, setBirthday] = useState(""); const [phone, setPhone] = useState(""); const [address, setAddress] = useState(""); const [ministryIds, setMinistryIds] = useState<string[]>([]);
+  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null); const [photoRemoved, setPhotoRemoved] = useState(false);
+  const [state, setState] = useState<"loading" | "ready" | "saving" | "error">(editing ? "loading" : "ready"); const [error, setError] = useState<string | null>(null);
+  useEffect(() => { let alive = true; const selectedMember = memberId ? managementRepository.loadMember(memberId) : Promise.resolve(null); void Promise.all([selectedMember, managementRepository.listMinistries()]).then(([found, catalog]) => { if (!alive) return; setMember(found); setMinistries(catalog); if (found) { setName(found.name); setBirthday(found.birthday ?? ""); setPhone(found.phone ?? ""); setAddress(found.address ?? ""); setMinistryIds(found.ministryIds ?? []); } setState("ready"); }).catch(() => { if (alive) { setError(labels.loadError); setState("error"); } }); return () => { alive = false; }; }, [memberId]);
+  const labels = useMemo(() => locale === "uk" ? { title: editing ? "Редагувати учасника" : "Новий учасник", name: "Ім’я", birthday: "День народження", ministry: "Служіння", phone: "Телефон", address: "Адреса", photo: "Фото", choosePhoto: editing ? "Змінити фото" : "Додати фото", removePhoto: "Видалити фото", save: "Зберегти", cancel: "Скасувати", required: "Введіть ім’я учасника.", dateHint: "РРРР-ММ-ДД", loadError: "Не вдалося завантажити учасника.", photoType: "Оберіть фото JPEG, PNG або WebP.", photoSize: "Фото має бути не більшим за 5 МБ.", photoError: "Не вдалося вибрати це фото.", saveError: "Не вдалося зберегти учасника." } : { title: editing ? "Edit member" : "New member", name: "Name", birthday: "Birthday", ministry: "Ministries", phone: "Phone number", address: "Address", photo: "Photo", choosePhoto: editing ? "Change photo" : "Add photo", removePhoto: "Remove photo", save: "Save member", cancel: "Cancel", required: "Enter the member’s name.", dateHint: "YYYY-MM-DD", loadError: "Unable to load this member.", photoType: "Choose a JPEG, PNG, or WebP photo.", photoSize: "Photo must be 5 MB or smaller.", photoError: "Unable to choose this photo.", saveError: "Unable to save this member." }, [editing, locale]);
+  const photoSource = pendingPhoto ? { uri: pendingPhoto.uri } : photoRemoved ? undefined : member?.photo;
+  async function choosePhoto() {
+    setError(null);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], mediaTypes: ["images"], quality: 0.9, selectionLimit: 1 });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset || (asset.type && asset.type !== "image")) { setError(labels.photoType); return; }
+      const mimeType = photoMimeType(asset.mimeType, asset.fileName);
+      if (!mimeType) { setError(labels.photoType); return; }
+      if (asset.fileSize && asset.fileSize > MAX_PHOTO_BYTES) { setError(labels.photoSize); return; }
+      const response = await fetch(asset.uri);
+      if (!response.ok) throw new Error("photo");
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength === 0 || bytes.byteLength > MAX_PHOTO_BYTES) { setError(labels.photoSize); return; }
+      setPendingPhoto({ uri: asset.uri, bytes, mimeType }); setPhotoRemoved(false);
+    } catch { setError(labels.photoError); }
+  }
+  async function save() {
+    const trimmed = name.trim(); if (!trimmed) { setError(labels.required); return; }
+    setState("saving"); setError(null);
+    try {
+      const saved = await managementRepository.saveMemberDetails({ id: member?.id, revision: member?.revision, name: trimmed, birthday: birthday.trim() || null, ministryIds, phone: phone.trim() || null, address: address.trim() || null });
+      const previousPhotoPath = member?.photoPath ?? ("photo_path" in saved ? saved.photo_path : null);
+      const photoChanged = Boolean(pendingPhoto) || (photoRemoved && Boolean(previousPhotoPath));
+      if (photoChanged && saved.id && saved.revision != null) await managementRepository.replacePhoto({ id: saved.id, revision: saved.revision, photoPath: previousPhotoPath }, pendingPhoto?.bytes ?? null, pendingPhoto?.mimeType);
+      if (accountId && saved.id) { const management = await managementRepository.load(); await managementRepository.apply(management, { type: "link-account", accountId, personId: saved.id }); router.replace(managedAccountHref(accountId) as never); } else router.back();
+    } catch (e) { setError(e instanceof Error && e.message === "Choose a JPEG, PNG or WebP photo smaller than 5 MB." ? labels.photoSize : labels.saveError); setState("ready"); }
+  }
+  if (state === "loading") return <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}><ActivityIndicator color={palette.accent} /></SafeAreaView>;
+  if (state === "error") return <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}><Text selectable style={[styles.error, { color: palette.text }]}>{error ?? labels.loadError}</Text><Pressable onPress={() => router.back()}><Text style={[styles.link, { color: palette.accent }]}>{labels.cancel}</Text></Pressable></SafeAreaView>;
+  return <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}><ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}><View style={styles.header}><Pressable accessibilityRole="button" onPress={() => router.back()}><Text style={[styles.cancel, { color: palette.accent }]}>{labels.cancel}</Text></Pressable><Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{labels.title}</Text><Pressable accessibilityRole="button" disabled={state === "saving"} onPress={() => void save()}><Text style={[styles.save, { color: palette.accent }, state === "saving" && styles.disabled]}>{state === "saving" ? "…" : labels.save}</Text></Pressable></View>{error ? <Text selectable style={[styles.error, { color: palette.accent }]}>{error}</Text> : null}<View style={[styles.photoSection, { backgroundColor: palette.surface, borderColor: palette.line }]}><Text style={[styles.section, { color: palette.text }]}>{labels.photo}</Text><MemberAvatar backgroundColor={palette.accentSoft} name={name} source={photoSource} textColor={palette.accent} /><View style={styles.photoActions}><Pressable accessibilityRole="button" disabled={state === "saving"} onPress={() => void choosePhoto()} style={[styles.photoButton, { borderColor: palette.accent }]}><Text style={[styles.photoButtonText, { color: palette.accent }]}>{labels.choosePhoto}</Text></Pressable>{photoSource ? <Pressable accessibilityRole="button" disabled={state === "saving"} onPress={() => { setPendingPhoto(null); setPhotoRemoved(true); }}><Text style={[styles.removePhoto, { color: palette.accent }]}>{labels.removePhoto}</Text></Pressable> : null}</View></View><Field label={labels.name} value={name} onChangeText={setName} palette={palette} autoFocus={!editing} /><Field label={labels.birthday} hint={labels.dateHint} value={birthday} onChangeText={setBirthday} palette={palette} keyboardType="numbers-and-punctuation" /><Field label={labels.phone} value={phone} onChangeText={setPhone} palette={palette} keyboardType="phone-pad" /><Field label={labels.address} value={address} onChangeText={setAddress} palette={palette} multiline /><Text style={[styles.section, { color: palette.text }]}>{labels.ministry}</Text><View style={styles.chips}>{ministries.filter((item) => !item.archived).map((item) => { const selected = ministryIds.includes(item.id); return <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: selected }} key={item.id} onPress={() => setMinistryIds((ids) => selected ? ids.filter((id) => id !== item.id) : [...ids, item.id])} style={[styles.chip, { borderColor: selected ? palette.accent : palette.line, backgroundColor: selected ? palette.accentSoft : palette.surface }]}><Text style={{ color: palette.text, fontWeight: "600" }}>{locale === "uk" ? item.nameUk || item.name : item.name}</Text></Pressable>; })}</View></ScrollView></SafeAreaView>;
+}
+function photoMimeType(mimeType?: string | null, fileName?: string | null): PhotoMimeType | null { const normalized = mimeType?.toLowerCase(); if (normalized) { if (normalized === "image/jpeg" || normalized === "image/jpg") return "image/jpeg"; if (normalized === "image/png") return "image/png"; if (normalized === "image/webp") return "image/webp"; return null; } const extension = fileName?.toLowerCase().split(".").pop(); return extension === "jpg" || extension === "jpeg" ? "image/jpeg" : extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : null; }
+function Field({ label, hint, palette, multiline, ...props }: { label: string; hint?: string; palette: ReturnType<typeof useAppearance>["palette"]; multiline?: boolean } & ComponentProps<typeof TextInput>) { return <View style={styles.field}><Text style={[styles.label, { color: palette.secondaryText }]}>{label}{hint ? ` · ${hint}` : ""}</Text><TextInput {...props} multiline={multiline} placeholderTextColor={palette.secondaryText} style={[styles.input, { color: palette.text, backgroundColor: palette.surface, borderColor: palette.line }, multiline && styles.multiline]} /></View>; }
+const styles = StyleSheet.create({ safe: { flex: 1 }, content: { padding: 18, paddingBottom: 48, gap: 16 }, header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", paddingBottom: 10 }, title: { fontSize: 20, fontWeight: "800" }, cancel: { fontSize: 16 }, save: { fontSize: 16, fontWeight: "700" }, disabled: { opacity: 0.5 }, field: { gap: 7 }, label: { fontSize: 14, fontWeight: "600" }, input: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, fontSize: 17, minHeight: 50, paddingHorizontal: 14, paddingVertical: 12 }, multiline: { minHeight: 92, textAlignVertical: "top" }, section: { fontSize: 20, fontWeight: "800", marginTop: 8 }, chips: { flexDirection: "row", flexWrap: "wrap", gap: 9 }, chip: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 }, error: { fontSize: 15, lineHeight: 21, textAlign: "center" }, link: { fontSize: 16, fontWeight: "700", marginTop: 14, textAlign: "center" }, photoSection: { alignItems: "center", borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, gap: 12, padding: 16 }, photoActions: { alignItems: "center", gap: 12 }, photoButton: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 10 }, photoButtonText: { fontSize: 15, fontWeight: "700" }, removePhoto: { fontSize: 14, fontWeight: "600" } });

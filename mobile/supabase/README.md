@@ -1,0 +1,19 @@
+# Backend foundation
+
+`migrations/20260916000000_initial.sql` is a newly authored, blank-database baseline. It has **not** been applied to a hosted project. Do not apply it over an existing schema. The hosted metadata comparison gate in `docs/SCHEMA_REVIEW.md` remains required before freeze or deployment. `20260916010000_mobile_repository_contracts.sql` adds the live mobile adapter contracts; it is repeatable on that baseline. See [existing-project connection status and safe deployment steps](CONNECT_EXISTING_PROJECT.md).
+
+The tables, RLS policies, guarded RPCs and final ACLs implement approval gating; separate access roles and ministry designations; participant-only visits; explicit completion and independent archival; optimistic revisions; duplicate submission IDs; group transfers; two-deacon limits; last-active-admin protection; owner-only favorites, reminders, preferences and tokens; and audit records. The first administrator must be bootstrapped through an authorized server operation after creating their login; no client can self-approve.
+
+Membership groups use `people.membership_group_id`. Responsibility groups use `deacon_group_members` and `deacon_group_deacons`; each member has at most one responsibility group. `ministry_accounts` exposes only active ministry account IDs, display names and designations for assignment pickers. It does not expose login emails or account-management fields.
+
+`people_private` is denied to client roles, including administrators. The only sensitive projection currently implemented is birthday month/day for a deacon's assigned responsibility group. Full birthdays, addresses, marital/orphan status and notes remain withheld until the church approves the precise field matrix. This conservative baseline does not invent permission for them.
+
+The mobile client requires only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Never put a service-role secret in an Expo environment variable. Session tokens use iOS SecureStore. Configure Apple/Google identity providers and allowed callback URLs separately for the signed development and production app. No credentials or provider configuration are committed here. Configured sessions verify `mobile_contract_version()` before reading application profiles; incompatible remote schemas produce a connection-update state instead of silently reading legacy data with the wrong contracts.
+
+Visit timestamp inputs use ISO instants, with UI conversion through `fixedPdtToIso` (fixed UTC−07:00 year-round). Birthdays are SQL dates, never timestamps. The helper's non-leap-year February 29 reminder convention is February 28; confirm this presentation choice before release.
+
+Account deletion RPC immediately revokes access and clears identity-bound personal data, then records an explicit deletion request. A server-side worker still must revoke Apple tokens and delete the Auth identity; the UI must call this a request until that orchestration is deployed. Directory records remain separate, and visit/audit foreign keys preserve necessary history without retaining a deleted login FK. Retention periods remain a policy decision.
+
+Notification event rows provide deduplication and queue state. An environment-specific worker/scheduler must deliver generic payloads, recheck active status and participation before dispatch, and update ticket/receipt and invalid-token state. Scheduler configuration does not belong in the initial migration. No push delivery is claimed by the baseline alone.
+
+Run `node --test tests/foundation.test.mjs supabase/tests/baseline.test.mjs` from `mobile`. PostgreSQL/RLS tests execute the full baseline in a temporary in-memory PGlite database with minimal Supabase Auth/Storage scaffolding. They do not connect to or read production data. Hosted Supabase/Auth/Storage provider integration still requires its own acceptance check.
