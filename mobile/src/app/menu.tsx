@@ -1,7 +1,7 @@
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 
 import { type AppearancePreference, useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -15,8 +15,8 @@ import { isBackendConfigured } from "@/lib/supabase";
 import { type TextSizePreference, useTextSize } from "@/features/accessibility/TextSizeProvider";
 
 const accountCopy = {
-  en: { account: "Account", linkedMember: "View member profile", signOut: "Sign out", signingOut: "Signing out…", signOutError: "Unable to sign out. Please try again.", advanced: "Advanced", advancedDetail: "Permanent account actions", delete: "Delete account", textSize: "Text size", small: "Small", standard: "Standard", large: "Large" },
-  uk: { account: "Обліковий запис", linkedMember: "Переглянути профіль учасника", signOut: "Вийти", signingOut: "Вихід…", signOutError: "Не вдалося вийти. Спробуйте ще раз.", advanced: "Додатково", advancedDetail: "Незворотні дії з обліковим записом", delete: "Видалити обліковий запис", textSize: "Розмір тексту", small: "Малий", standard: "Стандартний", large: "Великий" },
+  en: { account: "Account", linkedMember: "View member profile", signOut: "Sign out", signingOut: "Signing out…", signOutError: "Unable to sign out. Please try again.", advanced: "Advanced", advancedDetail: "Permanent account actions", delete: "Delete account", textSize: "Text size", small: "Small", standard: "Standard", large: "Large", about: "About", done: "Done", licenses: "Open-source licenses", iconLicense: "Ionicons — MIT License", iconCopyright: "© 2015–present Ionic · © 2015 Joel Arvidsson" },
+  uk: { account: "Обліковий запис", linkedMember: "Переглянути профіль учасника", signOut: "Вийти", signingOut: "Вихід…", signOutError: "Не вдалося вийти. Спробуйте ще раз.", advanced: "Додатково", advancedDetail: "Незворотні дії з обліковим записом", delete: "Видалити обліковий запис", textSize: "Розмір тексту", small: "Малий", standard: "Стандартний", large: "Великий", about: "Про застосунок", done: "Готово", licenses: "Ліцензії відкритого коду", iconLicense: "Ionicons — ліцензія MIT", iconCopyright: "© 2015–дотепер Ionic · © 2015 Joel Arvidsson" },
 } as const;
 
 export default function MenuRoute() {
@@ -26,6 +26,7 @@ export default function MenuRoute() {
   const { palette, preference, setPreference } = useAppearance();
   const labels = accountCopy[locale];
   const { preference: textSize, setPreference: setTextSize } = useTextSize();
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [linkedMember, setLinkedMember] = useState<MemberProfile | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -111,16 +112,32 @@ export default function MenuRoute() {
           {advancedOpen ? <Pressable accessibilityRole="button" onPress={() => router.push("/account/delete" as never)} style={[styles.deleteAction, { borderTopColor: palette.line }]}><Ionicons accessibilityElementsHidden color={palette.danger} name="trash-outline" size={20} /><Text style={[styles.deleteText, { color: palette.danger }]}>{labels.delete}</Text></Pressable> : null}
         </View> : null}
 
-        <View style={[styles.licenseCard, { backgroundColor: palette.surface }]}>
-          <View style={styles.licenseHeading}>
-            <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="document-text-outline" size={24} />
-            <Text style={[styles.licenseTitle, { color: palette.text }]}>{copy.menu.licenses}</Text>
-          </View>
-          <Text style={[styles.licenseDetail, { color: palette.secondaryText }]}>{copy.menu.licenseDetail}</Text>
-          <Text style={[styles.copyright, { color: palette.secondaryText }]}>© 2015–present Ionic · © 2015 Joel Arvidsson</Text>
+        <View style={[styles.aboutCard, { backgroundColor: palette.surface }]}>
+          <Pressable accessibilityRole="button" onPress={() => setAboutOpen(true)} style={({ pressed }) => [styles.aboutRow, pressed && styles.pressed]}>
+            <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="information-circle-outline" size={24} />
+            <Text style={[styles.rowLabel, { color: palette.text }]}>{labels.about}</Text>
+            <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={20} />
+          </Pressable>
         </View>
       </ScrollView>
       <WebTabBar />
+      <Modal animationType="slide" onRequestClose={() => setAboutOpen(false)} presentationStyle="pageSheet" visible={aboutOpen}>
+        <View accessibilityViewIsModal style={[styles.aboutSheet, { backgroundColor: palette.background }]}>
+          <View style={[styles.aboutHeader, { borderBottomColor: palette.line }]}>
+            <Text accessibilityRole="header" style={[styles.aboutTitle, { color: palette.text }]}>{labels.about}</Text>
+            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setAboutOpen(false)} style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}>
+              <Text style={[styles.doneText, { color: palette.accent }]}>{labels.done}</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.aboutContent}>
+            <Text accessibilityRole="header" style={[styles.licensesTitle, { color: palette.text }]}>{labels.licenses}</Text>
+            <View style={[styles.licensePanel, { backgroundColor: palette.surface }]}>
+              <Text selectable style={[styles.licenseTitle, { color: palette.text }]}>{labels.iconLicense}</Text>
+              <Text selectable style={[styles.copyright, { color: palette.secondaryText }]}>{labels.iconCopyright}</Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -143,11 +160,18 @@ const styles = StyleSheet.create({
   languageOption: { alignItems: "center", borderRadius: 8, justifyContent: "center", minHeight: 44, width: 48 },
   languageText: { color: "#686B6E", fontSize: 14, fontWeight: "600" },
   languageTextActive: { color: "#EF5A24" },
-  licenseCard: { backgroundColor: "#FAF9F6", borderRadius: 16, marginTop: 16, padding: 16 },
-  licenseHeading: { alignItems: "center", flexDirection: "row" },
-  licenseTitle: { color: "#20252A", fontSize: 17, fontWeight: "700", marginLeft: 13 },
-  licenseDetail: { color: "#4F5357", fontSize: 16, marginTop: 16 },
-  copyright: { color: "#797B7E", fontSize: 13, lineHeight: 18, marginTop: 7 },
+  aboutCard: { borderRadius: 16, marginTop: 16, overflow: "hidden" },
+  aboutRow: { alignItems: "center", flexDirection: "row", minHeight: 60, paddingHorizontal: 16 },
+  aboutSheet: { flex: 1 },
+  aboutHeader: { alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 58, paddingHorizontal: 20 },
+  aboutTitle: { flex: 1, fontSize: 20, fontWeight: "700" },
+  doneButton: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
+  doneText: { fontSize: 17, fontWeight: "600" },
+  aboutContent: { gap: 18, padding: 20 },
+  licensesTitle: { fontSize: 22, fontWeight: "700" },
+  licensePanel: { borderRadius: 16, padding: 18 },
+  licenseTitle: { fontSize: 17, fontWeight: "700" },
+  copyright: { fontSize: 14, lineHeight: 20, marginTop: 8 },
   accountCard: { backgroundColor: "#FAF9F6", borderRadius: 16, marginTop: 16, padding: 16 },
   sectionLabel: { fontSize: 13, fontWeight: "700", letterSpacing: 0.4, textTransform: "uppercase" },
   accountIdentity: { alignItems: "center", flexDirection: "row", gap: 13, minHeight: 74, paddingVertical: 8 },

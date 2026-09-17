@@ -26,6 +26,14 @@ test("the app-wide text size preference scales text, inputs, and native tab labe
   assert.match(menu, /labels\.textSize/);
 });
 
+test("icon attribution is tucked behind an accessible About sheet", async () => {
+  const menu = await readFile(new URL("../src/app/menu.tsx", import.meta.url), "utf8");
+  assert.match(menu, /labels\.about/);
+  assert.match(menu, /presentationStyle="pageSheet"/);
+  assert.match(menu, /Ionicons — MIT License/);
+  assert.doesNotMatch(menu, /copy\.menu\.licenses/);
+});
+
 test("public group UI omits the redundant membership-group wording", async () => {
   const [groupsScreen, groupDetail, memberCopy] = await Promise.all([
     readFile(new URL("../src/features/groups/GroupsScreen.tsx", import.meta.url), "utf8"),
