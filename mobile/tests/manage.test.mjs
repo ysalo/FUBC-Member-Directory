@@ -140,3 +140,33 @@ test("menu identifies the linked member and treats sign out as destructive", asy
   assert.match(menu, /color: palette\.danger/);
   assert.match(menu, /accessibilityState=\{\{ busy: signingOut, disabled: signingOut \}\}/);
 });
+
+test("member deletion is an administrator-only confirmed management flow", async () => {
+  const [editor, screen, route, layout, client] = await Promise.all([
+    readFile(new URL("../src/features/manage/MemberFormScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/manage/MemberDeletionScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/manage/member/[memberId]/delete.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/manage/_layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/manage/member-deletion.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(editor, /canManageAccounts\(session\.account\)/);
+  assert.match(editor, /Delete member permanently/);
+  assert.match(screen, /confirmation\.trim\(\) === member\.name\.trim\(\)/);
+  assert.match(screen, /@expo\/ui/);
+  assert.match(screen, /All scheduled and past visits/);
+  assert.match(screen, /actor\?\.personId === member\.id/);
+  assert.match(route, /MemberDeletionScreen/);
+  assert.match(layout, /member\/\[memberId\]\/delete/);
+  assert.match(client, /functions\.invoke\("delete-member"/);
+});
+
+test("the member deletion service removes identity access before directory data", async () => {
+  const edge = await readFile(new URL("../supabase/functions/delete-member/index.ts", import.meta.url), "utf8");
+  const authDelete = edge.indexOf("auth.admin.deleteUser");
+  const recordDelete = edge.indexOf('rpc("delete_member_record"');
+  assert.ok(authDelete > -1 && recordDelete > authDelete);
+  assert.match(edge, /caller\.status !== "active" \|\| caller\.role !== "admin"/);
+  assert.match(edge, /linkedAccount\?\.id === caller\.id/);
+  assert.match(edge, /person\.revision !== expectedRevision/);
+  assert.match(edge, /storage\.from\("member-photos"\)\.remove/);
+});

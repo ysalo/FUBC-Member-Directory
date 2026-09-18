@@ -35,8 +35,9 @@ before(async () => {
     "20260917060000_group_one_shared_deacons.sql",
     "20260917070000_pastor_ministry_name.sql",
     "20260917080000_link_group_one_deacon_profiles.sql",
-    "20260917100000_manage_care_status.sql", "20260917110000_leadership_ministries.sql",
+    "20260917100000_manage_care_status.sql", "20260917110000_leadership_ministries.sql", "20260917120000_visitation_leader_planning.sql",
     "20260918103000_person_based_group_deacons.sql", "20260918153000_preserve_deacon_assignments_on_member_edit.sql",
+    "20260918170000_delete_members.sql",
   ]) await db.exec(await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
   await db.query("insert into auth.users(id,email) values($1,'admin@example.com'),($2,'editor@example.com'),($3,'member@example.com')", [ids.admin, ids.editor, ids.member]);
   await db.exec(`update public.profiles set status='active',role='admin' where id='${ids.admin}';
@@ -162,4 +163,46 @@ test("saving a group atomically moves its selected deacon from the prior group",
   await as("editor", "select * from public.save_group($1,$2,$3,'membership',false,$4,$5)", [target.id, target.revision, target.name, [editorPerson], []]);
   const assignments = (await db.query("select group_id from public.deacon_group_deacons where person_id=$1", [editorPerson])).rows;
   assert.deepEqual(assignments, [{ group_id: target.id }]);
+});
+
+test("only administrators can hard-delete an unlinked member and all person-owned history", async () => {
+  const person = (await db.query("insert into public.people(name,phone) values('Delete Test Member','253-555-0100') returning id")).rows[0];
+  const group = (await db.query("insert into public.deacon_groups(name,kind) values('Delete test group','responsibility') returning id")).rows[0];
+  const ministry = (await db.query("insert into public.ministries(name) values('Delete test ministry') returning id")).rows[0];
+  await db.query("insert into public.people_private(person_id,address) values($1,'Private address')", [person.id]);
+  await db.query("insert into public.deacon_group_members(group_id,person_id) values($1,$2)", [group.id, person.id]);
+  await db.query("insert into public.person_ministries(person_id,ministry_id) values($1,$2)", [person.id, ministry.id]);
+  await db.query("insert into public.favorites(account_id,person_id) values($1,$2)", [ids.admin, person.id]);
+  await db.query("insert into public.personal_reminders(account_id,person_id,title,remind_at) values($1,$2,'Follow up',now())", [ids.admin, person.id]);
+  const visit = (await db.query("insert into public.visit_requests(planner_id,person_id,scheduled_at,location,submission_id) values($1,$2,now(),'Church',gen_random_uuid()) returning id", [ids.admin, person.id])).rows[0];
+  await db.query("insert into public.visit_participants(visit_id,account_id) values($1,$2)", [visit.id, ids.editor]);
+  await db.query("insert into public.visit_notification_events(visit_id,account_id,revision,kind) values($1,$2,1,'visit.updated')", [visit.id, ids.editor]);
+
+  await assert.rejects(as("editor", "select * from public.delete_member_record($1,null)", [person.id]), /Not authorized/);
+  const deleted = (await as("admin", "select * from public.delete_member_record($1,null)", [person.id])).rows[0];
+  assert.equal(deleted.deleted_person_id, person.id);
+  assert.equal(deleted.deleted_visit_count, 1);
+  for (const query of [
+    "select 1 from public.people where id=$1", "select 1 from public.people_private where person_id=$1",
+    "select 1 from public.deacon_group_members where person_id=$1", "select 1 from public.person_ministries where person_id=$1",
+    "select 1 from public.favorites where person_id=$1", "select 1 from public.personal_reminders where person_id=$1",
+    "select 1 from public.visit_requests where person_id=$1",
+  ]) assert.equal((await db.query(query, [person.id])).rows.length, 0);
+  const audit = (await db.query("select metadata from public.audit_events where action='member.deleted' and entity_id=$1", [person.id])).rows[0];
+  assert.equal(audit.metadata.deleted_visit_count, 1);
+  assert.equal(JSON.stringify(audit.metadata).includes("Delete Test Member"), false);
+});
+
+test("member deletion refuses linked accounts and the signed-in administrator's own member", async () => {
+  const linkedAccountId = "10000000-0000-4000-8000-000000000020";
+  const linkedPerson = (await db.query("insert into public.people(name) values('Linked delete target') returning id")).rows[0];
+  await db.query("insert into auth.users(id,email) values($1,'linked-delete@example.com')", [linkedAccountId]);
+  await db.query("update public.profiles set status='active',person_id=$2 where id=$1", [linkedAccountId, linkedPerson.id]);
+  await assert.rejects(as("admin", "select * from public.delete_member_record($1,$2)", [linkedPerson.id, linkedAccountId]), /linked account/i);
+  assert.equal((await db.query("select 1 from public.people where id=$1", [linkedPerson.id])).rows.length, 1);
+
+  const ownPerson = (await db.query("insert into public.people(name) values('Current administrator') returning id")).rows[0];
+  await db.query("update public.profiles set person_id=$2 where id=$1", [ids.admin, ownPerson.id]);
+  await assert.rejects(as("admin", "select * from public.delete_member_record($1,null)", [ownPerson.id]), /own member record/i);
+  await db.query("update public.profiles set person_id=null where id=$1", [ids.admin]);
 });
