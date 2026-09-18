@@ -32,6 +32,10 @@ function IosTabs() {
       disableTransparentOnScrollEdge
       minimizeBehavior="never"
     >
+      <NativeTabs.Trigger name="(directory)">
+        <NativeTabs.Trigger.Icon sf={{ default: "person.text.rectangle", selected: "person.text.rectangle.fill" }} />
+        <NativeTabs.Trigger.Label>{copy.tabs.directory}</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="groups">
         <NativeTabs.Trigger.Icon sf={{ default: "person.3", selected: "person.3.fill" }} />
         <NativeTabs.Trigger.Label>{copy.tabs.groups}</NativeTabs.Trigger.Label>
@@ -39,10 +43,6 @@ function IosTabs() {
       <NativeTabs.Trigger name="visitation">
         <NativeTabs.Trigger.Icon sf={{ default: "calendar", selected: "calendar.badge.checkmark" }} />
         <NativeTabs.Trigger.Label>{copy.tabs.visitation}</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="(directory)">
-        <NativeTabs.Trigger.Icon sf={{ default: "person.text.rectangle", selected: "person.text.rectangle.fill" }} />
-        <NativeTabs.Trigger.Label>{copy.tabs.directory}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       {showManage ? <NativeTabs.Trigger name="manage">
         <NativeTabs.Trigger.Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />

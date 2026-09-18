@@ -5,6 +5,7 @@ import { fixedPdtToIso, isoToFixedPdt, parseDateOnly, daysUntilBirthday } from '
 import { createSecureSessionStorage } from '../src/lib/secure-session-storage.ts';
 import { assertUsableOAuthRedirect, isNumericIpRedirect } from '../src/features/session/auth-redirect.ts';
 import { formatPhoneNumber, phoneDigits } from '../src/lib/phone.ts';
+import { contactShareMessage, emailUrl, mapUrls } from '../src/features/members/contact-links.ts';
 import { readFile } from 'node:fs/promises';
 
 const actor = (role = 'member', leadershipMinistry = null, status = 'active') => ({ id: 'viewer', role, leadershipMinistry, status });
@@ -14,6 +15,30 @@ test('phone numbers use a numeric ten-digit value and consistent US formatting',
   assert.equal(formatPhoneNumber('+1 (253) 394-2429'), '(253) 394-2429');
   assert.equal(formatPhoneNumber('25339'), '(253) 39');
   assert.equal(phoneDigits('(253) 394-2429'), '2533942429');
+});
+test('member contact actions target the platform mail and maps apps', () => {
+  assert.equal(emailUrl(' pastor+visits@example.org '), 'mailto:pastor%2Bvisits%40example.org');
+  assert.deepEqual(mapUrls('101 Main St, Sacramento, CA', 'ios'), {
+    primary: 'maps:?q=101%20Main%20St%2C%20Sacramento%2C%20CA',
+    fallback: 'https://www.google.com/maps/search/?api=1&query=101%20Main%20St%2C%20Sacramento%2C%20CA',
+  });
+  assert.deepEqual(mapUrls('101 Main St, Sacramento, CA', 'android'), {
+    primary: 'geo:0,0?q=101%20Main%20St%2C%20Sacramento%2C%20CA',
+    fallback: 'https://www.google.com/maps/search/?api=1&query=101%20Main%20St%2C%20Sacramento%2C%20CA',
+  });
+});
+test('member contact sharing includes available contact fields without blank rows', () => {
+  const labels = { phone: 'Phone', email: 'Email', address: 'Address' };
+  assert.equal(contactShareMessage({ name: 'Jane Doe', phone: '(253) 555-0100', email: 'jane@example.org', address: '101 Main St' }, labels), 'Jane Doe\nPhone: (253) 555-0100\nEmail: jane@example.org\nAddress: 101 Main St');
+  assert.equal(contactShareMessage({ name: 'Jane Doe', phone: '(253) 555-0100' }, labels), 'Jane Doe\nPhone: (253) 555-0100');
+});
+test('directory is the first tab on native and fallback tab bars', async () => {
+  const [nativeLayout, fallbackTabs] = await Promise.all([
+    readFile(new URL('../src/app/_layout.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/features/shell/WebTabBar.tsx', import.meta.url), 'utf8'),
+  ]);
+  assert.ok(nativeLayout.indexOf('<NativeTabs.Trigger name="(directory)"') < nativeLayout.indexOf('<NativeTabs.Trigger name="groups"'));
+  assert.ok(fallbackTabs.indexOf('{ labelKey: "directory"') < fallbackTabs.indexOf('{ labelKey: "groups"'));
 });
 test('approval gates every role and leadership ministry including privileged roles', () => {
   for (const status of ['pending', 'denied', 'revoked']) for (const role of ['member', 'editor', 'admin']) for (const leadershipMinistry of [null, 'pastor', 'deacon']) {
