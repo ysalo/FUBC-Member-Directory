@@ -7,12 +7,14 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } f
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
+import { formatPhoneNumber } from "@/lib/phone";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { getMemberCopy } from "./member-copy";
 import { memberProfileRepository, type MemberProfile } from "./member-repository";
 import { CareStatusBadges } from "./care-status-badges";
 import { LeadershipBadge } from "./leadership-badge";
+import { canCreateVisit } from "@/lib/permissions";
 
 export function MemberProfileScreen({ memberId }: { memberId: string }) {
   const router = useRouter(); const { palette } = useAppearance(); const session = useSession(); const insets = useSafeAreaInsets();
@@ -28,24 +30,24 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
   const age = profile.birthDate ? Math.floor((Date.now() - new Date(`${profile.birthDate}T12:00:00`).getTime()) / 31557600000) : null;
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
   // Email is an operational contact reserved for church leadership. Use the
-  // profile's ministry designation, rather than the viewer's role, so a
+  // profile's leadership ministry, rather than the viewer's role, so a
   // deacon/pastor profile remains reachable by authorized directory users.
-  const isLeadership = profile.designation === "deacon" || profile.designation === "pastor";
+  const isLeadership = Boolean(profile.leadershipMinistry);
   const isWidow = ["widow", "widowed", "вдова", "вдівець", "вдівець/вдова"].includes(profile.maritalStatus?.trim().toLocaleLowerCase() ?? "");
-  const canRequestVisit = session.status === "ready" && session.account.designation === "pastor";
+  const canRequestVisit = session.status === "ready" && canCreateVisit(session.account);
   const canEdit = session.status === "ready" && session.account.role === "admin";
 
   return <View style={[styles.root, { backgroundColor: palette.background }]}><ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
     <View style={[styles.hero, { paddingTop: insets.top }]}><Image accessibilityLabel={`${name} ${copy.profile}`} contentFit="cover" source={profile.photo} style={StyleSheet.absoluteFill} /><View style={styles.heroShade} />
       <Pressable accessibilityLabel={copy.back} accessibilityRole="button" onPress={() => router.back()} style={[styles.floatingButton, { top: insets.top + 12 }]}><Ionicons accessibilityElementsHidden color="#FFF" name="chevron-back" size={24} /></Pressable>
       {canEdit ? <Pressable accessibilityLabel={locale === "uk" ? "Редагувати учасника" : "Edit member"} accessibilityRole="button" onPress={() => router.push(`/manage/member/${memberId}` as Href)} style={[styles.floatingButton, styles.editButton, { top: insets.top + 12 }]}><Ionicons color="#FFF" name="create-outline" size={22} /></Pressable> : null}
-      <View style={styles.heroCopy}><Text accessibilityRole="header" style={styles.name}>{name}</Text>{profile.designation !== "none" ? <LeadershipBadge designation={profile.designation} inverted locale={locale} /> : null}<View style={styles.ministryRow}>{ministries.map((ministry, index) => <Text key={`${profile.id}:hero-ministry:${index}`} style={styles.heroPillText}>{ministry}</Text>)}</View><CareStatusBadges isOrphan={profile.isOrphan} isWidow={isWidow} /></View>
+      <View style={styles.heroCopy}><Text accessibilityRole="header" style={styles.name}>{name}</Text>{profile.leadershipMinistry ? <LeadershipBadge leadershipMinistry={profile.leadershipMinistry} inverted locale={locale} /> : null}<View style={styles.ministryRow}>{ministries.map((ministry, index) => <Text key={`${profile.id}:hero-ministry:${index}`} style={styles.heroPillText}>{ministry}</Text>)}</View><CareStatusBadges isOrphan={profile.isOrphan} isWidow={isWidow} /></View>
     </View>
     <View style={styles.body}>
       {canRequestVisit ? <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/visitation/new", params: { person: memberId } } as Href)} style={({ pressed }) => [styles.visitButton, { backgroundColor: palette.accent }, pressed && styles.pressed]}><Ionicons accessibilityElementsHidden color="#FFF" name="calendar-outline" size={21} /><Text style={styles.visitButtonText}>{copy.requestVisit}</Text></Pressable> : null}
-      <Section title={copy.contact}><View style={styles.actions}>{profile.phone ? <Action icon="call-outline" label={copy.call} onPress={() => void open(`tel:${profile.phone!.replace(/[^+\d]/g, "")}`)} /> : null}{isLeadership && profile.email ? <Action icon="mail-outline" label={copy.email} onPress={() => void open(`mailto:${profile.email}`)} /> : null}{profile.address ? <Action icon="map-outline" label={copy.maps} onPress={() => void open(`https://maps.apple.com/?q=${encodeURIComponent(profile.address!)}`)} /> : null}</View>{profile.phone ? <Text selectable style={[styles.phone, { color: palette.text }]}>{profile.phone}</Text> : null}{profile.address ? <Text style={[styles.address, { color: palette.secondaryText }]}>{profile.address}</Text> : null}</Section>
+      <Section title={copy.contact}><View style={styles.actions}>{profile.phone ? <Action icon="call-outline" label={copy.call} onPress={() => void open(`tel:${profile.phone!.replace(/[^+\d]/g, "")}`)} /> : null}{isLeadership && profile.email ? <Action icon="mail-outline" label={copy.email} onPress={() => void open(`mailto:${profile.email}`)} /> : null}{profile.address ? <Action icon="map-outline" label={copy.maps} onPress={() => void open(`https://maps.apple.com/?q=${encodeURIComponent(profile.address!)}`)} /> : null}</View>{profile.phone ? <Text selectable style={[styles.phone, { color: palette.text }]}>{formatPhoneNumber(profile.phone)}</Text> : null}{profile.address ? <Text style={[styles.address, { color: palette.secondaryText }]}>{profile.address}</Text> : null}</Section>
       <Section title={copy.details}>{profile.birthDate ? <Fact label={copy.birthday} value={formatDate(profile.birthDate)} /> : null}{age !== null ? <Fact label={copy.age} value={String(age)} /> : null}{profile.membershipJoinedAt ? <Fact label={copy.memberSince} value={formatDate(profile.membershipJoinedAt)} /> : null}{profile.maritalStatus ? <Fact label={copy.maritalStatus} value={profile.maritalStatus} /> : null}{profile.membershipGroupId ? <Pressable accessibilityHint={copy.openGroup} accessibilityLabel={`${copy.group}: ${group || "—"}`} accessibilityRole="button" onPress={() => router.push(`/groups/${profile.membershipGroupId}` as never)} style={({ pressed }) => pressed && styles.pressedRow}><Fact disclosure label={copy.group} last={!profile.responsibilityGroupId} value={group || "—"} /></Pressable> : <Fact label={copy.group} last={!profile.responsibilityGroupId} value={group || "—"} />}{profile.responsibilityGroupId ? <Pressable accessibilityHint={copy.openGroup} accessibilityLabel={`${copy.responsibleFor}: ${responsibilityGroup || "—"}`} accessibilityRole="button" onPress={() => router.push(`/groups/${profile.responsibilityGroupId}` as never)} style={({ pressed }) => pressed && styles.pressedRow}><Fact disclosure label={copy.responsibleFor} last value={responsibilityGroup || "—"} /></Pressable> : null}</Section>
-      <Section title={copy.ministries}><View style={styles.bodyList}>{profile.designation !== "none" ? <LeadershipBadge designation={profile.designation} locale={locale} /> : null}{ministries.map((ministry, index) => <Text key={`${profile.id}:detail-ministry:${index}`} style={[styles.bodyListText, { color: palette.text }]}>{ministry}</Text>)}</View></Section>
+      <Section title={copy.ministries}><View style={styles.bodyList}>{profile.leadershipMinistry ? <LeadershipBadge leadershipMinistry={profile.leadershipMinistry} locale={locale} /> : null}{ministries.map((ministry, index) => <Text key={`${profile.id}:detail-ministry:${index}`} style={[styles.bodyListText, { color: palette.text }]}>{ministry}</Text>)}</View></Section>
     </View>
   </ScrollView></View>;
 }

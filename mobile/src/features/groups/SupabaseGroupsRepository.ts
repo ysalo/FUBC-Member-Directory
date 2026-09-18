@@ -11,19 +11,22 @@ export class SupabaseGroupsRepository implements GroupsRepository {
       client.from("people").select("id,name,photo_path,membership_group_id").is("archived_at", null),
       client.from("deacon_group_members").select("*"),
       client.from("deacon_group_deacons").select("*").order("slot"),
-      client.from("ministry_accounts").select("id,person_id").eq("designation", "deacon"),
+      client.from("ministry_accounts").select("id,person_id").eq("leadership_ministry", "deacon"),
     ]);
     const groups = unwrap(groupsResult), people = unwrap(peopleResult), members = unwrap(membersResult), deacons = unwrap(deaconsResult), deaconAccounts = unwrap(deaconAccountsResult);
     const activeIds = new Set(people.map((person) => person.id));
-    const deaconPeople = people.filter((person) => deaconAccounts.some((account) => account.person_id === person.id));
+    const assignedDeaconPersonIds = new Set(deacons.map((assignment) => assignment.person_id));
+    const deaconPeople = people.filter((person) => assignedDeaconPersonIds.has(person.id));
     const photos = await privatePhotoSources(deaconPeople.map((person) => person.photo_path)).catch(() => new Map());
     return groups.map((group) => ({ id: group.id, name: group.name, nameUk: group.name, description: "", descriptionUk: "", kind: group.kind,
-      responsibleDeaconIds: deacons.filter((item) => item.group_id === group.id).map((item) => item.account_id),
+      responsibleDeaconIds: deacons.filter((item) => item.group_id === group.id).flatMap((item) => {
+        const account = deaconAccounts.find((candidate) => candidate.person_id === item.person_id);
+        return account ? [account.id] : [];
+      }),
       memberIds: group.kind === "membership" ? people.filter((person) => person.membership_group_id === group.id).map((person) => person.id) : members.filter((item) => item.group_id === group.id && activeIds.has(item.person_id)).map((item) => item.person_id),
       responsibleDeacons: deacons.filter((item) => item.group_id === group.id).flatMap((item) => {
-        const account = deaconAccounts.find((candidate) => candidate.id === item.account_id);
-        const person = account?.person_id ? people.find((candidate) => candidate.id === account.person_id) : null;
-        return person ? [{ id: person.id, name: person.name, photo: person.photo_path ? photos.get(person.photo_path) : undefined, designation: "deacon" as const }] : [];
+        const person = people.find((candidate) => candidate.id === item.person_id);
+        return person ? [{ id: person.id, name: person.name, photo: person.photo_path ? photos.get(person.photo_path) : undefined, leadershipMinistry: "deacon" as const }] : [];
       }),
     }));
   }
@@ -31,28 +34,21 @@ export class SupabaseGroupsRepository implements GroupsRepository {
     const group = (await this.listGroups()).find((candidate) => candidate.id === groupId);
     if (!group) return null;
     const members = group.memberIds.length ? unwrap(await requireSupabase().from("people").select("id,name,photo_path").in("id", group.memberIds).is("archived_at", null).order("name")) : [];
-    const [details, designations] = await Promise.all([
+    const [details, leadershipRows] = await Promise.all([
       Promise.all(members.map(async (member) => unwrap(await requireSupabase().rpc("member_profile_details", { p_person_id: member.id }))[0])),
-      members.length ? requireSupabase().from("ministry_accounts").select("person_id,designation").in("person_id", members.map((member) => member.id)) : Promise.resolve({ data: [], error: null }),
+      members.length ? requireSupabase().from("person_leadership_ministries").select("person_id,leadership_ministry").in("person_id", members.map((member) => member.id)) : Promise.resolve({ data: [], error: null }),
     ]);
-    const memberDesignations = unwrap(designations);
-    const deaconAccounts = group.responsibleDeaconIds.length ? unwrap(await requireSupabase().from("ministry_accounts").select("*").in("id", group.responsibleDeaconIds)) : [];
-    const deaconPersonIds = deaconAccounts.flatMap((account) => account.person_id ? [account.person_id] : []);
-    const deaconPeople = deaconPersonIds.length ? unwrap(await requireSupabase().from("people").select("id,name,photo_path").in("id", deaconPersonIds).is("archived_at", null)) : [];
-    const photos = await privatePhotoSources([...members, ...deaconPeople].map((person) => person.photo_path));
-    const responsibleDeacons = group.responsibleDeaconIds.flatMap((accountId) => {
-      const account = deaconAccounts.find((candidate) => candidate.id === accountId);
-      const person = account?.person_id ? deaconPeople.find((candidate) => candidate.id === account.person_id) : null;
-      return person ? [{ id: person.id, name: person.name, photo: person.photo_path ? photos.get(person.photo_path) : undefined, designation: "deacon" as const }] : [];
-    });
-    return { ...group, members: members.map((member, index) => { const designation = memberDesignations.find((account) => account.person_id === member.id)?.designation; return { id: member.id, name: member.name, photo: member.photo_path ? photos.get(member.photo_path) : undefined, designation: designation === "pastor" || designation === "deacon" ? designation : undefined, isOrphan: details[index]?.orphan_status ?? undefined, isWidow: ["widowed", "widow", "вдова", "вдівець", "вдівець/вдова"].includes((details[index]?.marital_status ?? "").toLocaleLowerCase()) }; }), responsibleDeacons };
+    const memberLeadership = unwrap(leadershipRows);
+    const photos = await privatePhotoSources(members.map((person) => person.photo_path));
+    const responsibleDeacons = group.responsibleDeacons ?? [];
+    return { ...group, members: members.map((member, index) => { const leadershipMinistry = memberLeadership.find((row) => row.person_id === member.id)?.leadership_ministry; return { id: member.id, name: member.name, photo: member.photo_path ? photos.get(member.photo_path) : undefined, leadershipMinistry: leadershipMinistry ?? undefined, isOrphan: details[index]?.orphan_status ?? undefined, isWidow: ["widowed", "widow", "вдова", "вдівець", "вдівець/вдова"].includes((details[index]?.marital_status ?? "").toLocaleLowerCase()) }; }), responsibleDeacons };
   }
   async getAuthorizedBirthdays(groupId: string): Promise<AuthorizedBirthday[]> {
     const actor = activeAccount();
-    if (actor.designation !== "deacon" && actor.designation !== "pastor") return [];
+    if (actor.leadershipMinistry !== "deacon" && actor.leadershipMinistry !== "pastor") return [];
     // The RPC repeats authorization; the client check only avoids an expected forbidden error.
     const group = (await this.listGroups()).find((candidate) => candidate.id === groupId);
-    if (!group || (actor.designation === "deacon" && !group.responsibleDeaconIds.includes(actor.id))) return [];
+    if (!group || (actor.leadershipMinistry === "deacon" && !group.responsibleDeaconIds.includes(actor.id))) return [];
     const rows = unwrap(await requireSupabase().rpc("group_birthdays", { p_group_id: groupId }));
     const photoRows = rows.length ? unwrap(await requireSupabase().from("people").select("id,photo_path").in("id", rows.map((row) => row.person_id))) : [];
     const photos = await privatePhotoSources(photoRows.map((person) => person.photo_path));

@@ -1,6 +1,6 @@
 import { canCreateVisit, canManageVisit, canReadVisit, canRespondToVisit } from "@/lib/permissions";
 
-import { visitationActors, visitationDeacons, visitationPeople, visitationVisits } from "./fixtures";
+import { visitationActors, visitationParticipants, visitationPeople, visitationVisits } from "./fixtures";
 import type {
   RepositorySnapshot,
   VisitActor,
@@ -33,7 +33,7 @@ export class InMemoryVisitationRepository implements VisitationRepository {
   private sessionActor: VisitActor | null | undefined;
   private readonly actors = visitationActors.map(cloneActor);
   private readonly people = visitationPeople.map((person) => ({ ...person }));
-  private readonly deacons = visitationDeacons.map((deacon) => ({ ...deacon }));
+  private readonly eligibleParticipants = visitationParticipants.map((participant) => ({ ...participant }));
   private readonly visits = visitationVisits.map(cloneVisit);
   private readonly listeners = new Set<() => void>();
   private readonly latencyMs: number;
@@ -60,13 +60,13 @@ export class InMemoryVisitationRepository implements VisitationRepository {
     await this.pause();
     if (this.sessionActor !== undefined) {
       if (!this.sessionActor) throw new VisitRepositoryError("forbidden", "No authorized visitation account.");
-      return { actor: cloneActor(this.sessionActor), actors: [cloneActor(this.sessionActor)], people: [], deacons: [] };
+      return { actor: cloneActor(this.sessionActor), actors: [cloneActor(this.sessionActor)], people: [], eligibleParticipants: [] };
     }
     return {
       actor: cloneActor(this.actor()),
       actors: this.actors.map(cloneActor),
       people: this.people.map((person) => ({ ...person })),
-      deacons: this.deacons.map((deacon) => ({ ...deacon })),
+      eligibleParticipants: this.eligibleParticipants.map((participant) => ({ ...participant })),
     };
   }
 
@@ -105,27 +105,28 @@ export class InMemoryVisitationRepository implements VisitationRepository {
     await this.pause();
     this.assertDemoMode();
     const actor = this.actor();
-    if (!canCreateVisit(actor)) throw new VisitRepositoryError("forbidden", "Only an active pastor can plan visits.");
+    if (!canCreateVisit(actor)) throw new VisitRepositoryError("forbidden", "Only an active pastor or deacon can plan visits.");
 
-    const duplicate = this.visits.find((visit) => visit.pastorId === actor.id && visit.submissionId === draft.submissionId);
+    const duplicate = this.visits.find((visit) => visit.plannerId === actor.id && visit.submissionId === draft.submissionId);
     if (duplicate) return cloneVisit(duplicate);
 
     const person = this.people.find((candidate) => candidate.id === draft.personId);
     if (!person) throw new VisitRepositoryError("invalid", "Choose a valid person.");
-    const recipientIds = [...new Set(draft.recipientAccountIds)];
-    if (recipientIds.length < 1 || recipientIds.length > 2) {
-      throw new VisitRepositoryError("invalid", "Choose one or two deacons.");
+    const recipientIds = [...new Set(draft.participantAccountIds)];
+    if (recipientIds.length < 1) {
+      throw new VisitRepositoryError("invalid", "Choose at least one participant.");
     }
     const recipients = recipientIds.map((accountId) => {
-      const deacon = this.deacons.find((candidate) => candidate.accountId === accountId);
+      const participant = this.eligibleParticipants.find((candidate) => candidate.accountId === accountId);
       const account = this.actors.find((candidate) => candidate.id === accountId);
-      if (!deacon || account?.status !== "active" || account.designation !== "deacon") {
-        throw new VisitRepositoryError("invalid", "A selected deacon is no longer available.");
+      if (!participant || accountId === actor.id || !canCreateVisit(account)) {
+        throw new VisitRepositoryError("invalid", "A selected participant is no longer available.");
       }
       return {
         accountId,
-        deaconName: deacon.name,
-        deaconPersonId: deacon.personId,
+        participantName: participant.name,
+        participantPersonId: participant.personId,
+        leadershipMinistry: participant.leadershipMinistry,
         response: "pending" as const,
         reason: null,
         lastViewedRevision: 0,
@@ -135,9 +136,9 @@ export class InMemoryVisitationRepository implements VisitationRepository {
 
     const visit: VisitRecord = {
       id: `visit-${draft.submissionId}`,
-      pastorId: actor.id,
+      plannerId: actor.id,
       personId: person.id,
-      pastorName: actor.displayName,
+      plannerName: actor.displayName,
       memberName: person.name,
       memberPhone: person.phone,
       scheduledAt: draft.scheduledAt,
@@ -220,7 +221,7 @@ export class InMemoryVisitationRepository implements VisitationRepository {
     this.assertDemoMode();
     const visit = this.find(id);
     this.assertRevision(visit, expectedRevision);
-    if (!canManageVisit(this.actor(), visit)) throw new VisitRepositoryError("forbidden", "Only the planning pastor can archive this visit.");
+    if (!canManageVisit(this.actor(), visit)) throw new VisitRepositoryError("forbidden", "Only the planner can archive this visit.");
     if (visit.status === "open") throw new VisitRepositoryError("invalid", "Complete or cancel the visit before archiving it.");
     if (visit.archivedAt) throw new VisitRepositoryError("terminal", "This visit is already archived.");
     visit.archivedAt = this.now().toISOString();
@@ -268,7 +269,7 @@ export class InMemoryVisitationRepository implements VisitationRepository {
 
   private assertManageable(visit: VisitRecord, expectedRevision: number) {
     this.assertRevision(visit, expectedRevision);
-    if (!canManageVisit(this.actor(), visit)) throw new VisitRepositoryError("forbidden", "Only the planning pastor can change this visit.");
+    if (!canManageVisit(this.actor(), visit)) throw new VisitRepositoryError("forbidden", "Only the planner can change this visit.");
     if (visit.status !== "open" || visit.archivedAt) throw new VisitRepositoryError("terminal", "This visit is read-only.");
   }
 

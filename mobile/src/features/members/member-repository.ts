@@ -14,7 +14,7 @@ export type MemberProfile = {
   membershipJoinedAt?: string;
   maritalStatus?: string;
   isOrphan?: boolean;
-  designation: "none" | "pastor" | "deacon";
+  leadershipMinistry: "pastor" | "deacon" | null;
   membershipGroup: string;
   membershipGroupUk: string;
   membershipGroupId?: string;
@@ -30,10 +30,10 @@ export interface MemberProfileRepository {
 }
 
 const profiles: MemberProfile[] = [
-  { id: "amelia-brooks", name: "Amelia Brooks", nameUk: "Амелія Брукс", photo: require("../../../assets/plates/avatar-amelia.png"), phone: "+1 206 555 0143", address: "Seattle, WA", designation: "none", membershipGroup: "Northside Families", membershipGroupUk: "Родини Нортсайду", ministries: ["Children’s Ministry"], ministriesUk: ["Дитяче служіння"] },
-  { id: "daniel-chen", name: "Daniel Chen", nameUk: "Даніель Чен", photo: require("../../../assets/plates/avatar-daniel.png"), phone: "+1 206 555 0172", email: "daniel@example.org", designation: "deacon", membershipGroup: "Worship Team", membershipGroupUk: "Команда прославлення", responsibilityGroup: "Northside Families", responsibilityGroupUk: "Родини Нортсайду", ministries: ["Worship Team"], ministriesUk: ["Команда прославлення"] },
-  { id: "marta-kovalenko", name: "Marta Kovalenko", nameUk: "Марта Коваленко", photo: require("../../../assets/plates/avatar-marta.png"), phone: "+1 206 555 0181", designation: "none", membershipGroup: "Northside Families", membershipGroupUk: "Родини Нортсайду", ministries: ["Hospitality"], ministriesUk: ["Гостинність"] },
-  { id: "noah-williams", name: "Noah Williams", nameUk: "Ноа Вільямс", photo: require("../../../assets/plates/avatar-noah.png"), designation: "none", membershipGroup: "Worship Team", membershipGroupUk: "Команда прославлення", ministries: ["Small Groups"], ministriesUk: ["Малі групи"] },
+  { id: "amelia-brooks", name: "Amelia Brooks", nameUk: "Амелія Брукс", photo: require("../../../assets/plates/avatar-amelia.png"), phone: "+1 206 555 0143", address: "Seattle, WA", leadershipMinistry: null, membershipGroup: "Northside Families", membershipGroupUk: "Родини Нортсайду", ministries: ["Children’s Ministry"], ministriesUk: ["Дитяче служіння"] },
+  { id: "daniel-chen", name: "Daniel Chen", nameUk: "Даніель Чен", photo: require("../../../assets/plates/avatar-daniel.png"), phone: "+1 206 555 0172", email: "daniel@example.org", leadershipMinistry: "deacon", membershipGroup: "Worship Team", membershipGroupUk: "Команда прославлення", responsibilityGroup: "Northside Families", responsibilityGroupUk: "Родини Нортсайду", ministries: ["Worship Team"], ministriesUk: ["Команда прославлення"] },
+  { id: "marta-kovalenko", name: "Marta Kovalenko", nameUk: "Марта Коваленко", photo: require("../../../assets/plates/avatar-marta.png"), phone: "+1 206 555 0181", leadershipMinistry: null, membershipGroup: "Northside Families", membershipGroupUk: "Родини Нортсайду", ministries: ["Hospitality"], ministriesUk: ["Гостинність"] },
+  { id: "noah-williams", name: "Noah Williams", nameUk: "Ноа Вільямс", photo: require("../../../assets/plates/avatar-noah.png"), leadershipMinistry: null, membershipGroup: "Worship Team", membershipGroupUk: "Команда прославлення", ministries: ["Small Groups"], ministriesUk: ["Малі групи"] },
 ];
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;

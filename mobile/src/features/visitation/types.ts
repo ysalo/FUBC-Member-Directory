@@ -2,7 +2,7 @@ import type { Account, Visit, VisitRecipient } from "@/lib/domain";
 
 export type VisitListMode = "current" | "archive";
 
-export type VisitActor = Pick<Account, "id" | "displayName" | "designation" | "status" | "role" | "revision">;
+export type VisitActor = Pick<Account, "id" | "displayName" | "leadershipMinistry" | "status" | "role" | "revision">;
 
 export type VisitPerson = {
   id: string;
@@ -12,30 +12,32 @@ export type VisitPerson = {
   responsibilityGroupId: string | null;
 };
 
-export type VisitDeacon = {
+export type VisitParticipant = {
   accountId: string;
   personId: string | null;
   name: string;
+  leadershipMinistry: "pastor" | "deacon";
   responsibilityGroupId: string | null;
 };
 
 export type VisitRecipientDetails = VisitRecipient & {
-  deaconName: string;
-  deaconPersonId: string | null;
+  participantName: string;
+  participantPersonId: string | null;
+  leadershipMinistry: "pastor" | "deacon";
   lastViewedRevision: number;
 };
 
 export type VisitRecord = Omit<Visit, "recipients"> & {
   memberName: string;
   memberPhone: string | null;
-  pastorName: string;
+  plannerName: string;
   updatedFields: Array<"scheduledAt" | "location" | "notes">;
   recipients: VisitRecipientDetails[];
 };
 
 export type VisitListItem = Pick<
   VisitRecord,
-  "id" | "scheduledAt" | "location" | "status" | "archivedAt" | "revision" | "memberName" | "pastorName" | "recipients"
+  "id" | "plannerId" | "scheduledAt" | "location" | "status" | "archivedAt" | "revision" | "memberName" | "plannerName" | "recipients"
 >;
 
 export type VisitDraft = {
@@ -43,7 +45,7 @@ export type VisitDraft = {
   scheduledAt: string;
   location: string;
   notes: string;
-  recipientAccountIds: string[];
+  participantAccountIds: string[];
   submissionId: string;
 };
 
@@ -67,7 +69,7 @@ export type RepositorySnapshot = {
   actor: VisitActor;
   actors: VisitActor[];
   people: VisitPerson[];
-  deacons: VisitDeacon[];
+  eligibleParticipants: VisitParticipant[];
 };
 
 export interface VisitationRepository {

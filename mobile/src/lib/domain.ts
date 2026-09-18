@@ -1,7 +1,7 @@
-/** Public contracts. Access roles and ministry designations are deliberately separate. */
+/** Public contracts. Access roles are separate from ministry-derived capabilities. */
 export type AccessRole = "member" | "editor" | "admin";
 export type AccountStatus = "pending" | "active" | "denied" | "revoked";
-export type MinistryDesignation = "none" | "pastor" | "deacon";
+export type LeadershipMinistry = "pastor" | "deacon" | null;
 export type DateOnly = string;
 export type Account = {
   id: string;
@@ -9,7 +9,7 @@ export type Account = {
   displayName: string;
   status: AccountStatus;
   role: AccessRole;
-  designation: MinistryDesignation;
+  leadershipMinistry: LeadershipMinistry;
   revision: number;
 };
 export type Person = {
@@ -40,7 +40,7 @@ export type VisitRecipient = {
 };
 export type Visit = {
   id: string;
-  pastorId: string;
+  plannerId: string;
   personId: string;
   scheduledAt: string;
   location: string;

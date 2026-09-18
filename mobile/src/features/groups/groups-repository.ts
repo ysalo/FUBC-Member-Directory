@@ -4,7 +4,7 @@ export type GroupMember = {
   id: string;
   name: string;
   photo?: ImageSourcePropType;
-  designation?: "deacon" | "pastor";
+  leadershipMinistry?: "deacon" | "pastor";
   isOrphan?: boolean;
   isWidow?: boolean;
 };
@@ -40,7 +40,7 @@ export interface GroupsRepository {
 
 const people: GroupMember[] = [
   { id: "amelia-brooks", name: "Amelia Brooks", photo: require("../../../assets/plates/avatar-amelia.png"), isOrphan: true },
-  { id: "daniel-chen", name: "Daniel Chen", photo: require("../../../assets/plates/avatar-daniel.png"), designation: "deacon" },
+  { id: "daniel-chen", name: "Daniel Chen", photo: require("../../../assets/plates/avatar-daniel.png"), leadershipMinistry: "deacon" },
   { id: "marta-kovalenko", name: "Marta Kovalenko", photo: require("../../../assets/plates/avatar-marta.png"), isWidow: true },
   { id: "noah-williams", name: "Noah Williams", photo: require("../../../assets/plates/avatar-noah.png") },
 ];

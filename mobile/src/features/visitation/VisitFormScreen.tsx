@@ -7,7 +7,9 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
+import { NativeDateTimeField } from "@/features/forms/NativeDateTimeField";
 import { fixedPdtToIso, isoToFixedPdt } from "@/lib/dates";
+import { canCreateVisit } from "@/lib/permissions";
 
 import { visitationCopy } from "./copy";
 import { bindVisitationSession, visitationRepository } from "./repository";
@@ -26,7 +28,7 @@ type FormValues = {
   time: string;
   location: string;
   notes: string;
-  recipientAccountIds: string[];
+  participantAccountIds: string[];
 };
 
 const newSubmissionId = () => `mobile-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -34,7 +36,7 @@ const newSubmissionId = () => `mobile-${Date.now().toString(36)}-${Math.random()
 const initialValues = (personId = ""): FormValues => {
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const { date } = isoToFixedPdt(tomorrow);
-  return { personId, date, time: "18:00", location: "", notes: "", recipientAccountIds: [] };
+  return { personId, date, time: "18:00", location: "", notes: "", participantAccountIds: [] };
 };
 
 export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visitId?: string | null; initialPersonId?: string }) {
@@ -56,8 +58,8 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
     try {
       const snapshot = await visitationRepository.getSnapshot();
       const visit = visitId ? await visitationRepository.getAuthorized(visitId) : null;
-      if (snapshot.actor.designation !== "pastor" || (visit && visit.pastorId !== snapshot.actor.id)) {
-        throw new VisitRepositoryError("forbidden", "Pastor access required.");
+      if (!canCreateVisit(snapshot.actor) || (visit && visit.plannerId !== snapshot.actor.id)) {
+        throw new VisitRepositoryError("forbidden", "Pastor or deacon access required.");
       }
       if (visit && (visit.status !== "open" || visit.archivedAt)) {
         throw new VisitRepositoryError("terminal", "This visit is read-only.");
@@ -71,13 +73,13 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
           time,
           location: visit.location,
           notes: visit.notes,
-          recipientAccountIds: visit.recipients.map((recipient) => recipient.accountId),
+          participantAccountIds: visit.recipients.map((recipient) => recipient.accountId),
         });
       } else if (initialPersonId) {
         const person = snapshot.people.find((candidate) => candidate.id === initialPersonId);
         if (person) {
-          const groupDeacons = snapshot.deacons.filter((deacon) => person.responsibilityGroupId && deacon.responsibilityGroupId === person.responsibilityGroupId).slice(0, 2).map((deacon) => deacon.accountId);
-          setValues((current) => ({ ...current, personId: person.id, location: person.address, recipientAccountIds: groupDeacons }));
+          const groupDeacons = snapshot.eligibleParticipants.filter((participant) => participant.leadershipMinistry === "deacon" && person.responsibilityGroupId && participant.responsibilityGroupId === person.responsibilityGroupId).map((participant) => participant.accountId);
+          setValues((current) => ({ ...current, personId: person.id, location: person.address, participantAccountIds: groupDeacons }));
         }
       }
     } catch (error) {
@@ -101,21 +103,19 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
     if (state.status !== "ready" || editing) return;
     const person = state.snapshot.people.find((candidate) => candidate.id === personId);
     if (!person) return;
-    const groupDeacons = state.snapshot.deacons
-      .filter((deacon) => person.responsibilityGroupId && deacon.responsibilityGroupId === person.responsibilityGroupId)
-      .slice(0, 2)
-      .map((deacon) => deacon.accountId);
-    setValues((current) => ({ ...current, personId, location: person.address, recipientAccountIds: groupDeacons }));
+    const groupDeacons = state.snapshot.eligibleParticipants
+      .filter((participant) => participant.leadershipMinistry === "deacon" && person.responsibilityGroupId && participant.responsibilityGroupId === person.responsibilityGroupId)
+      .map((participant) => participant.accountId);
+    setValues((current) => ({ ...current, personId, location: person.address, participantAccountIds: groupDeacons }));
     setQuery("");
     setValidation(null);
   };
 
-  const toggleDeacon = (accountId: string) => {
+  const toggleParticipant = (accountId: string) => {
     if (editing) return;
     setValues((current) => {
-      const selected = current.recipientAccountIds.includes(accountId);
-      if (!selected && current.recipientAccountIds.length >= 2) return current;
-      return { ...current, recipientAccountIds: selected ? current.recipientAccountIds.filter((id) => id !== accountId) : [...current.recipientAccountIds, accountId] };
+      const selected = current.participantAccountIds.includes(accountId);
+      return { ...current, participantAccountIds: selected ? current.participantAccountIds.filter((id) => id !== accountId) : [...current.participantAccountIds, accountId] };
     });
   };
 
@@ -129,7 +129,7 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
       if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(values.time)) throw new Error(c.validationTime);
       scheduledAt = fixedPdtToIso(values.date, values.time);
       if (!values.location.trim()) throw new Error(c.validationLocation);
-      if (!editing && (values.recipientAccountIds.length < 1 || values.recipientAccountIds.length > 2)) throw new Error(c.validationRecipients);
+      if (!editing && values.participantAccountIds.length < 1) throw new Error(c.validationRecipients);
     } catch (error) {
       setValidation(error instanceof Error ? error.message : c.saveFailed);
       return;
@@ -144,7 +144,7 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
           scheduledAt,
           location: values.location,
           notes: values.notes,
-          recipientAccountIds: values.recipientAccountIds,
+          participantAccountIds: values.participantAccountIds,
           submissionId,
         });
       router.replace(`/visitation/${visit.id}` as Href);
@@ -214,56 +214,33 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
           <View style={styles.fieldRow}>
             <View style={styles.flex}>
               <Text style={styles.fieldLabel}>{c.date}</Text>
-              <TextInput
-                accessibilityLabel={c.date}
-                autoCapitalize="none"
-                editable={mutation.status !== "pending"}
-                keyboardType="numbers-and-punctuation"
-                maxLength={10}
-                onChangeText={(date) => setValues((current) => ({ ...current, date }))}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={visitColors.secondaryText}
-                style={styles.input}
-                value={values.date}
-              />
+              <NativeDateTimeField accessibilityLabel={c.date} accentColor={visitColors.accent} backgroundColor={visitColors.background} borderColor={visitColors.line} disabled={mutation.status === "pending"} mode="date" onChange={(date) => setValues((current) => ({ ...current, date }))} textColor={visitColors.text} value={values.date} />
             </View>
             <View style={styles.timeField}>
               <Text style={styles.fieldLabel}>{c.time}</Text>
-              <TextInput
-                accessibilityLabel={c.time}
-                autoCapitalize="none"
-                editable={mutation.status !== "pending"}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                onChangeText={(time) => setValues((current) => ({ ...current, time }))}
-                placeholder="HH:mm"
-                placeholderTextColor={visitColors.secondaryText}
-                style={styles.input}
-                value={values.time}
-              />
+              <NativeDateTimeField accessibilityLabel={c.time} accentColor={visitColors.accent} backgroundColor={visitColors.background} borderColor={visitColors.line} disabled={mutation.status === "pending"} mode="time" onChange={(time) => setValues((current) => ({ ...current, time }))} textColor={visitColors.text} value={values.time} />
             </View>
           </View>
         </SectionCard>
 
         {!editing ? (
-          <SectionCard detail={c.chooseDeacons} title={c.deacons}>
-            <View accessibilityRole="radiogroup" style={styles.choiceList}>
-              {state.snapshot.deacons.map((deacon) => {
-                const selected = values.recipientAccountIds.includes(deacon.accountId);
-                const unavailable = !selected && values.recipientAccountIds.length >= 2;
-                const groupMatch = Boolean(selectedPerson?.responsibilityGroupId && selectedPerson.responsibilityGroupId === deacon.responsibilityGroupId);
+          <SectionCard detail={c.chooseParticipants} title={c.participants}>
+            <View style={styles.choiceList}>
+              {state.snapshot.eligibleParticipants.map((participant) => {
+                const selected = values.participantAccountIds.includes(participant.accountId);
+                const groupMatch = Boolean(participant.leadershipMinistry === "deacon" && selectedPerson?.responsibilityGroupId && selectedPerson.responsibilityGroupId === participant.responsibilityGroupId);
                 return (
                   <Pressable
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: selected, disabled: unavailable }}
-                    disabled={unavailable}
-                    key={deacon.accountId}
-                    onPress={() => toggleDeacon(deacon.accountId)}
-                    style={({ pressed }) => [styles.choiceRow, selected && styles.choiceRowSelected, unavailable && styles.disabled, pressed && styles.pressed]}
+                    accessibilityState={{ checked: selected }}
+                    key={participant.accountId}
+                    onPress={() => toggleParticipant(participant.accountId)}
+                    style={({ pressed }) => [styles.choiceRow, selected && styles.choiceRowSelected, pressed && styles.pressed]}
                   >
                     <Ionicons accessibilityElementsHidden color={selected ? visitColors.accent : visitColors.secondaryText} name={selected ? "checkbox" : "square-outline"} size={23} />
                     <View style={styles.flex}>
-                      <Text selectable style={styles.choiceTitle}>{deacon.name}</Text>
+                      <Text selectable style={styles.choiceTitle}>{participant.name}</Text>
+                      <Text selectable style={styles.choiceDetail}>{c[participant.leadershipMinistry]}</Text>
                       {groupMatch ? <Text selectable style={styles.groupMatch}>{c.groupDeacon}</Text> : null}
                     </View>
                   </Pressable>
@@ -272,8 +249,8 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
             </View>
           </SectionCard>
         ) : (
-          <SectionCard title={c.deacons}>
-            {state.visit?.recipients.map((recipient) => <Text key={recipient.accountId} selectable style={styles.readonlyValue}>{recipient.deaconName}</Text>)}
+          <SectionCard title={c.participants}>
+            {state.visit?.recipients.map((recipient) => <Text key={recipient.accountId} selectable style={styles.readonlyValue}>{recipient.participantName} · {c[recipient.leadershipMinistry]}</Text>)}
           </SectionCard>
         )}
 

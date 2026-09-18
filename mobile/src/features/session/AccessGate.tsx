@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { errorMessage } from "@/lib/async-state";
-import { beginOAuth, completeOAuth, refreshSession } from "@/lib/session";
+import { beginOAuth, completeOAuth, refreshSession, signOut } from "@/lib/session";
 import { isBackendConfigured } from "@/lib/supabase";
 import { assertUsableOAuthRedirect } from "./auth-redirect";
 import { useSession } from "./SessionProvider";
@@ -21,13 +21,13 @@ WebBrowser.maybeCompleteAuthSession();
 const copy = {
   en: {
     checking: "Opening your directory", checkingDetail: "We’re confirming your sign-in and church access. This usually takes only a moment.", checkingSecure: "Secure sign-in", checkingApproval: "Church access", checkingDirectory: "Private directory",
-    title: "FUBC", subtitle: "Member Directory", apple: "Continue with Apple", google: "Continue with Google", retry: "Try again", checkAgain: "Check again", errorTitle: "We couldn’t confirm access", pending: "Approval pending", denied: "Access denied", revoked: "Access revoked",
+    title: "FUBC", subtitle: "Member Directory", apple: "Continue with Apple", google: "Continue with Google", retry: "Try again", signOut: "Sign out", signingOut: "Signing out…", signOutError: "Unable to sign out. Please try again.", checkAgain: "Check again", errorTitle: "We couldn’t confirm access", pending: "Approval pending", denied: "Access denied", revoked: "Access revoked",
     pendingDetail: "An administrator needs to approve your account before directory information is available.", deniedDetail: "This account was not approved. Contact a church administrator if this seems incorrect.", revokedDetail: "Access for this account has been revoked. Contact a church administrator for help.",
     secure: "Private church community · secure access",
   },
   uk: {
     checking: "Відкриваємо ваш довідник", checkingDetail: "Підтверджуємо ваш вхід і доступ до церкви. Зазвичай це займає лише мить.", checkingSecure: "Захищений вхід", checkingApproval: "Доступ до церкви", checkingDirectory: "Приватний довідник",
-    title: "FUBC", subtitle: "Довідник членів церкви", apple: "Продовжити з Apple", google: "Продовжити з Google", retry: "Спробувати ще раз", checkAgain: "Перевірити знову", errorTitle: "Не вдалося підтвердити доступ", pending: "Очікує схвалення", denied: "Доступ відхилено", revoked: "Доступ відкликано",
+    title: "FUBC", subtitle: "Довідник членів церкви", apple: "Продовжити з Apple", google: "Продовжити з Google", retry: "Спробувати ще раз", signOut: "Вийти", signingOut: "Вихід…", signOutError: "Не вдалося вийти. Спробуйте ще раз.", checkAgain: "Перевірити знову", errorTitle: "Не вдалося підтвердити доступ", pending: "Очікує схвалення", denied: "Доступ відхилено", revoked: "Доступ відкликано",
     pendingDetail: "Адміністратор має схвалити ваш обліковий запис, перш ніж довідник стане доступним.", deniedDetail: "Цей обліковий запис не схвалено. Зверніться до церковного адміністратора, якщо це помилка.", revokedDetail: "Доступ для цього облікового запису відкликано. Зверніться до церковного адміністратора.",
     secure: "Приватна церковна спільнота · захищений доступ",
   },
@@ -46,13 +46,26 @@ export function AccessGate({ children }: PropsWithChildren) {
   const { height } = useWindowDimensions();
   const [busy, setBusy] = useState<"apple" | "google" | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  async function submitSignOut() {
+    if (signingOut) return;
+    setSigningOut(true); setSignOutError(null);
+    try {
+      await signOut();
+    } catch {
+      setSignOutError(labels.signOutError);
+    } finally {
+      setSigningOut(false);
+    }
+  }
   if (!isBackendConfigured) return children;
   if (session.status === "ready" && session.account.status === "active") return children;
   if (session.status === "loading" || session.status === "unconfigured") return <State detail={labels.checkingDetail} icon="shield-checkmark-outline" loading progress={[labels.checkingSecure, labels.checkingApproval, labels.checkingDirectory]} title={labels.checking} />;
-  if (session.status === "error") return <State action={() => void refreshSession()} actionLabel={labels.retry} detail={session.error} icon="cloud-offline-outline" title={labels.errorTitle} />;
+  if (session.status === "error") return <State action={() => void refreshSession()} actionLabel={labels.retry} secondaryAction={() => void submitSignOut()} secondaryActionBusy={signingOut} secondaryActionError={signOutError} secondaryActionLabel={signingOut ? labels.signingOut : labels.signOut} detail={session.error} icon="cloud-offline-outline" title={labels.errorTitle} />;
   if (session.status === "ready") {
     const status = session.account.status;
-    if (status === "pending") return <State action={() => void refreshSession()} actionLabel={labels.checkAgain} detail={labels.pendingDetail} icon="lock-closed-outline" title={labels.pending} />;
+    if (status === "pending") return <State action={() => void refreshSession()} actionLabel={labels.checkAgain} secondaryAction={() => void submitSignOut()} secondaryActionBusy={signingOut} secondaryActionError={signOutError} secondaryActionLabel={signingOut ? labels.signingOut : labels.signOut} detail={labels.pendingDetail} icon="lock-closed-outline" title={labels.pending} />;
     if (status === "denied") return <State detail={labels.deniedDetail} icon="lock-closed-outline" title={labels.denied} />;
     return <State detail={labels.revokedDetail} icon="lock-closed-outline" title={labels.revoked} />;
   }
@@ -101,7 +114,7 @@ function ProviderButton({ busy, icon, label, onPress }: { busy: boolean; icon: "
     </Pressable>
   );
 }
-function State({ action, actionLabel, detail, icon, loading, progress, title }: { action?: () => void; actionLabel?: string; detail?: string; icon: "shield-checkmark-outline" | "cloud-offline-outline" | "lock-closed-outline"; loading?: boolean; progress?: readonly string[]; title: string }) {
+function State({ action, actionLabel, secondaryAction, secondaryActionBusy, secondaryActionError, secondaryActionLabel, detail, icon, loading, progress, title }: { action?: () => void; actionLabel?: string; secondaryAction?: () => void; secondaryActionBusy?: boolean; secondaryActionError?: string | null; secondaryActionLabel?: string; detail?: string; icon: "shield-checkmark-outline" | "cloud-offline-outline" | "lock-closed-outline"; loading?: boolean; progress?: readonly string[]; title: string }) {
   return (
     <GateShell>
       <View style={styles.state}>
@@ -111,6 +124,8 @@ function State({ action, actionLabel, detail, icon, loading, progress, title }: 
         {detail ? <Text selectable style={[styles.stateDetail, { color: accessColors.secondaryText }]}>{detail}</Text> : null}
         {progress ? <View accessibilityLabel={progress.join(", ")} style={[styles.progress, { backgroundColor: accessColors.surface, borderColor: accessColors.line }]}>{progress.map((label, index) => <View key={label} style={styles.progressItem}><View style={[styles.progressDot, { backgroundColor: index === 0 ? accessColors.accent : accessColors.line }]} />{index < progress.length - 1 ? <View style={[styles.progressLine, { backgroundColor: accessColors.line }]} /> : null}<Text style={[styles.progressLabel, { color: index === 0 ? accessColors.text : accessColors.secondaryText }]}>{label}</Text></View>)}</View> : null}
         {action ? <Pressable accessibilityRole="button" onPress={action} style={({ pressed }) => [styles.retry, { backgroundColor: accessColors.accent }, pressed && styles.pressed]}><Text selectable style={styles.retryText}>{actionLabel}</Text></Pressable> : null}
+        {secondaryAction ? <Pressable accessibilityRole="button" accessibilityState={{ busy: secondaryActionBusy, disabled: secondaryActionBusy }} disabled={secondaryActionBusy} onPress={secondaryAction} style={({ pressed }) => [styles.secondaryAction, pressed && styles.pressed]}>{secondaryActionBusy ? <ActivityIndicator color={accessColors.secondaryText} size="small" /> : null}<Text selectable style={[styles.secondaryActionText, { color: accessColors.secondaryText }]}>{secondaryActionLabel}</Text></Pressable> : null}
+        {secondaryActionError ? <Text accessibilityLiveRegion="polite" selectable style={[styles.stateActionError, { color: accessColors.text }]}>{secondaryActionError}</Text> : null}
       </View>
     </GateShell>
   );
@@ -128,5 +143,5 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.72, transform: [{ scale: 0.985 }] }, error: { borderCurve: "continuous", borderRadius: 12, fontSize: 14, lineHeight: 20, marginTop: 14, padding: 12, textAlign: "center" }, secure: { fontSize: 12, letterSpacing: 0.2, marginTop: 22, textAlign: "center" },
   state: { alignItems: "center", alignSelf: "center", justifyContent: "center", maxWidth: 430, width: "100%" }, stateMark: { fontSize: 13, fontWeight: "800", letterSpacing: 2.8, marginBottom: 20 }, stateIcon: { alignItems: "center", borderRadius: 28, height: 56, justifyContent: "center", width: 56 }, stateTitle: { fontFamily: "Georgia", fontSize: 30, fontWeight: "400", lineHeight: 36, marginTop: 18, textAlign: "center" }, stateDetail: { fontSize: 16, lineHeight: 23, marginTop: 10, maxWidth: 350, textAlign: "center" },
   progress: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, marginTop: 24, paddingHorizontal: 18, paddingVertical: 14, width: "100%" }, progressItem: { alignItems: "center", flexDirection: "row", minHeight: 34, position: "relative" }, progressDot: { borderRadius: 5, height: 10, marginRight: 14, width: 10 }, progressLine: { bottom: -12, height: 24, left: 4.5, position: "absolute", width: StyleSheet.hairlineWidth }, progressLabel: { fontSize: 15, fontWeight: "600" },
-  retry: { borderCurve: "continuous", borderRadius: 14, justifyContent: "center", marginTop: 24, minHeight: 50, paddingHorizontal: 22, paddingVertical: 14 }, retryText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  retry: { borderCurve: "continuous", borderRadius: 14, justifyContent: "center", marginTop: 24, minHeight: 50, paddingHorizontal: 22, paddingVertical: 14 }, retryText: { color: "#FFF", fontSize: 16, fontWeight: "700" }, secondaryAction: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center", minHeight: 44, marginTop: 8, paddingHorizontal: 16 }, secondaryActionText: { fontSize: 15, fontWeight: "700" }, stateActionError: { fontSize: 13, lineHeight: 18, marginTop: 4, textAlign: "center" },
 });

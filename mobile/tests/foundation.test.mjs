@@ -4,18 +4,25 @@ import { canReadDirectory, canManageAccounts, canManageDirectory, canCreateVisit
 import { fixedPdtToIso, isoToFixedPdt, parseDateOnly, daysUntilBirthday } from '../src/lib/dates.ts';
 import { createSecureSessionStorage } from '../src/lib/secure-session-storage.ts';
 import { assertUsableOAuthRedirect, isNumericIpRedirect } from '../src/features/session/auth-redirect.ts';
+import { formatPhoneNumber, phoneDigits } from '../src/lib/phone.ts';
 import { readFile } from 'node:fs/promises';
 
-const actor = (role = 'member', designation = 'none', status = 'active') => ({ id: 'viewer', role, designation, status });
-const visit = { pastorId: 'pastor', status: 'open', archivedAt: null, recipients: [{ accountId: 'deacon' }] };
-test('approval gates every role/designation including privileged roles', () => {
-  for (const status of ['pending', 'denied', 'revoked']) for (const role of ['member', 'editor', 'admin']) for (const designation of ['none', 'pastor', 'deacon']) {
-    const user = actor(role, designation, status);
+const actor = (role = 'member', leadershipMinistry = null, status = 'active') => ({ id: 'viewer', role, leadershipMinistry, status });
+const visit = { plannerId: 'pastor', status: 'open', archivedAt: null, recipients: [{ accountId: 'deacon' }, { accountId: 'pastor-participant' }] };
+test('phone numbers use a numeric ten-digit value and consistent US formatting', () => {
+  assert.equal(formatPhoneNumber('2533942429'), '(253) 394-2429');
+  assert.equal(formatPhoneNumber('+1 (253) 394-2429'), '(253) 394-2429');
+  assert.equal(formatPhoneNumber('25339'), '(253) 39');
+  assert.equal(phoneDigits('(253) 394-2429'), '2533942429');
+});
+test('approval gates every role and leadership ministry including privileged roles', () => {
+  for (const status of ['pending', 'denied', 'revoked']) for (const role of ['member', 'editor', 'admin']) for (const leadershipMinistry of [null, 'pastor', 'deacon']) {
+    const user = actor(role, leadershipMinistry, status);
     assert.equal(canReadDirectory(user), false);
     assert.equal(canManageDirectory(user), false);
     assert.equal(canManageAccounts(user), false);
     assert.equal(canCreateVisit(user), false);
-    assert.equal(canReadVisit(user, { ...visit, pastorId: user.id }), false);
+    assert.equal(canReadVisit(user, { ...visit, plannerId: user.id }), false);
     assert.equal(canReadGroupBirthdays(user, [user.id]), false);
   }
 });
@@ -30,16 +37,20 @@ test('access roles never implicitly grant private visits or birthdays', () => {
     assert.equal(canReadGroupBirthdays(user, [user.id]), false);
   }
 });
-test('participants can read; only assigned deacons can respond to open current visits', () => {
+test('pastors and deacons can plan, manage their own visits, and respond when selected', () => {
   const deacon = { ...actor('member', 'deacon'), id: 'deacon' };
+  const selectedPastor = { ...actor('member', 'pastor'), id: 'pastor-participant' };
   assert.equal(canReadVisit(deacon, visit), true);
   assert.equal(canRespondToVisit(deacon, visit), true);
+  assert.equal(canReadVisit(selectedPastor, visit), true);
+  assert.equal(canRespondToVisit(selectedPastor, visit), true);
   assert.equal(canRespondToVisit(deacon, { ...visit, status: 'completed' }), false);
   assert.equal(canRespondToVisit(deacon, { ...visit, archivedAt: '2026-01-01' }), false);
   assert.equal(canRespondToVisit(actor('admin', 'deacon'), visit), false);
   assert.equal(canReadGroupBirthdays(deacon, ['deacon']), true);
   assert.equal(canReadGroupBirthdays(deacon, ['another']), false);
   assert.equal(canCreateVisit(actor('member', 'pastor')), true);
+  assert.equal(canCreateVisit(actor('member', 'deacon')), true);
 });
 test('PDT remains minus seven hours in winter and summer and crosses midnight correctly', () => {
   for (const date of ['2026-01-15', '2026-07-15', '2026-11-01', '2026-03-08']) {
@@ -99,5 +110,27 @@ test('appearance preferences theme browser-only visitation surfaces', async () =
   assert.match(appearance, /preference === "system" && Platform\.OS === "ios" \? systemPalette/);
   assert.match(visitation, /var\(--app-\$\{token\}\)/);
   assert.doesNotMatch(gate, /useAppearance/);
-  assert.match(gate, /<StatusBar style="dark"/);
+  assert.match(gate, /<StatusBar style="light"/);
+});
+
+test('pending approval screen offers a resilient sign-out action', async () => {
+  const gate = await readFile(new URL('../src/features/session/AccessGate.tsx', import.meta.url), 'utf8');
+  assert.match(gate, /status === "pending"[^;]+secondaryAction=\{\(\) => void submitSignOut\(\)\}/);
+  assert.match(gate, /accessibilityState=\{\{ busy: secondaryActionBusy, disabled: secondaryActionBusy \}\}/);
+  assert.match(gate, /secondaryActionError/);
+});
+
+test('visitation uses a nested stack and exposes both planning entry points to ministry leaders', async () => {
+  const [layout, index, list, profile] = await Promise.all([
+    readFile(new URL('../src/app/visitation/_layout.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/app/visitation/index.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/features/visitation/VisitationListScreen.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/features/members/MemberProfileScreen.tsx', import.meta.url), 'utf8'),
+  ]);
+  assert.match(layout, /<Stack/);
+  assert.match(index, /<VisitationListScreen/);
+  assert.match(list, /canCreateVisit\(state\.snapshot\.actor\)/);
+  assert.match(list, /router\.push\("\/visitation\/new"/);
+  assert.match(profile, /canCreateVisit\(session\.account\)/);
+  assert.match(profile, /pathname: "\/visitation\/new"/);
 });

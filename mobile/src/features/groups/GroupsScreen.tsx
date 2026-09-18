@@ -32,7 +32,7 @@ export function GroupsScreen() {
   useFocusEffect(useCallback(load, []));
 
   const account = session.status === "ready" ? session.account : null;
-  const isDeacon = account?.designation === "deacon";
+  const isDeacon = account?.leadershipMinistry === "deacon";
   const { assigned, others } = useMemo(
     () => partitionGroups(groups, isDeacon ? account.id : undefined),
     [account?.id, groups, isDeacon],

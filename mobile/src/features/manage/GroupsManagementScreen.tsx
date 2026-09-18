@@ -1,7 +1,7 @@
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { type Href, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { type Href, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -22,8 +22,8 @@ export function GroupsManagementScreen() {
   const copy = labels[locale];
   const [data, setData] = useState<GroupManagementState | null>(null);
   const [failed, setFailed] = useState(false);
-  const load = () => { setFailed(false); setData(null); void withTimeout(managementRepository.loadGroupManagement()).then(setData).catch(() => setFailed(true)); };
-  useEffect(load, []);
+  const load = useCallback(() => { setFailed(false); void withTimeout(managementRepository.loadGroupManagement()).then(setData).catch(() => setFailed(true)); }, []);
+  useFocusEffect(load);
 
   if (!data) return <View style={[styles.state, { backgroundColor: palette.background }]}>{failed ? <><Ionicons color={palette.secondaryText} name="cloud-offline-outline" size={28} /><Text selectable style={[styles.stateTitle, { color: palette.text }]}>{copy.error}</Text><Pressable accessibilityRole="button" onPress={load} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>{copy.retry}</Text></Pressable></> : <><ActivityIndicator color={palette.accent} /><Text selectable style={{ color: palette.secondaryText }}>{copy.loading}</Text></>}</View>;
 

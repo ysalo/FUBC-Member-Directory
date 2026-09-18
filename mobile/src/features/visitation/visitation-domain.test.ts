@@ -56,7 +56,7 @@ const tests: Array<{ name: string; run: () => void | Promise<void> }> = [
         scheduledAt: fixedPdtToIso("2027-02-01", "19:00"),
         location: "2480 Fair Oaks Boulevard",
         notes: "Front entrance",
-        recipientAccountIds: ["deacon-marko", "deacon-leah"],
+        participantAccountIds: ["deacon-marko", "deacon-leah"],
         submissionId: "test-idempotency-key",
       };
       const created = await repository.create(draft);
@@ -66,6 +66,35 @@ const tests: Array<{ name: string; run: () => void | Promise<void> }> = [
       const updated = await repository.update(created.id, { scheduledAt: created.scheduledAt, location: "Updated location", notes: created.notes }, created.revision);
       equal(updated.revision, created.revision + 1, "Edit increments revision");
       await rejectsCode(() => repository.update(created.id, { scheduledAt: created.scheduledAt, location: "Stale", notes: "" }, created.revision), "conflict");
+    },
+  },
+  {
+    name: "deacons plan with any number of other pastors or deacons while the planner stays implicit",
+    run: async () => {
+      const repository = new InMemoryVisitationRepository({ latencyMs: 0, now: () => new Date("2026-09-16T12:00:00.000Z") });
+      await repository.setActor("deacon-marko");
+      const created = await repository.create({
+        personId: "amelia-carter",
+        scheduledAt: fixedPdtToIso("2027-03-01", "18:00"),
+        location: "3900 J Street",
+        notes: "",
+        participantAccountIds: ["pastor-olena", "pastor-mykola", "deacon-leah"],
+        submissionId: "deacon-planner-many-participants",
+      });
+      equal(created.plannerId, "deacon-marko", "Deacon planner owns the visit");
+      equal(created.recipients.length, 3, "Participant selection has no two-person cap");
+      await repository.setActor("pastor-olena");
+      const accepted = await repository.respond(created.id, { response: "accepted", reason: null }, created.revision);
+      equal(accepted.recipients.find((participant) => participant.accountId === "pastor-olena")?.response, "accepted", "Selected pastor response");
+      await repository.setActor("deacon-marko");
+      await rejectsCode(() => repository.create({
+        personId: "amelia-carter",
+        scheduledAt: fixedPdtToIso("2027-03-02", "18:00"),
+        location: "3900 J Street",
+        notes: "",
+        participantAccountIds: ["deacon-marko"],
+        submissionId: "planner-cannot-select-self",
+      }), "invalid");
     },
   },
   {

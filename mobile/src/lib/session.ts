@@ -20,11 +20,13 @@ async function resolveAccount(session: Session | null) {
   publish({ status: "loading", account: null });
   try {
     const contract = await requireSupabase().rpc("mobile_contract_version");
-    if (contract.error || contract.data !== "expo-directory-v1") throw new Error("The church connection needs an update before this app can sign in. Please contact an administrator.");
-    const { data, error } = await requireSupabase().from("profiles").select("*").eq("id", session.user.id).single();
+    if (contract.error || contract.data !== "expo-directory-v3") throw new Error("The church connection needs an update before this app can sign in. Please contact an administrator.");
+    const { data, error } = await requireSupabase().rpc("current_account", {});
     if (error) throw error;
+    const account = data[0];
+    if (!account) throw new Error("This account is no longer available.");
     if (current !== generation) return;
-    publish({ status: "ready", account: { id: data.id, personId: data.person_id, displayName: data.display_name, status: data.status, role: data.role, designation: data.designation, revision: data.revision } });
+    publish({ status: "ready", account: { id: account.id, personId: account.person_id, displayName: account.display_name, status: account.status, role: account.role, leadershipMinistry: account.leadership_ministry, revision: account.revision } });
   } catch (error) {
     if (current === generation) publish({ status: "error", account: null, error: errorMessage(error) });
   }

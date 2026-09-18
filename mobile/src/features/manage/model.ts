@@ -14,7 +14,7 @@ export type ManagedMember = {
   photo?: import("react-native").ImageSourcePropType;
 };
 
-export type ManagedMinistry = { id: string; name: string; nameUk?: string | null; archived: boolean; revision?: number };
+export type ManagedMinistry = { id: string; name: string; nameUk?: string | null; systemKey?: "pastor" | "deacon" | null; archived: boolean; revision?: number };
 
 export type ManagedGroup = {
   id: string;
@@ -27,7 +27,7 @@ export type ManagedGroup = {
 };
 
 export type ManagedDeacon = {
-  accountId: string;
+  accountId?: string | null;
   personId: string;
   name: string;
   currentGroupId: string | null;
@@ -43,7 +43,6 @@ export type ManagedAccount = {
   createdAt?: string;
   status: "pending" | "active" | "denied" | "revoked";
   role: "member" | "editor" | "admin";
-  designation?: "none" | "pastor" | "deacon";
   personId?: string | null;
   revision?: number;
 };
@@ -81,7 +80,6 @@ export type ManagementAction =
   | { type: "toggle-member-archive"; memberId: string }
   | { type: "set-account-status"; accountId: string; status: ManagedAccount["status"] }
   | { type: "set-account-role"; accountId: string; role: ManagedAccount["role"] }
-  | { type: "set-account-designation"; accountId: string; designation: NonNullable<ManagedAccount["designation"]> }
   | { type: "link-account"; accountId: string; personId: string | null }
   | { type: "unlink-account"; accountId: string };
 
@@ -106,11 +104,6 @@ export function managementReducer(state: ManagementState, action: ManagementActi
         accounts: state.accounts.map((account) => account.id === action.accountId ? { ...account, role: action.role } : account),
       };
     }
-    case "set-account-designation":
-      return {
-        ...state,
-        accounts: state.accounts.map((account) => account.id === action.accountId ? { ...account, designation: action.designation } : account),
-      };
     case "link-account":
       return {
         ...state,
@@ -119,7 +112,7 @@ export function managementReducer(state: ManagementState, action: ManagementActi
     case "unlink-account":
       return {
         ...state,
-        accounts: state.accounts.map((account) => account.id === action.accountId ? { ...account, designation: "none", personId: null, status: "pending" } : account),
+        accounts: state.accounts.map((account) => account.id === action.accountId ? { ...account, personId: null, status: "pending" } : account),
       };
     default:
       return state;

@@ -5,9 +5,6 @@ import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
 import { initialManagementState, managementReducer } from "./model";
 import type { GroupManagementState, ManagedDeacon, ManagedGroup, ManagedMember, ManagedMinistry, ManagementAction, ManagementState } from "./model";
 
-const reservedDesignationNames = new Set(["pastor", "deacon", "пастор", "диякон"]);
-export const isDesignationMinistry = (name: string) => reservedDesignationNames.has(name.trim().toLocaleLowerCase());
-
 export class SupabaseManagementRepository {
   async load(): Promise<ManagementState> {
     const actor = activeAccount();
@@ -24,14 +21,14 @@ export class SupabaseManagementRepository {
     // account approval or directory-management controls.
     const photos = await privatePhotoSources(people.map((row) => row.photo_path)).catch(() => new Map());
     return { members: people.map((row) => ({ id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), revision: row.revision, phone: row.phone, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined })),
-      accounts: accounts.map((row) => ({ id: row.id, name: row.display_name, email: row.email ?? "", status: row.status, role: row.role, designation: row.designation, personId: row.person_id, revision: row.revision, createdAt: row.created_at })),
+      accounts: accounts.map((row) => ({ id: row.id, name: row.display_name, email: row.email ?? "", status: row.status, role: row.role, personId: row.person_id, revision: row.revision, createdAt: row.created_at })),
     };
   }
   async loadAccount(accountId: string): Promise<ManagementState> {
     const actor = activeAccount();
     if (!canManageAccounts(actor)) throw new Error("Account management is unavailable for this account.");
     const client = requireSupabase();
-    const accounts = unwrap(await client.rpc("management_accounts", {})).map((row) => ({ id: row.id, name: row.display_name, email: row.email ?? "", status: row.status, role: row.role, designation: row.designation, personId: row.person_id, revision: row.revision, createdAt: row.created_at }));
+    const accounts = unwrap(await client.rpc("management_accounts", {})).map((row) => ({ id: row.id, name: row.display_name, email: row.email ?? "", status: row.status, role: row.role, personId: row.person_id, revision: row.revision, createdAt: row.created_at }));
     const account = accounts.find((candidate) => candidate.id === accountId);
     if (!account?.personId) return { accounts, members: [] };
     const [personResult, groupsResult] = await Promise.all([
@@ -79,7 +76,6 @@ export class SupabaseManagementRepository {
         p_revision: snapshot.revision,
         p_status: action.type === "unlink-account" ? "pending" : action.type === "set-account-status" ? action.status : snapshot.status,
         p_role: action.type === "set-account-role" ? action.role : snapshot.role,
-        p_designation: action.type === "unlink-account" ? "none" : action.type === "set-account-designation" ? action.designation : snapshot.designation ?? "none",
         p_person_id: action.type === "unlink-account" ? null : action.type === "link-account" ? action.personId : snapshot.personId ?? null,
       }));
     }
@@ -92,11 +88,10 @@ export class SupabaseManagementRepository {
   async listMinistries(): Promise<ManagedMinistry[]> {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
     const rows = unwrap(await requireSupabase().from("ministries").select("*").order("name"));
-    return rows.filter((row) => !isDesignationMinistry(row.name) && !isDesignationMinistry(row.name_uk ?? "")).map((row) => ({ id: row.id, name: row.name, nameUk: null, archived: Boolean(row.archived_at), revision: row.revision }));
+    return rows.map((row) => ({ id: row.id, name: row.name, nameUk: row.name_uk || null, systemKey: row.system_key, archived: Boolean(row.archived_at), revision: row.revision }));
   }
   async saveMinistry(ministry: { id?: string | null; revision?: number | null; name: string; nameUk?: string | null; archived?: boolean }) {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
-    if (isDesignationMinistry(ministry.name)) throw new Error("Pastor and Deacon are account designations, not ministries.");
     return unwrap(await requireSupabase().rpc("save_ministry", { p_id: ministry.id ?? null, p_revision: ministry.revision ?? null, p_name: ministry.name, p_name_uk: null, p_archived: ministry.archived ?? false }));
   }
   async saveMemberDetails(member: { id?: string | null; revision?: number | null; name: string; birthday?: string | null; ministryIds?: string[]; phone?: string | null; address?: string | null; isOrphan?: boolean; isWidow?: boolean }) {
@@ -114,17 +109,17 @@ export class SupabaseManagementRepository {
   async loadGroupManagement(): Promise<GroupManagementState> {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
     const client = requireSupabase();
-    const [groupsResult, peopleResult, responsibilityMembersResult, assignmentsResult, accountsResult] = await Promise.all([
+    const [groupsResult, peopleResult, responsibilityMembersResult, assignmentsResult, leadershipResult] = await Promise.all([
       client.from("deacon_groups").select("*").is("archived_at", null).order("name"),
       client.from("people").select("id,name,photo_path,membership_group_id").is("archived_at", null),
       client.from("deacon_group_members").select("*"),
       client.from("deacon_group_deacons").select("*").order("slot"),
-      client.from("ministry_accounts").select("*").eq("designation", "deacon"),
+      client.from("person_leadership_ministries").select("person_id").eq("leadership_ministry", "deacon"),
     ]);
-    const groups = unwrap(groupsResult), people = unwrap(peopleResult), responsibilityMembers = unwrap(responsibilityMembersResult), assignments = unwrap(assignmentsResult), accounts = unwrap(accountsResult);
-    const linkedIds = accounts.flatMap((account) => account.person_id ? [account.person_id] : []);
-    const linkedPeople = people.filter((person) => linkedIds.includes(person.id));
-    const photos = await privatePhotoSources(linkedPeople.map((person) => person.photo_path)).catch(() => new Map());
+    const groups = unwrap(groupsResult), people = unwrap(peopleResult), responsibilityMembers = unwrap(responsibilityMembersResult), assignments = unwrap(assignmentsResult), leadership = unwrap(leadershipResult);
+    const deaconPersonIds = new Set(leadership.map((row) => row.person_id));
+    const deaconPeople = people.filter((person) => deaconPersonIds.has(person.id));
+    const photos = await privatePhotoSources(deaconPeople.map((person) => person.photo_path)).catch(() => new Map());
     const managedGroups: ManagedGroup[] = groups.map((group) => ({
       id: group.id,
       name: group.name,
@@ -132,13 +127,14 @@ export class SupabaseManagementRepository {
       archived: Boolean(group.archived_at),
       revision: group.revision,
       memberIds: group.kind === "membership" ? people.filter((person) => person.membership_group_id === group.id).map((person) => person.id) : responsibilityMembers.filter((member) => member.group_id === group.id).map((member) => member.person_id),
-      deaconIds: assignments.filter((assignment) => assignment.group_id === group.id).sort((left, right) => left.slot - right.slot).map((assignment) => assignment.account_id),
+      deaconIds: assignments.filter((assignment) => assignment.group_id === group.id).sort((left, right) => left.slot - right.slot).map((assignment) => assignment.person_id),
     }));
-    const deacons: ManagedDeacon[] = accounts.flatMap((account) => {
-      const person = account.person_id ? linkedPeople.find((candidate) => candidate.id === account.person_id) : null;
-      if (!person) return [];
-      return [{ accountId: account.id, personId: person.id, name: person.name, currentGroupId: assignments.find((assignment) => assignment.account_id === account.id)?.group_id ?? null, photo: person.photo_path ? photos.get(person.photo_path) : undefined }];
-    });
+    const deacons: ManagedDeacon[] = deaconPeople.map((person) => ({
+      personId: person.id,
+      name: person.name,
+      currentGroupId: assignments.find((assignment) => assignment.person_id === person.id)?.group_id ?? null,
+      photo: person.photo_path ? photos.get(person.photo_path) : undefined,
+    }));
     return { groups: managedGroups, deacons: deacons.sort((left, right) => left.name.localeCompare(right.name)) };
   }
   async saveGroup(args: Database["public"]["Functions"]["save_group"]["Args"]) {
@@ -199,7 +195,7 @@ class InMemoryManagementRepository {
   async saveMemberDetails(member: { id?: string | null; revision?: number | null; name: string; birthday?: string | null; ministryIds?: string[]; phone?: string | null; address?: string | null }) { let saved = member.id ? this.state.members.find((m) => m.id === member.id) : undefined; if (saved) Object.assign(saved, { name: member.name, birthday: member.birthday ?? null, ministryIds: member.ministryIds ?? [], phone: member.phone ?? null, address: member.address ?? null, revision: (saved.revision ?? 0) + 1 }); else { saved = { id: `member-${Date.now()}`, name: member.name, group: "", archived: false, revision: 1, birthday: member.birthday ?? null, ministryIds: member.ministryIds ?? [], phone: member.phone ?? null, address: member.address ?? null, photoPath: null }; this.state.members.push(saved); } return structuredClone(saved); }
   async loadGroupManagement() { return structuredClone(this.groupManagement); }
   async listGroups() { return structuredClone(this.groupManagement.groups); }
-  async saveGroup(args: Database["public"]["Functions"]["save_group"]["Args"]) { const group = this.groupManagement.groups.find((item) => item.id === args.p_id); if (!group) throw new Error("Group not found."); const selected = args.p_deacon_ids; this.groupManagement.groups.forEach((item) => { item.deaconIds = item.id === group.id ? [...selected] : item.deaconIds.filter((id) => !selected.includes(id)); }); this.groupManagement.deacons.forEach((deacon) => { deacon.currentGroupId = selected.includes(deacon.accountId) ? group.id : deacon.currentGroupId === group.id ? null : deacon.currentGroupId; }); group.revision += 1; return structuredClone(group); }
+  async saveGroup(args: Database["public"]["Functions"]["save_group"]["Args"]) { const group = this.groupManagement.groups.find((item) => item.id === args.p_id); if (!group) throw new Error("Group not found."); const selected = args.p_deacon_ids; this.groupManagement.groups.forEach((item) => { item.deaconIds = item.id === group.id ? [...selected] : item.deaconIds.filter((id) => !selected.includes(id)); }); this.groupManagement.deacons.forEach((deacon) => { deacon.currentGroupId = selected.includes(deacon.personId) ? group.id : deacon.currentGroupId === group.id ? null : deacon.currentGroupId; }); group.revision += 1; return structuredClone(group); }
   async replacePhoto(person: { id: string; revision: number; photo_path?: string | null; photoPath?: string | null }, bytes: ArrayBuffer | null, mimeType?: "image/jpeg" | "image/png" | "image/webp") { if (bytes && (!mimeType || bytes.byteLength === 0 || bytes.byteLength > 5 * 1024 * 1024)) throw new Error("Choose a JPEG, PNG or WebP photo smaller than 5 MB."); const member = this.state.members.find((item) => item.id === person.id); if (member) member.photoPath = bytes ? `local:${Date.now()}` : null; return { person: structuredClone(member), cleanupWarning: null }; }
   async apply(state: ManagementState, action: ManagementAction) { this.state = managementReducer(state, action); return this.load(); }
 }

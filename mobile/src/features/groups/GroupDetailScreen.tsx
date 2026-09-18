@@ -31,7 +31,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
   const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
 
-  const assignedDeacon = Boolean(group && account?.designation === "deacon" && group.responsibleDeaconIds.includes(account.id));
+  const assignedDeacon = Boolean(group && account?.leadershipMinistry === "deacon" && group.responsibleDeaconIds.includes(account.id));
   const upcoming = useMemo(() => upcomingBirthdays(birthdays), [birthdays]);
   const filteredMembers = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
@@ -45,7 +45,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
     setNotificationError(null);
     void groupsRepository.getGroup(groupId).then(async (nextGroup) => {
       if (!nextGroup) { setGroup(null); return; }
-      const mayManageBirthdays = account?.designation === "deacon" && nextGroup.responsibleDeaconIds.includes(account.id);
+      const mayManageBirthdays = account?.leadershipMinistry === "deacon" && nextGroup.responsibleDeaconIds.includes(account.id);
       const [nextSummary, nextBirthdays, nextSetting] = await Promise.all([
         groupsRepository.getSummary(groupId),
         mayManageBirthdays ? groupsRepository.getAuthorizedBirthdays(groupId) : Promise.resolve([]),
@@ -61,7 +61,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
     }).catch(() => { setFailed(true); setGroup(null); });
   };
 
-  useEffect(load, [account?.designation, account?.id, groupId, locale]);
+  useEffect(load, [account?.leadershipMinistry, account?.id, groupId, locale]);
 
   async function toggleBirthdayNotifications(enabled: boolean) {
     if (!assignedDeacon || notificationBusy) return;
@@ -111,7 +111,7 @@ function formatBirthday(month: number, day: number, locale: "en" | "uk") {
 }
 
 function Section({ children, title }: { children: React.ReactNode; title: string }) { const { palette } = useAppearance(); return <View style={styles.section}><Text accessibilityRole="header" selectable style={[styles.sectionTitle, { color: palette.text }]}>{title}</Text><View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.line }]}>{children}</View></View>; }
-function PersonRow({ detail, leader = false, locale, member, onPress }: { detail?: string; leader?: boolean; locale: "en" | "uk"; member: Pick<GroupMember, "id" | "name" | "photo" | "designation" | "isOrphan" | "isWidow">; onPress: () => void }) { const { palette } = useAppearance(); return <Pressable accessibilityHint="Opens member profile" accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.person, leader && styles.leaderPerson, { borderBottomColor: palette.line }, pressed && styles.pressed]}><ProfileAvatar backgroundColor={leader ? palette.accentSoft : palette.subtle} name={member.name} source={member.photo} textColor={leader ? palette.accent : palette.text} /><View style={styles.personCopy}><Text selectable style={[styles.personName, { color: palette.text }]}>{member.name}</Text>{detail ? <Text selectable style={[styles.personDetail, { color: palette.secondaryText }]}>{detail}</Text> : null}{member.designation ? <LeadershipBadge designation={member.designation} locale={locale} /> : null}<CareStatusBadges isOrphan={member.isOrphan} isWidow={member.isWidow} /></View><Ionicons accessibilityElementsHidden color={palette.accent} name="chevron-forward" size={18} /></Pressable>; }
+function PersonRow({ detail, leader = false, locale, member, onPress }: { detail?: string; leader?: boolean; locale: "en" | "uk"; member: Pick<GroupMember, "id" | "name" | "photo" | "leadershipMinistry" | "isOrphan" | "isWidow">; onPress: () => void }) { const { palette } = useAppearance(); return <Pressable accessibilityHint="Opens member profile" accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.person, leader && styles.leaderPerson, { borderBottomColor: palette.line }, pressed && styles.pressed]}><ProfileAvatar backgroundColor={leader ? palette.accentSoft : palette.subtle} name={member.name} source={member.photo} textColor={leader ? palette.accent : palette.text} /><View style={styles.personCopy}><Text selectable style={[styles.personName, { color: palette.text }]}>{member.name}</Text>{detail ? <Text selectable style={[styles.personDetail, { color: palette.secondaryText }]}>{detail}</Text> : null}{member.leadershipMinistry ? <LeadershipBadge leadershipMinistry={member.leadershipMinistry} locale={locale} /> : null}<CareStatusBadges isOrphan={member.isOrphan} isWidow={member.isWidow} /></View><Ionicons accessibilityElementsHidden color={palette.accent} name="chevron-forward" size={18} /></Pressable>; }
 
 const styles = StyleSheet.create({
   screen: { flexGrow: 1, gap: 18, padding: 20, paddingBottom: 110 },

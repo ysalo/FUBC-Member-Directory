@@ -11,6 +11,7 @@ import { WebTabBar } from "@/features/shell/WebTabBar";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
 import { LeadershipBadge } from "@/features/members/leadership-badge";
+import { formatPhoneNumber } from "@/lib/phone";
 
 import { getDirectoryVisitCount, listDirectory } from "./directory-repository";
 import type { Member } from "./members";
@@ -28,19 +29,27 @@ function SummaryAction({ accent, label, onPress, ring = false }: { accent: strin
 
 function MemberRow({ item, locale, ministry, onPress }: { item: Member; locale: "en" | "uk"; ministry: string; onPress: () => void }) {
   const { palette } = useAppearance();
+  const showsMinistry = Boolean(ministry) && !isLeadershipMinistryLabel(ministry, item.leadershipMinistry);
   return (
     <Pressable accessibilityHint={`Opens ${item.name}’s member profile`} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.memberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }, pressed && styles.pressed]}>
       <Image accessibilityLabel={`${item.name} profile photo`} contentFit="cover" source={item.avatar} style={styles.avatar} />
       <View style={styles.memberCopy}>
         <Text numberOfLines={1} style={[styles.memberName, { color: palette.text }]}>{item.name}</Text>
-        <Text numberOfLines={1} style={[styles.memberMinistry, { color: palette.secondaryText }]}>{ministry}</Text>
-        {item.phone ? <Text numberOfLines={1} selectable style={[styles.memberPhone, { color: palette.secondaryText }]}>{item.phone}</Text> : null}
-        {item.designation !== "none" ? <LeadershipBadge designation={item.designation} locale={locale} /> : null}
+        {showsMinistry ? <Text numberOfLines={1} style={[styles.memberMinistry, { color: palette.secondaryText }]}>{ministry}</Text> : null}
+        {item.phone ? <Text numberOfLines={1} selectable style={[styles.memberPhone, { color: palette.secondaryText }]}>{formatPhoneNumber(item.phone)}</Text> : null}
+        {item.leadershipMinistry ? <LeadershipBadge leadershipMinistry={item.leadershipMinistry} locale={locale} /> : null}
         <CareStatusBadges isOrphan={item.isOrphan} isWidow={item.isWidow} />
       </View>
       <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={px(22)} />
     </Pressable>
   );
+}
+
+function isLeadershipMinistryLabel(ministry: string, leadershipMinistry: Member["leadershipMinistry"]) {
+  const normalized = ministry.trim().toLocaleLowerCase();
+  return leadershipMinistry === "deacon"
+    ? normalized === "deacon" || normalized === "диякон"
+    : leadershipMinistry === "pastor" && (normalized === "pastor" || normalized === "пастор");
 }
 
 export function DirectoryScreen() {
@@ -66,7 +75,7 @@ export function DirectoryScreen() {
     const needle = query.trim().toLocaleLowerCase();
     const surname = (name: string) => name.trim().split(/\s+/).at(-1) ?? name;
     const sorted = directoryMembers
-      .filter((member) => filters.length === 0 || filters.some((filter) => filter === "orphan" ? member.isOrphan : filter === "widow" ? member.isWidow : member.designation === filter))
+      .filter((member) => filters.length === 0 || filters.some((filter) => filter === "orphan" ? member.isOrphan : filter === "widow" ? member.isWidow : member.leadershipMinistry === filter))
       .filter((member) => !needle || `${member.name} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase().includes(needle))
       .sort((a, b) => surname(a.name).localeCompare(surname(b.name), locale) || a.name.localeCompare(b.name, locale));
     return sorted.reduce<Array<{ title: string; data: Member[] }>>((groups, member) => {

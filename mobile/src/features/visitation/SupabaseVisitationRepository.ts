@@ -1,5 +1,6 @@
 import type { VisitRow } from "@/lib/database";
 import { activeAccount, unwrap } from "@/lib/repository-helpers";
+import { canCreateVisit } from "@/lib/permissions";
 import { requireSupabase } from "@/lib/supabase";
 import { VisitRepositoryError } from "./types";
 import type { RepositorySnapshot, VisitActor, VisitDraft, VisitEdit, VisitListMode, VisitRecord, VisitResponseInput, VisitationRepository } from "./types";
@@ -27,12 +28,18 @@ export class SupabaseVisitationRepository implements VisitationRepository {
       client.from("ministry_accounts").select("*"),
       client.from("deacon_group_members").select("*"),
       client.from("deacon_group_deacons").select("*"),
-      actor.designation === "pastor" ? client.rpc("visit_person_defaults", {}) : Promise.resolve({ data: [], error: null }),
+      canCreateVisit(actor) ? client.rpc("visit_person_defaults", {}) : Promise.resolve({ data: [], error: null }),
     ]);
     const people = unwrap(peopleResult), ministries = unwrap(ministriesResult), memberGroups = unwrap(memberGroupsResult), deaconGroups = unwrap(deaconGroupsResult), defaults = unwrap(defaultsResult);
     return { actor, actors: [actor],
       people: people.map((person) => ({ id: person.id, name: person.name, phone: person.phone, address: defaults.find((item) => item.person_id === person.id)?.address ?? "", responsibilityGroupId: memberGroups.find((item) => item.person_id === person.id)?.group_id ?? null })),
-      deacons: ministries.filter((account) => account.designation === "deacon").map((account) => ({ accountId: account.id, personId: account.person_id, name: account.display_name, responsibilityGroupId: deaconGroups.find((item) => item.account_id === account.id)?.group_id ?? null })),
+      eligibleParticipants: ministries.filter((account) => account.id !== actor.id).map((account) => ({
+        accountId: account.id,
+        personId: account.person_id,
+        name: account.display_name,
+        leadershipMinistry: account.leadership_ministry,
+        responsibilityGroupId: account.leadership_ministry === "deacon" && account.person_id ? deaconGroups.find((item) => item.person_id === account.person_id)?.group_id ?? null : null,
+      })),
     };
   }
   async list(mode: VisitListMode) {
@@ -55,7 +62,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
       submissionId = uuidPattern.test(draft.submissionId) ? draft.submissionId : newUuid();
       this.submissionIds.set(draft.submissionId, submissionId);
     }
-    const result = await requireSupabase().rpc("save_visit", { p_id: null, p_revision: null, p_submission_id: submissionId, p_person_id: draft.personId, p_scheduled_at: draft.scheduledAt, p_location: draft.location, p_notes: draft.notes, p_deacon_ids: draft.recipientAccountIds });
+    const result = await requireSupabase().rpc("save_visit", { p_id: null, p_revision: null, p_submission_id: submissionId, p_person_id: draft.personId, p_scheduled_at: draft.scheduledAt, p_location: draft.location, p_notes: draft.notes, p_participant_ids: draft.participantAccountIds });
     if (result.error) this.raise(result.error.message);
     const row = unwrap(result);
     this.emit();
@@ -63,7 +70,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
   }
   async update(id: string, edit: VisitEdit, expectedRevision: number) {
     const current = await this.getAuthorized(id);
-    const result = await requireSupabase().rpc("save_visit", { p_id: id, p_revision: expectedRevision, p_submission_id: current.submissionId, p_person_id: current.personId, p_scheduled_at: edit.scheduledAt, p_location: edit.location, p_notes: edit.notes, p_deacon_ids: current.recipients.map((item) => item.accountId) });
+    const result = await requireSupabase().rpc("save_visit", { p_id: id, p_revision: expectedRevision, p_submission_id: current.submissionId, p_person_id: current.personId, p_scheduled_at: edit.scheduledAt, p_location: edit.location, p_notes: edit.notes, p_participant_ids: current.recipients.map((item) => item.accountId) });
     if (result.error) this.raise(result.error.message);
     this.emit();
     return this.getAuthorized(id);
@@ -96,15 +103,18 @@ export class SupabaseVisitationRepository implements VisitationRepository {
     const [peopleResult, accountsResult, recipientsResult] = await Promise.all([
       client.from("people").select("id,name,phone").in("id", [...new Set(rows.map((row) => row.person_id))]),
       client.from("ministry_accounts").select("*"),
-      client.from("visit_recipients").select("*").in("visit_id", rows.map((row) => row.id)),
+      client.from("visit_participants").select("*").in("visit_id", rows.map((row) => row.id)),
     ]);
     const people = unwrap(peopleResult), accounts = unwrap(accountsResult), recipients = unwrap(recipientsResult);
-    return rows.map((row) => ({ id: row.id, pastorId: row.pastor_id ?? "", personId: row.person_id, scheduledAt: row.scheduled_at, location: row.location, notes: row.notes, status: row.status, archivedAt: row.archived_at, completedAt: row.completed_at, revision: row.revision, submissionId: row.submission_id,
+    return rows.map((row) => ({ id: row.id, plannerId: row.planner_id ?? "", personId: row.person_id, scheduledAt: row.scheduled_at, location: row.location, notes: row.notes, status: row.status, archivedAt: row.archived_at, completedAt: row.completed_at, revision: row.revision, submissionId: row.submission_id,
       memberName: people.find((person) => person.id === row.person_id)?.name ?? "Unavailable member",
       memberPhone: people.find((person) => person.id === row.person_id)?.phone ?? null,
-      pastorName: accounts.find((account) => account.id === row.pastor_id)?.display_name ?? "Pastor",
+      plannerName: accounts.find((account) => account.id === row.planner_id)?.display_name ?? "Planner",
       updatedFields: row.updated_fields ?? [],
-      recipients: recipients.filter((recipient) => recipient.visit_id === row.id).map((recipient) => ({ accountId: recipient.account_id, response: recipient.response, reason: recipient.reason, deaconName: accounts.find((account) => account.id === recipient.account_id)?.display_name ?? "Deacon", deaconPersonId: accounts.find((account) => account.id === recipient.account_id)?.person_id ?? null, lastViewedRevision: recipient.last_viewed_revision ?? 0 })),
+      recipients: recipients.filter((recipient) => recipient.visit_id === row.id).map((recipient) => {
+        const account = accounts.find((candidate) => candidate.id === recipient.account_id);
+        return { accountId: recipient.account_id, response: recipient.response, reason: recipient.reason, participantName: account?.display_name ?? "Participant", participantPersonId: account?.person_id ?? null, leadershipMinistry: account?.leadership_ministry ?? "deacon", lastViewedRevision: recipient.last_viewed_revision ?? 0 };
+      }),
     }));
   }
   private emit() { this.listeners.forEach((listener) => listener()); }

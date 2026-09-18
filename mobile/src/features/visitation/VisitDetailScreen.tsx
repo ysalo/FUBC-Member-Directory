@@ -6,8 +6,10 @@ import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
+import { canManageVisit, canRespondToVisit } from "@/lib/permissions";
 import { WebTabBar } from "@/features/shell/WebTabBar";
 import { formatFixedPdt } from "@/lib/dates";
+import { formatPhoneNumber } from "@/lib/phone";
 
 import { visitationCopy } from "./copy";
 import { calendarSnapshotExporter } from "./calendar";
@@ -113,15 +115,15 @@ export function VisitDetailScreen({ id }: { id: string }) {
     const { snapshot, visit } = state;
     const recipient = visit.recipients.find((candidate) => candidate.accountId === snapshot.actor.id);
     const unseen = Boolean(recipient && visit.revision > 1 && recipient.lastViewedRevision < visit.revision);
-    const pastorOwnsVisit = snapshot.actor.id === visit.pastorId && snapshot.actor.designation === "pastor";
-    const canRespond = Boolean(recipient && visit.status === "open" && !visit.archivedAt);
+    const plannerOwnsVisit = canManageVisit(snapshot.actor, visit);
+    const canRespond = canRespondToVisit(snapshot.actor, visit);
     const terminal = visit.status !== "open";
     const status = visit.archivedAt ? "archived" : visit.status;
 
     return (
       <>
         <View style={styles.headingBlock}>
-          <Text selectable style={styles.eyebrow}>{c.plannedBy}: {visit.pastorName}</Text>
+          <Text selectable style={styles.eyebrow}>{c.plannedBy}: {visit.plannerName}</Text>
           <Text accessibilityRole="header" selectable style={styles.title}>{visit.memberName}</Text>
           <StatusPill label={c[status]} tone={status === "completed" ? "success" : status === "cancelled" ? "danger" : status === "open" ? "accent" : "neutral"} />
         </View>
@@ -143,7 +145,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
               <Text selectable style={styles.linkText}>{visit.location}</Text>
             </Pressable>
           </DataRow>
-          <DataRow icon="call-outline" label={c.phone} last>{visit.memberPhone ?? "—"}</DataRow>
+          <DataRow icon="call-outline" label={c.phone} last>{visit.memberPhone ? formatPhoneNumber(visit.memberPhone) : "—"}</DataRow>
         </View>
 
         <SectionCard title={c.notes}>
@@ -163,12 +165,13 @@ export function VisitDetailScreen({ id }: { id: string }) {
           </SectionCard>
         ) : null}
 
-        <SectionCard title={c.deacons}>
+        <SectionCard title={c.participants}>
           <View style={styles.recipientList}>
             {visit.recipients.map((candidate) => (
               <View key={candidate.accountId} style={styles.recipientRow}>
                 <View style={styles.flex}>
-                  <Text selectable style={styles.recipientName}>{candidate.deaconName}</Text>
+                  <Text selectable style={styles.recipientName}>{candidate.participantName}</Text>
+                  <Text selectable style={styles.reasonText}>{c[candidate.leadershipMinistry]}</Text>
                   {candidate.reason ? <Text selectable style={styles.reasonText}>{candidate.reason}</Text> : null}
                 </View>
                 <StatusPill
@@ -219,7 +222,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
           </SectionCard>
         ) : null}
 
-        {pastorOwnsVisit && !visit.archivedAt ? (
+        {plannerOwnsVisit && !visit.archivedAt ? (
           <SectionCard title={c.manage}>
             {!terminal ? (
               <>

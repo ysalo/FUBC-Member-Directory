@@ -17,12 +17,17 @@ test("the final active administrator cannot be demoted", () => {
   assert.equal(next.accounts.find((account) => account.id === "a-2")?.role, "admin");
 });
 
-test("unlinking returns an account to approval and clears its designation", () => {
-  const state = { members: [], accounts: [{ id: "a", name: "Leader", email: "leader@example.com", status: "active", role: "member", designation: "deacon", personId: "p" }] };
+test("unlinking returns an account to approval without changing member ministries", () => {
+  const state = { members: [], accounts: [{ id: "a", name: "Leader", email: "leader@example.com", status: "active", role: "member", personId: "p" }] };
   const next = source.managementReducer(state, { type: "unlink-account", accountId: "a" });
   assert.equal(next.accounts[0].status, "pending");
-  assert.equal(next.accounts[0].designation, "none");
+  assert.equal("designation" in next.accounts[0], false);
   assert.equal(next.accounts[0].personId, null);
+});
+
+test("account settings no longer expose Pastor or Deacon designation controls", async () => {
+  const screen = await readFile(new URL("../src/features/manage/AccountDetailScreen.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(screen, /set-account-designation|Ministry designation|Позначка служіння/);
 });
 
 test("managed account option grids provide stable React keys", async () => {
@@ -119,6 +124,13 @@ test("directory creation stays management-only and personal deletion stays colla
   assert.doesNotMatch(directory, /directory\.addMember|\/manage/);
   assert.match(menu, /advancedOpen \?/);
   assert.match(menu, /accessibilityState=\{\{ expanded: advancedOpen \}\}/);
+});
+
+test("directory rows use the leadership badge without duplicating its ministry label", async () => {
+  const directory = await readFile(new URL("../src/features/directory/DirectoryScreen.tsx", import.meta.url), "utf8");
+  assert.match(directory, /isLeadershipMinistryLabel/);
+  assert.match(directory, /showsMinistry \? <Text/);
+  assert.match(directory, /normalized === "deacon" \|\| normalized === "диякон"/);
 });
 
 test("menu identifies the linked member and treats sign out as destructive", async () => {

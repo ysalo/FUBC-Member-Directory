@@ -8,6 +8,7 @@ import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
 import { formatFixedPdt } from "@/lib/dates";
+import { canCreateVisit } from "@/lib/permissions";
 
 import { visitationCopy } from "./copy";
 import { bindVisitationSession, visitationDemoMode, visitationRepository } from "./repository";
@@ -71,7 +72,7 @@ export function VisitationListScreen() {
                     onPress={() => void selectActor(actor.id)}
                     style={({ pressed }) => [styles.actorButton, active && styles.actorButtonActive, pressed && styles.pressed]}
                   >
-                    <Ionicons accessibilityElementsHidden color={active ? visitColors.accent : visitColors.secondaryText} name={actor.designation === "pastor" ? "book-outline" : "people-outline"} size={19} />
+                    <Ionicons accessibilityElementsHidden color={active ? visitColors.accent : visitColors.secondaryText} name={actor.leadershipMinistry === "pastor" ? "book-outline" : "people-outline"} size={19} />
                     <Text numberOfLines={2} style={[styles.actorLabel, active && styles.actorLabelActive]}>{actor.displayName}</Text>
                   </Pressable>
                 );
@@ -94,7 +95,7 @@ export function VisitationListScreen() {
           ))}
         </View>
 
-        {state.snapshot.actor.designation === "pastor" && mode === "current" ? (
+        {canCreateVisit(state.snapshot.actor) && mode === "current" ? (
           <ActionButton icon="add" label={c.planVisit} onPress={() => router.push("/visitation/new" as Href)} />
         ) : null}
 
@@ -105,9 +106,13 @@ export function VisitationListScreen() {
             title={mode === "current" ? c.emptyCurrent : c.emptyArchive}
           />
         ) : (
-          <View style={styles.list}>
-            <Text accessibilityRole="header" style={styles.listHeading}>{state.snapshot.actor.designation === "pastor" ? c.myVisits : c.invitations}</Text>
-            {state.visits.map((visit) => {
+          <View style={styles.listGroups}>
+            {[
+              { title: c.myVisits, visits: state.visits.filter((visit) => visit.plannerId === state.snapshot.actor.id) },
+              { title: c.invitations, visits: state.visits.filter((visit) => visit.recipients.some((recipient) => recipient.accountId === state.snapshot.actor.id)) },
+            ].filter((section) => section.visits.length > 0).map((section) => <View key={section.title} style={styles.list}>
+            <Text accessibilityRole="header" style={styles.listHeading}>{section.title}</Text>
+            {section.visits.map((visit) => {
               const ownRecipient = visit.recipients.find((recipient) => recipient.accountId === state.snapshot.actor.id);
               const status = visit.archivedAt ? "archived" : visit.status;
               const tone = status === "completed" ? "success" : status === "cancelled" ? "danger" : status === "archived" ? "neutral" : "accent";
@@ -136,6 +141,7 @@ export function VisitationListScreen() {
                 </Pressable>
               );
             })}
+          </View>)}
           </View>
         )}
         <Text selectable style={styles.privacyNote}>{c.notificationNote}</Text>
@@ -180,6 +186,7 @@ const styles = StyleSheet.create({
   segmentLabel: { color: visitColors.secondaryText, fontSize: 15, fontWeight: "600" },
   segmentLabelActive: { color: visitColors.text },
   list: { gap: 10 },
+  listGroups: { gap: 20 },
   listHeading: { color: visitColors.text, fontSize: 19, fontWeight: "700", paddingHorizontal: 2, paddingTop: 3 },
   visitCard: { backgroundColor: visitColors.surface, borderColor: visitColors.line, borderCurve: "continuous", borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, gap: 9, padding: 16, paddingRight: 43 },
   visitTopline: { flexDirection: "row", flexWrap: "wrap", gap: 7 },

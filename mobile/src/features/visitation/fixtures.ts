@@ -1,9 +1,10 @@
-import type { VisitActor, VisitDeacon, VisitPerson, VisitRecord } from "./types";
+import type { VisitActor, VisitParticipant, VisitPerson, VisitRecord } from "./types";
 
 export const visitationActors: VisitActor[] = [
-  { id: "pastor-olena", displayName: "Olena Kovalenko", designation: "pastor", role: "member", status: "active", revision: 1 },
-  { id: "deacon-marko", displayName: "Marko Melnyk", designation: "deacon", role: "member", status: "active", revision: 1 },
-  { id: "deacon-leah", displayName: "Leah Thompson", designation: "deacon", role: "editor", status: "active", revision: 1 },
+  { id: "pastor-olena", displayName: "Olena Kovalenko", leadershipMinistry: "pastor", role: "member", status: "active", revision: 1 },
+  { id: "pastor-mykola", displayName: "Mykola Petrenko", leadershipMinistry: "pastor", role: "member", status: "active", revision: 1 },
+  { id: "deacon-marko", displayName: "Marko Melnyk", leadershipMinistry: "deacon", role: "member", status: "active", revision: 1 },
+  { id: "deacon-leah", displayName: "Leah Thompson", leadershipMinistry: "deacon", role: "editor", status: "active", revision: 1 },
 ];
 
 export const visitationPeople: VisitPerson[] = [
@@ -30,17 +31,19 @@ export const visitationPeople: VisitPerson[] = [
   },
 ];
 
-export const visitationDeacons: VisitDeacon[] = [
-  { accountId: "deacon-marko", personId: "marko-melnyk", name: "Marko Melnyk", responsibilityGroupId: "responsibility-east" },
-  { accountId: "deacon-leah", personId: "leah-thompson", name: "Leah Thompson", responsibilityGroupId: "responsibility-central" },
+export const visitationParticipants: VisitParticipant[] = [
+  { accountId: "pastor-olena", personId: "olena-kovalenko", name: "Olena Kovalenko", leadershipMinistry: "pastor", responsibilityGroupId: null },
+  { accountId: "pastor-mykola", personId: "mykola-petrenko", name: "Mykola Petrenko", leadershipMinistry: "pastor", responsibilityGroupId: null },
+  { accountId: "deacon-marko", personId: "marko-melnyk", name: "Marko Melnyk", leadershipMinistry: "deacon", responsibilityGroupId: "responsibility-east" },
+  { accountId: "deacon-leah", personId: "leah-thompson", name: "Leah Thompson", leadershipMinistry: "deacon", responsibilityGroupId: "responsibility-central" },
 ];
 
 export const visitationVisits: VisitRecord[] = [
   {
     id: "visit-marta",
-    pastorId: "pastor-olena",
+    plannerId: "pastor-olena",
     personId: "marta-kovalenko",
-    pastorName: "Olena Kovalenko",
+    plannerName: "Olena Kovalenko",
     memberName: "Marta Kovalenko",
     memberPhone: "+1 (916) 555-0138",
     scheduledAt: "2027-01-16T01:30:00.000Z",
@@ -55,16 +58,18 @@ export const visitationVisits: VisitRecord[] = [
     recipients: [
       {
         accountId: "deacon-marko",
-        deaconName: "Marko Melnyk",
-        deaconPersonId: "marko-melnyk",
+        participantName: "Marko Melnyk",
+        participantPersonId: "marko-melnyk",
+        leadershipMinistry: "deacon",
         response: "pending",
         reason: null,
         lastViewedRevision: 1,
       },
       {
         accountId: "deacon-leah",
-        deaconName: "Leah Thompson",
-        deaconPersonId: "leah-thompson",
+        participantName: "Leah Thompson",
+        participantPersonId: "leah-thompson",
+        leadershipMinistry: "deacon",
         response: "accepted",
         reason: null,
         lastViewedRevision: 2,
@@ -73,9 +78,9 @@ export const visitationVisits: VisitRecord[] = [
   },
   {
     id: "visit-daniel",
-    pastorId: "pastor-olena",
+    plannerId: "pastor-olena",
     personId: "daniel-brooks",
-    pastorName: "Olena Kovalenko",
+    plannerName: "Olena Kovalenko",
     memberName: "Daniel Brooks",
     memberPhone: "+1 (916) 555-0182",
     scheduledAt: "2026-09-13T22:00:00.000Z",
@@ -90,8 +95,9 @@ export const visitationVisits: VisitRecord[] = [
     recipients: [
       {
         accountId: "deacon-marko",
-        deaconName: "Marko Melnyk",
-        deaconPersonId: "marko-melnyk",
+        participantName: "Marko Melnyk",
+        participantPersonId: "marko-melnyk",
+        leadershipMinistry: "deacon",
         response: "accepted",
         reason: null,
         lastViewedRevision: 3,
@@ -100,9 +106,9 @@ export const visitationVisits: VisitRecord[] = [
   },
   {
     id: "visit-amelia",
-    pastorId: "pastor-olena",
+    plannerId: "pastor-olena",
     personId: "amelia-carter",
-    pastorName: "Olena Kovalenko",
+    plannerName: "Olena Kovalenko",
     memberName: "Amelia Carter",
     memberPhone: null,
     scheduledAt: "2026-09-08T17:00:00.000Z",
@@ -117,8 +123,9 @@ export const visitationVisits: VisitRecord[] = [
     recipients: [
       {
         accountId: "deacon-marko",
-        deaconName: "Marko Melnyk",
-        deaconPersonId: "marko-melnyk",
+        participantName: "Marko Melnyk",
+        participantPersonId: "marko-melnyk",
+        leadershipMinistry: "deacon",
         response: "declined",
         reason: "Already committed to another visit.",
         lastViewedRevision: 2,
