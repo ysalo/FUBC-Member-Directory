@@ -33,6 +33,7 @@ export type Database = {
     Functions: {
       mobile_contract_version: { Args: Record<string, never>; Returns: string };
       save_person: { Args: { p_id: string | null; p_revision: number | null; p_data: Json }; Returns: PersonRow };
+      delete_member_record: { Args: { p_person_id: string; p_deleted_account_id?: string | null }; Returns: { deleted_person_id: string; deleted_visit_count: number }[] };
       save_group: { Args: { p_id: string | null; p_revision: number | null; p_name: string; p_kind: string; p_archived: boolean; p_deacon_ids: string[]; p_member_ids: string[] }; Returns: GroupRow };
       delete_group: { Args: { p_id: string; p_revision: number }; Returns: undefined };
       update_account: { Args: { p_id: string; p_revision: number; p_status: AccountStatus; p_role: AccessRole; p_person_id: string | null }; Returns: ProfileRow };

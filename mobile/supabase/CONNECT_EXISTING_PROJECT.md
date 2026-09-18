@@ -10,6 +10,8 @@ The deployed contract reports `expo-directory-v3`. The leadership-ministry migra
 
 The dashboard execution does not create or reconcile Supabase CLI migration history. Do **not** run `supabase db push` against this project until the linked migration history has been inspected and reconciled. The retired migration chain used the timestamp `20260916010000` for different SQL than the mobile contract file with that timestamp.
 
+`20260918170000_delete_members.sql` and the `delete-member` Edge Function are additive release artifacts for the administrator member-deletion feature. Apply the SQL through the authenticated SQL Editor, then deploy the Edge Function, before merging the client route that invokes it.
+
 ## Safe next steps
 
 From `D:\church_directory\work\expo-app\mobile`, authenticate with the intended Supabase account using the CLI's browser flow. Do not paste secrets into tracked files or command arguments:
