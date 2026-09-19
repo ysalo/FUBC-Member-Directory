@@ -37,18 +37,30 @@ export function WebAppShell({ children }: PropsWithChildren) {
   }, []);
   useEffect(() => { document.documentElement.lang = locale; }, [locale]);
   useEffect(() => () => dismissAllWebAlerts(), [pathname, accountId]);
+  const account = session.status === "ready" ? session.account : null;
+  const accountInitials = account?.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "FU";
+  const accountRole = account ? (locale === "uk" ? ({ admin: "Адміністратор", editor: "Редактор", member: "Учасник" } as const)[account.role] : ({ admin: "Administrator", editor: "Editor", member: "Member" } as const)[account.role]) : "";
 
   return <div className="web-app-shell" style={{ fontSize: `${16 * scale}px` }}>
     <a className="web-skip-link" href="#app-content">{locale === "uk" ? "До вмісту" : "Skip to content"}</a>
     <nav className="web-navigation" aria-label={locale === "uk" ? "Головна навігація" : "Main navigation"}>
-      <div className="web-navigation-brand"><span className="web-navigation-logo" role="img" aria-label="FUBC" /><span>{locale === "uk" ? "Довідник членів церкви" : "Member Directory"}</span></div>
+      <div className="web-navigation-brand">
+        <span className="web-navigation-logo" role="img" aria-label="FUBC" />
+        <span className="web-navigation-brand-label">{locale === "uk" ? "Довідник членів церкви" : "Member Directory"}</span>
+      </div>
       <div className="web-navigation-links">{destinations.filter((item) => item.key !== "manage" || (session.status === "ready" && canManageDirectory(session.account))).map((item) => {
         const active = item.href === "/" ? pathname === "/" || pathname.startsWith("/members/") : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const label = copy.tabs[item.key];
         return <Link key={item.key} href={item.href} asChild><NavigationAnchor className="web-navigation-link" aria-current={active ? "page" : undefined}>
           <span aria-hidden="true"><Ionicons name={item.icon} size={24} color="currentColor" /></span>
-          <span>{copy.tabs[item.key]}</span>
+          <span className="web-navigation-link-label">{label}</span>
         </NavigationAnchor></Link>;
       })}</div>
+      {account ? <Link href="/menu" asChild><NavigationAnchor className="web-navigation-account">
+        <span className="web-navigation-avatar" aria-hidden="true">{accountInitials}</span>
+        <span className="web-navigation-account-copy"><strong>{account.displayName}</strong><small>{accountRole}</small></span>
+        <Ionicons className="web-navigation-account-arrow" aria-hidden name="chevron-forward" size={18} />
+      </NavigationAnchor></Link> : null}
     </nav>
     <main id="app-content" className="web-app-content" tabIndex={-1}>
       {!online && <div className="web-network-status" role="status">{locale === "uk" ? "Немає з’єднання. Підключіться до інтернету та повторіть дію." : "You’re offline. Reconnect to the internet, then try your action again."}</div>}
