@@ -4,6 +4,14 @@ import { shareBrowserContact } from "../src/features/platform/browser-share.ts";
 import { acceptsDateFieldValue, localDateValue } from "../src/features/forms/date-field.ts";
 import { birthdayNotificationsSupported, disableBirthdayNotifications, syncBirthdayNotifications } from "../src/features/groups/birthday-notifications.web.ts";
 import { Alert, dismissAllWebAlerts } from "../src/features/platform/alert.web.ts";
+import { detectInstallPlatform } from "../src/features/shell/install-platform.ts";
+
+test("install help detects iPhone, iPad desktop mode, Android, and desktop browsers", () => {
+  assert.equal(detectInstallPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"), "ios");
+  assert.equal(detectInstallPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X)", "MacIntel", 5), "ios");
+  assert.equal(detectInstallPlatform("Mozilla/5.0 (Linux; Android 15; Pixel 9)"), "android");
+  assert.equal(detectInstallPlatform("Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Win32", 0), "desktop");
+});
 
 test("browser share sends only the requested contact and does not copy after cancellation", async () => {
   let copied = false;
