@@ -1,3 +1,4 @@
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Button, Host } from "@expo/ui";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
@@ -42,6 +43,7 @@ const words = {
 type LoadState = "loading" | "ready" | "missing" | "denied" | "error";
 
 export function MemberDeletionScreen() {
+  const desktop = useDesktopLayout();
   const { memberId } = useLocalSearchParams<{ memberId?: string }>();
   const router = useRouter();
   const { locale } = useLocalization();
@@ -102,11 +104,11 @@ export function MemberDeletionScreen() {
       {loadState === "loading" ? <ActivityIndicator color={palette.accent} /> : <Ionicons accessibilityElementsHidden color={palette.danger} name="alert-circle-outline" size={32} />}
       <Text accessibilityLiveRegion="polite" selectable style={[styles.stateText, { color: palette.text }]}>{message}</Text>
       {loadState === "error" ? <Pressable accessibilityRole="button" onPress={() => setReload((value) => value + 1)} style={styles.stateAction}><Text style={{ color: palette.accent, fontWeight: "700" }}>{copy.retry}</Text></Pressable> : null}
-      {loadState !== "loading" ? <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.stateAction}><Text style={{ color: palette.secondaryText, fontWeight: "600" }}>{copy.cancel}</Text></Pressable> : null}
+      {loadState !== "loading" ? <Pressable accessibilityRole="button" onPress={() => (router.canGoBack() ? router.back() : router.replace("/manage"))} style={styles.stateAction}><Text style={{ color: palette.secondaryText, fontWeight: "600" }}>{copy.cancel}</Text></Pressable> : null}
     </View>;
   }
 
-  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
+  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.content, desktop && styles.desktopContent]} keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
     <View style={[styles.heroIcon, { backgroundColor: palette.dangerSoft }]}><Ionicons accessibilityElementsHidden color={palette.danger} name="trash-outline" size={30} /></View>
     <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
     <Text selectable style={[styles.detail, { color: palette.secondaryText }]}>{copy.detail}</Text>
@@ -134,7 +136,7 @@ export function MemberDeletionScreen() {
     <Host style={styles.buttonHost}>
       <Button disabled={busy || !valid} label={busy ? copy.deleting : copy.delete} onPress={() => void submit()} style={{ backgroundColor: palette.danger, borderRadius: 13, height: 54, opacity: busy || !valid ? 0.5 : 1, width: "100%" }} />
     </Host>
-    <Pressable accessibilityRole="button" disabled={busy} onPress={() => router.back()} style={styles.cancel}><Text style={[styles.cancelText, { color: palette.secondaryText }]}>{copy.cancel}</Text></Pressable>
+    <Pressable accessibilityRole="button" disabled={busy} onPress={() => (router.canGoBack() ? router.back() : router.replace("/manage"))} style={styles.cancel}><Text style={[styles.cancelText, { color: palette.secondaryText }]}>{copy.cancel}</Text></Pressable>
   </ScrollView>;
 
   function Consequence({ detail, icon, title }: { detail: string; icon: "calendar-clear-outline" | "image-outline" | "key-outline"; title?: string }) {
@@ -142,7 +144,7 @@ export function MemberDeletionScreen() {
   }
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create({ desktopContent: { alignSelf: "center", width: "100%", maxWidth: 720, padding: 32 },
   content: { gap: 14, paddingBottom: 48, paddingHorizontal: 22, paddingTop: 26 }, center: { alignItems: "center", flex: 1, gap: 16, justifyContent: "center", padding: 28 },
   heroIcon: { alignItems: "center", borderCurve: "continuous", borderRadius: 30, height: 60, justifyContent: "center", width: 60 }, title: { fontSize: 32, fontWeight: "800", letterSpacing: -0.8, lineHeight: 38 }, detail: { fontSize: 16, lineHeight: 23 },
   identity: { alignItems: "center", borderCurve: "continuous", borderRadius: 16, flexDirection: "row", gap: 13, padding: 14 }, flex: { flex: 1, minWidth: 0 }, memberName: { fontSize: 19, fontWeight: "800", lineHeight: 24 }, secondary: { fontSize: 14, lineHeight: 19, paddingTop: 3 },

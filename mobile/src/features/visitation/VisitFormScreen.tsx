@@ -1,3 +1,4 @@
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { type Href, useRouter } from "expo-router";
@@ -45,6 +46,7 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
   const account = session.status === "ready" ? session.account : null;
   const c = visitationCopy(locale);
   const router = useRouter();
+  const desktop = useDesktopLayout();
   const editing = Boolean(visitId);
   const [state, setState] = useState<FormLoadState>({ status: "loading" });
   const [values, setValues] = useState<FormValues>(() => initialValues(initialPersonId));
@@ -161,11 +163,8 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
     if (state.status === "error") return <ScreenState actionLabel={c.back} detail={state.message} icon="lock-closed-outline" onAction={() => router.replace("/visitation" as Href)} title={c.notFound} />;
 
     const selectedPerson = state.snapshot.people.find((person) => person.id === values.personId);
-    return (
-      <>
-        <Text accessibilityRole="header" selectable style={styles.title}>{editing ? c.editVisit : c.planVisit}</Text>
-
-        <SectionCard title={c.person}>
+    const personField = (
+<SectionCard title={c.person}>
           {editing && selectedPerson ? (
             <View style={styles.readonlyRow}>
               <Ionicons accessibilityElementsHidden color={visitColors.accent} name="person-outline" size={22} />
@@ -209,8 +208,9 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
             </>
           )}
         </SectionCard>
-
-        <SectionCard detail={c.fixedPdt} title={c.time}>
+    );
+    const timeField = (
+<SectionCard detail={c.fixedPdt} title={c.time}>
           <View style={styles.fieldRow}>
             <View style={styles.flex}>
               <Text style={styles.fieldLabel}>{c.date}</Text>
@@ -222,8 +222,9 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
             </View>
           </View>
         </SectionCard>
-
-        {!editing ? (
+    );
+    const participantField = (
+!editing ? (
           <SectionCard detail={c.chooseParticipants} title={c.participants}>
             <View style={styles.choiceList}>
               {state.snapshot.eligibleParticipants.map((participant) => {
@@ -252,9 +253,10 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
           <SectionCard title={c.participants}>
             {state.visit?.recipients.map((recipient) => <Text key={recipient.accountId} selectable style={styles.readonlyValue}>{recipient.participantName} · {c[recipient.leadershipMinistry]}</Text>)}
           </SectionCard>
-        )}
-
-        <SectionCard>
+        )
+    );
+    const locationField = (
+<SectionCard>
           <Text style={styles.fieldLabel}>{c.location}</Text>
           <TextInput
             accessibilityLabel={c.location}
@@ -279,6 +281,15 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
             value={values.notes}
           />
         </SectionCard>
+    );
+    return (
+      <>
+        <Text accessibilityRole="header" selectable style={styles.title}>{editing ? c.editVisit : c.planVisit}</Text>
+
+        {desktop ? <View style={styles.formFieldsDesktop}>
+          <View style={styles.formColumn}>{personField}{participantField}</View>
+          <View style={styles.formColumn}>{timeField}{locationField}</View>
+        </View> : <View style={styles.formFields}>{personField}{timeField}{participantField}{locationField}</View>}
 
         {validation ? <Text accessibilityLiveRegion="assertive" selectable style={styles.errorText}>{validation}</Text> : null}
         {mutation.status === "conflict" ? (
@@ -298,7 +309,7 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
     <View style={styles.screen}>
       <ScrollView
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, desktop && styles.desktopContent]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -315,6 +326,10 @@ export function VisitFormScreen({ visitId = null, initialPersonId = "" }: { visi
 }
 
 const styles = StyleSheet.create({
+  formFields: { gap: 14 },
+  formFieldsDesktop: { flexDirection: "row", alignItems: "flex-start", gap: 24 },
+  formColumn: { flex: 1, minWidth: 0, gap: 14 },
+  desktopContent: { maxWidth: 1120, paddingHorizontal: 32, paddingTop: 28 },
   screen: { backgroundColor: visitColors.background, flex: 1 },
   content: { alignSelf: "center", gap: 14, maxWidth: 680, paddingBottom: 104, paddingHorizontal: 18, paddingTop: 16, width: "100%" },
   backButton: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: 2, minHeight: 44, paddingRight: 10 },

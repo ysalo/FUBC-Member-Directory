@@ -1,4 +1,5 @@
 // @ts-nocheck — Expo Router's generated route union lags newly added nested management routes.
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
@@ -44,6 +45,7 @@ const labels = {
 } as const;
 
 export function ManageScreen() {
+  const desktop = useDesktopLayout();
   const { palette } = useAppearance();
   const { locale } = useLocalization();
   const session = useSession();
@@ -90,7 +92,7 @@ export function ManageScreen() {
   return <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
     <FlatList
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, desktop && styles.desktopContent]}
       data={loading || failure ? [] : data}
       keyExtractor={(item) => item.id}
       ListHeaderComponent={<>
@@ -112,7 +114,7 @@ export function ManageScreen() {
 
         <View style={[styles.search, { backgroundColor: palette.subtle }]}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} /><TextInput accessibilityLabel={panel === "members" ? copy.searchMembers : copy.searchAccounts} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={panel === "members" ? copy.searchMembers : copy.searchAccounts} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} /></View>
 
-        <View style={styles.shortcuts}>
+        <View style={[styles.shortcuts, desktop && styles.desktopShortcuts]}>
           <Shortcut detail={copy.groupsDetail} icon="people-outline" label={copy.groups} onPress={() => router.push("/manage/groups" as Href)} />
           <Shortcut detail={copy.ministriesDetail} icon="layers-outline" label={copy.ministries} onPress={() => router.push("/manage/ministries" as Href)} />
         </View>
@@ -133,7 +135,7 @@ export function ManageScreen() {
   </SafeAreaView>;
 
   function Shortcut({ detail, icon, label, onPress }: { detail: string; icon: "people-outline" | "layers-outline"; label: string; onPress: () => void }) {
-    return <Pressable accessibilityHint={detail} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.shortcut, { backgroundColor: palette.surface, borderColor: palette.line }, pressed && styles.pressed]}>
+    return <Pressable accessibilityHint={detail} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.shortcut, desktop && styles.desktopShortcut, { backgroundColor: palette.surface, borderColor: palette.line }, pressed && styles.pressed]}>
       <View style={[styles.shortcutIcon, { backgroundColor: palette.accentSoft }]}><Ionicons accessibilityElementsHidden color={palette.accent} name={icon} size={21} /></View>
       <View style={styles.flex}><Text style={[styles.shortcutTitle, { color: palette.text }]}>{label}</Text><Text numberOfLines={2} style={[styles.shortcutDetail, { color: palette.secondaryText }]}>{detail}</Text></View>
       <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={18} />
@@ -193,6 +195,7 @@ export function ManageScreen() {
 }
 
 const styles = StyleSheet.create({
+  desktopContent: { paddingHorizontal: 32, paddingBottom: 48 }, desktopShortcuts: { flexDirection: "row", gap: 16 }, desktopShortcut: { flex: 1 },
   safe: { flex: 1 }, content: { gap: 10, paddingBottom: 116, paddingHorizontal: 18 }, heading: { alignItems: "center", flexDirection: "row", gap: 16, justifyContent: "space-between", paddingTop: 22 },
   title: { fontSize: 42, fontWeight: "800", letterSpacing: -1.3 }, subtitle: { fontSize: 15, lineHeight: 21, marginTop: 3 }, flex: { flex: 1, minWidth: 0 },
   add: { alignItems: "center", borderCurve: "continuous", borderRadius: 15, height: 46, justifyContent: "center", width: 46 }, segmented: { borderCurve: "continuous", borderRadius: 13, flexDirection: "row", marginTop: 14, padding: 3 },

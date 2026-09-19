@@ -95,7 +95,7 @@ test("profile avatars fall back to initials when an image fails", async () => {
   ]);
   assert.match(avatar, /onError=\{\(\) => setFailed\(true\)\}/);
   assert.match(avatar, /hasSource && !failed/);
-  assert.match(directory, /<ProfileAvatar name=\{item\.name\} size=\{72\} source=\{item\.avatar\}/);
+  assert.match(directory, /<ProfileAvatar name=\{item\.name\} size=\{desktop \? 56 : 72\} source=\{item\.avatar\}/);
   assert.match(profile, /hasHeroPhoto \? <Image[\s\S]*: <View style=\{styles\.heroFallback\}><ProfileAvatar name=\{name\} size=\{156\}/);
   assert.equal(avatarFallback.avatarInitials("Yaroslav Salo"), "YS");
   assert.equal(avatarFallback.avatarInitials("Ярослав Сало"), "ЯС");

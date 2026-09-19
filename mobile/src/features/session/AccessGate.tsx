@@ -5,8 +5,8 @@ import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
-import { type PropsWithChildren, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { type PropsWithChildren, useEffect, useState } from "react";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -15,8 +15,10 @@ import { beginOAuth, completeOAuth, refreshSession, signOut } from "@/lib/sessio
 import { isBackendConfigured } from "@/lib/supabase";
 import { assertUsableOAuthRedirect } from "./auth-redirect";
 import { useSession } from "./SessionProvider";
+import { consumeCanceledBrowserSignIn, startBrowserSignIn } from "./browser-auth";
+import { InstallHelp } from "@/features/shell/InstallHelp";
 
-WebBrowser.maybeCompleteAuthSession();
+if (Platform.OS !== "web") WebBrowser.maybeCompleteAuthSession();
 
 const copy = {
   en: {
@@ -48,6 +50,21 @@ export function AccessGate({ children }: PropsWithChildren) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const reset = () => {
+      if (consumeCanceledBrowserSignIn()) {
+        setBusy(null);
+        setAuthError(locale === "uk" ? "Вхід скасовано. Спробуйте ще раз." : "Sign-in was canceled. Please try again.");
+      }
+    };
+    reset();
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, [locale]);
+  async function retrySession() {
+    try { await refreshSession(); } catch (error) { setSignOutError(errorMessage(error)); }
+  }
   async function submitSignOut() {
     if (signingOut) return;
     setSigningOut(true); setSignOutError(null);
@@ -59,19 +76,26 @@ export function AccessGate({ children }: PropsWithChildren) {
       setSigningOut(false);
     }
   }
-  if (!isBackendConfigured) return children;
+  if (!isBackendConfigured) {
+    if (Platform.OS === "web" && !__DEV__) return <State title={labels.errorTitle} detail={locale === "uk" ? "Підключення до церкви не налаштовано. Зверніться до адміністратора." : "The church connection has not been configured. Contact an administrator."} icon="cloud-offline-outline" />;
+    return children;
+  }
   if (session.status === "ready" && session.account.status === "active") return children;
   if (session.status === "loading" || session.status === "unconfigured") return <State detail={labels.checkingDetail} icon="shield-checkmark-outline" loading progress={[labels.checkingSecure, labels.checkingApproval, labels.checkingDirectory]} title={labels.checking} />;
-  if (session.status === "error") return <State action={() => void refreshSession()} actionLabel={labels.retry} secondaryAction={() => void submitSignOut()} secondaryActionBusy={signingOut} secondaryActionError={signOutError} secondaryActionLabel={signingOut ? labels.signingOut : labels.signOut} detail={session.error} icon="cloud-offline-outline" title={labels.errorTitle} />;
+  if (session.status === "error") return <State action={() => void retrySession()} actionLabel={labels.retry} secondaryAction={() => void submitSignOut()} secondaryActionBusy={signingOut} secondaryActionError={signOutError} secondaryActionLabel={signingOut ? labels.signingOut : labels.signOut} detail={session.error} icon="cloud-offline-outline" title={labels.errorTitle} />;
   if (session.status === "ready") {
     const status = session.account.status;
-    if (status === "pending") return <State action={() => void refreshSession()} actionLabel={labels.checkAgain} secondaryAction={() => void submitSignOut()} secondaryActionBusy={signingOut} secondaryActionError={signOutError} secondaryActionLabel={signingOut ? labels.signingOut : labels.signOut} detail={labels.pendingDetail} icon="lock-closed-outline" title={labels.pending} />;
-    if (status === "denied") return <State detail={labels.deniedDetail} icon="lock-closed-outline" title={labels.denied} />;
-    return <State detail={labels.revokedDetail} icon="lock-closed-outline" title={labels.revoked} />;
+    if (status === "pending") return <State action={() => void retrySession()} actionLabel={labels.checkAgain} secondaryAction={() => void submitSignOut()} secondaryActionBusy={signingOut} secondaryActionError={signOutError} secondaryActionLabel={signingOut ? labels.signingOut : labels.signOut} detail={labels.pendingDetail} icon="lock-closed-outline" title={labels.pending} />;
+    if (status === "denied") return <State secondaryAction={() => void submitSignOut()} secondaryActionBusy={signingOut} secondaryActionError={signOutError} secondaryActionLabel={signingOut ? labels.signingOut : labels.signOut} detail={labels.deniedDetail} icon="lock-closed-outline" title={labels.denied} />;
+    return <State secondaryAction={() => void submitSignOut()} secondaryActionBusy={signingOut} secondaryActionError={signOutError} secondaryActionLabel={signingOut ? labels.signingOut : labels.signOut} detail={labels.revokedDetail} icon="lock-closed-outline" title={labels.revoked} />;
   }
   async function signIn(provider: "apple" | "google") {
     setBusy(provider); setAuthError(null);
     try {
+      if (Platform.OS === "web") {
+        await startBrowserSignIn(provider);
+        return;
+      }
       // Expo Go must return through the current Metro URL. A standalone custom
       // scheme only works after installing a separately signed native build.
       const redirectTo = assertUsableOAuthRedirect(Linking.createURL("auth/callback"), isExpoGo);
@@ -80,6 +104,7 @@ export function AccessGate({ children }: PropsWithChildren) {
         preferEphemeralSession: false,
       });
       if (result.type === "success") await completeOAuth(result.url);
+      else setAuthError(locale === "uk" ? "Вхід скасовано. Спробуйте ще раз." : "Sign-in was canceled. Please try again.");
     } catch (error) {
       setAuthError(errorMessage(error));
     } finally {
@@ -87,7 +112,7 @@ export function AccessGate({ children }: PropsWithChildren) {
     }
   }
   const compact = height < 650;
-  return <GateShell><View style={[styles.loginContent, compact && styles.loginContentCompact]}><Text accessibilityRole="header" selectable style={[styles.title, { color: accessColors.brand }, compact && styles.titleCompact]}>{labels.title}</Text><Text selectable style={[styles.subtitle, { color: accessColors.brand }]}>{labels.subtitle}</Text><View style={[styles.providers, compact && styles.providersCompact]}>{appleAuthEnabled ? <ProviderButton busy={busy === "apple"} icon="logo-apple" label={labels.apple} onPress={() => void signIn("apple")} /> : null}<ProviderButton busy={busy === "google"} icon="logo-google" label={labels.google} onPress={() => void signIn("google")} /></View>{authError ? <Text accessibilityLiveRegion="polite" selectable style={[styles.error, { backgroundColor: accessColors.warningSoft, color: accessColors.text }]}>{authError}</Text> : null}<Text selectable style={[styles.secure, { color: accessColors.secondaryText }]}>{labels.secure}</Text></View></GateShell>;
+  return <GateShell><View style={[styles.loginContent, compact && styles.loginContentCompact]}><Image accessibilityLabel={labels.title} accessibilityRole="header" contentFit="contain" source={require("../../../assets/images/church-logo-light.png")} style={[styles.logo, compact && styles.logoCompact]} /><Text selectable style={[styles.subtitle, { color: accessColors.brand }]}>{labels.subtitle}</Text><View style={[styles.providers, compact && styles.providersCompact]}>{appleAuthEnabled ? <ProviderButton busy={busy === "apple"} icon="logo-apple" label={labels.apple} onPress={() => void signIn("apple")} /> : null}<ProviderButton busy={busy === "google"} icon="logo-google" label={labels.google} onPress={() => void signIn("google")} /></View>{authError ? <Text accessibilityLiveRegion="polite" selectable style={[styles.error, { backgroundColor: accessColors.warningSoft, color: accessColors.text }]}>{authError}</Text> : null}<Text selectable style={[styles.secure, { color: accessColors.secondaryText }]}>{labels.secure}</Text><InstallHelp /></View></GateShell>;
 }
 
 function GateShell({ children }: PropsWithChildren) {
@@ -114,11 +139,11 @@ function ProviderButton({ busy, icon, label, onPress }: { busy: boolean; icon: "
     </Pressable>
   );
 }
-function State({ action, actionLabel, secondaryAction, secondaryActionBusy, secondaryActionError, secondaryActionLabel, detail, icon, loading, progress, title }: { action?: () => void; actionLabel?: string; secondaryAction?: () => void; secondaryActionBusy?: boolean; secondaryActionError?: string | null; secondaryActionLabel?: string; detail?: string; icon: "shield-checkmark-outline" | "cloud-offline-outline" | "lock-closed-outline"; loading?: boolean; progress?: readonly string[]; title: string }) {
+export function State({ action, actionLabel, secondaryAction, secondaryActionBusy, secondaryActionError, secondaryActionLabel, detail, icon, loading, progress, title }: { action?: () => void; actionLabel?: string; secondaryAction?: () => void; secondaryActionBusy?: boolean; secondaryActionError?: string | null; secondaryActionLabel?: string; detail?: string; icon: "shield-checkmark-outline" | "cloud-offline-outline" | "lock-closed-outline"; loading?: boolean; progress?: readonly string[]; title: string }) {
   return (
     <GateShell>
       <View style={styles.state}>
-        <Text selectable style={[styles.stateMark, { color: accessColors.accent }]}>FUBC</Text>
+        <Image accessibilityLabel="FUBC" contentFit="contain" source={require("../../../assets/images/church-logo-gold.png")} style={styles.stateMark} />
         <View style={[styles.stateIcon, { backgroundColor: accessColors.accentSoft }]}>{loading ? <ActivityIndicator color={accessColors.accent} /> : <Ionicons color={accessColors.accent} name={icon} size={28} />}</View>
         <Text accessibilityRole="header" selectable style={[styles.stateTitle, { color: accessColors.text }]}>{title}</Text>
         {detail ? <Text selectable style={[styles.stateDetail, { color: accessColors.secondaryText }]}>{detail}</Text> : null}
@@ -135,13 +160,13 @@ const styles = StyleSheet.create({
   backdrop: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
   content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24 },
   loginContent: { alignSelf: "center", maxWidth: 430, transform: [{ translateY: 32 }], width: "100%" }, loginContentCompact: { transform: [{ translateY: 0 }] },
-  title: { fontFamily: "Georgia", fontSize: 82, fontWeight: "400", letterSpacing: -3.2, lineHeight: 88, textAlign: "center" }, titleCompact: { fontSize: 62, lineHeight: 68 },
+  logo: { alignSelf: "center", height: 138, width: 146 }, logoCompact: { height: 104, width: 110 },
   subtitle: { fontSize: 12, fontWeight: "600", letterSpacing: 3.2, lineHeight: 18, marginTop: 10, textAlign: "center", textTransform: "uppercase" },
   providers: { gap: 10, marginTop: 46 }, providersCompact: { marginTop: 34 },
   provider: { alignItems: "center", borderCurve: "continuous", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 12, justifyContent: "center", minHeight: 58, paddingHorizontal: 22 },
   providerText: { fontSize: 16, fontWeight: "700", textAlign: "center" }, googleIcon: { height: 24, width: 24 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.985 }] }, error: { borderCurve: "continuous", borderRadius: 12, fontSize: 14, lineHeight: 20, marginTop: 14, padding: 12, textAlign: "center" }, secure: { fontSize: 12, letterSpacing: 0.2, marginTop: 22, textAlign: "center" },
-  state: { alignItems: "center", alignSelf: "center", justifyContent: "center", maxWidth: 430, width: "100%" }, stateMark: { fontSize: 13, fontWeight: "800", letterSpacing: 2.8, marginBottom: 20 }, stateIcon: { alignItems: "center", borderRadius: 28, height: 56, justifyContent: "center", width: 56 }, stateTitle: { fontFamily: "Georgia", fontSize: 30, fontWeight: "400", lineHeight: 36, marginTop: 18, textAlign: "center" }, stateDetail: { fontSize: 16, lineHeight: 23, marginTop: 10, maxWidth: 350, textAlign: "center" },
+  state: { alignItems: "center", alignSelf: "center", justifyContent: "center", maxWidth: 430, width: "100%" }, stateMark: { height: 42, marginBottom: 20, width: 45 }, stateIcon: { alignItems: "center", borderRadius: 28, height: 56, justifyContent: "center", width: 56 }, stateTitle: { fontFamily: "Georgia", fontSize: 30, fontWeight: "400", lineHeight: 36, marginTop: 18, textAlign: "center" }, stateDetail: { fontSize: 16, lineHeight: 23, marginTop: 10, maxWidth: 350, textAlign: "center" },
   progress: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, marginTop: 24, paddingHorizontal: 18, paddingVertical: 14, width: "100%" }, progressItem: { alignItems: "center", flexDirection: "row", minHeight: 34, position: "relative" }, progressDot: { borderRadius: 5, height: 10, marginRight: 14, width: 10 }, progressLine: { bottom: -12, height: 24, left: 4.5, position: "absolute", width: StyleSheet.hairlineWidth }, progressLabel: { fontSize: 15, fontWeight: "600" },
   retry: { borderCurve: "continuous", borderRadius: 14, justifyContent: "center", marginTop: 24, minHeight: 50, paddingHorizontal: 22, paddingVertical: 14 }, retryText: { color: "#FFF", fontSize: 16, fontWeight: "700" }, secondaryAction: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center", minHeight: 44, marginTop: 8, paddingHorizontal: 16 }, secondaryActionText: { fontSize: 15, fontWeight: "700" }, stateActionError: { fontSize: 13, lineHeight: 18, marginTop: 4, textAlign: "center" },
 });

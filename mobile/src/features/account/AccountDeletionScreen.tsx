@@ -55,7 +55,7 @@ export function AccountDeletionScreen() {
       {error === "invalid" ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: palette.accent }]}>{labels.required}</Text> : null}
       {failure ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: palette.accent }]}>{failure}</Text> : null}
       <Pressable accessibilityRole="button" accessibilityState={{ busy, disabled: busy || !valid }} disabled={busy || !valid} onPress={() => void submit()} style={({ pressed }) => [styles.deleteButton, { backgroundColor: valid ? palette.accent : palette.subtle }, pressed && styles.pressed]}>{busy ? <ActivityIndicator color="#FFF" /> : <Text style={styles.deleteText}>{labels.delete}</Text>}</Pressable>
-      <Pressable accessibilityRole="button" disabled={busy} onPress={() => router.back()} style={styles.cancel}><Text style={[styles.cancelText, { color: palette.secondaryText }]}>{labels.cancel}</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={busy} onPress={() => (router.canGoBack() ? router.back() : router.replace(isAdminDelete ? "/manage" : "/menu"))} style={styles.cancel}><Text style={[styles.cancelText, { color: palette.secondaryText }]}>{labels.cancel}</Text></Pressable>
     </ScrollView>
   </View>;
 }

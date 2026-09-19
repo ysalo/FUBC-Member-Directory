@@ -1,3 +1,4 @@
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { type Href, useRouter } from "expo-router";
@@ -31,6 +32,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
   const account = session.status === "ready" ? session.account : null;
   const c = visitationCopy(locale);
   const router = useRouter();
+  const desktop = useDesktopLayout();
   const [state, setState] = useState<DetailState>({ status: "loading" });
   const [mutation, setMutation] = useState<{ status: "idle" | "pending" | "success" | "error" | "conflict"; message?: string }>({ status: "idle" });
   const [reason, setReason] = useState("");
@@ -138,6 +140,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
           </View>
         ) : null}
 
+        <View style={[styles.detailColumns, desktop && styles.detailColumnsDesktop]}><View style={[styles.detailColumn, desktop && styles.detailColumnDesktop]}>
         <View style={styles.dataCard}>
           <DataRow icon="calendar-outline" label={c.time}>{formatFixedPdt(visit.scheduledAt, locale)}</DataRow>
           <DataRow icon="location-outline" label={c.location}>
@@ -165,6 +168,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
           </SectionCard>
         ) : null}
 
+        </View><View style={[styles.detailColumn, desktop && styles.detailColumnDesktop]}>
         <SectionCard title={c.participants}>
           <View style={styles.recipientList}>
             {visit.recipients.map((candidate) => (
@@ -246,6 +250,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
           </SectionCard>
         ) : null}
 
+        </View></View>
         {mutation.status === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.statusMessage}>{c.saving}</Text> : null}
         {mutation.status === "success" && mutation.message ? <Text accessibilityLiveRegion="polite" style={styles.successMessage}>{mutation.message}</Text> : null}
         {mutation.status === "conflict" ? (
@@ -262,7 +267,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, desktop && styles.desktopContent]} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
         <Pressable accessibilityLabel={c.back} accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace("/visitation" as Href)} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
           <Ionicons accessibilityElementsHidden color={visitColors.text} name="chevron-back" size={24} />
           <Text style={styles.backLabel}>{c.back}</Text>
@@ -275,6 +280,11 @@ export function VisitDetailScreen({ id }: { id: string }) {
 }
 
 const styles = StyleSheet.create({
+  detailColumns: { gap: 14 },
+  detailColumnsDesktop: { flexDirection: "row", alignItems: "flex-start", gap: 24 },
+  detailColumn: { gap: 14 },
+  detailColumnDesktop: { flex: 1, minWidth: 0 },
+  desktopContent: { maxWidth: 1120, paddingHorizontal: 32, paddingTop: 28 },
   screen: { backgroundColor: visitColors.background, flex: 1 },
   content: { alignSelf: "center", gap: 14, maxWidth: 680, paddingBottom: 104, paddingHorizontal: 18, paddingTop: 16, width: "100%" },
   backButton: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: 2, minHeight: 44, paddingRight: 10 },

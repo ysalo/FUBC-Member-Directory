@@ -3,6 +3,8 @@ import type { AppLocale } from "@/features/localization/LocalizationProvider";
 import { BIRTHDAY_NOTIFICATION_KIND, birthdayTrigger } from "./birthday-notification-plan";
 import type { AuthorizedBirthday } from "./groups-repository";
 
+export const birthdayNotificationsSupported = true;
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
 });

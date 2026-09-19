@@ -1,12 +1,13 @@
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { Link, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, SectionList, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
 import { LeadershipBadge } from "@/features/members/leadership-badge";
@@ -29,20 +30,23 @@ function SummaryAction({ accent, label, onPress, ring = false }: { accent: strin
 
 function MemberRow({ item, locale, ministry, onPress }: { item: Member; locale: "en" | "uk"; ministry: string; onPress: () => void }) {
   const { palette } = useAppearance();
+  const desktop = useDesktopLayout();
   const showsMinistry = Boolean(ministry) && !isLeadershipMinistryLabel(ministry, item.leadershipMinistry);
-  return (
-    <Pressable accessibilityHint={`Opens ${item.name}’s member profile`} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.memberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }, pressed && styles.pressed]}>
-      <ProfileAvatar name={item.name} size={72} source={item.avatar} />
-      <View style={styles.memberCopy}>
+  const row = (
+    <Pressable accessibilityHint={locale === "uk" ? `Відкрити профіль: ${item.name}` : `Opens ${item.name}’s member profile`} accessibilityRole={Platform.OS === "web" ? "link" : "button"} onPress={Platform.OS === "web" ? undefined : onPress} style={Platform.OS === "web" ? StyleSheet.flatten([styles.memberRow, desktop && styles.desktopMemberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }]) : ({ pressed }) => [styles.memberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }, pressed && styles.pressed]}>
+      <ProfileAvatar name={item.name} size={desktop ? 56 : 72} source={item.avatar} />
+      <View style={[styles.memberCopy, desktop && styles.desktopMemberCopy]}>
         <Text numberOfLines={1} style={[styles.memberName, { color: palette.text }]}>{item.name}</Text>
-        {showsMinistry ? <Text numberOfLines={1} style={[styles.memberMinistry, { color: palette.secondaryText }]}>{ministry}</Text> : null}
-        {item.phone ? <Text numberOfLines={1} selectable style={[styles.memberPhone, { color: palette.secondaryText }]}>{formatPhoneNumber(item.phone)}</Text> : null}
+        {!desktop && showsMinistry ? <Text numberOfLines={1} style={[styles.memberMinistry, { color: palette.secondaryText }]}>{ministry}</Text> : null}
+        {!desktop && item.phone ? <Text numberOfLines={1} selectable style={[styles.memberPhone, { color: palette.secondaryText }]}>{formatPhoneNumber(item.phone)}</Text> : null}
         {item.leadershipMinistry ? <LeadershipBadge leadershipMinistry={item.leadershipMinistry} locale={locale} /> : null}
         <CareStatusBadges isOrphan={item.isOrphan} isWidow={item.isWidow} />
       </View>
+      {desktop ? <><Text style={[styles.desktopMinistry, { color: palette.secondaryText }]}>{showsMinistry ? ministry : "—"}</Text><Text style={[styles.desktopPhone, { color: palette.secondaryText }]}>{item.phone ? formatPhoneNumber(item.phone) : "—"}</Text></> : null}
       <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={px(22)} />
     </Pressable>
   );
+  return Platform.OS === "web" ? <Link href={`/members/${item.id}`} asChild>{row}</Link> : row;
 }
 
 function isLeadershipMinistryLabel(ministry: string, leadershipMinistry: Member["leadershipMinistry"]) {
@@ -53,6 +57,7 @@ function isLeadershipMinistryLabel(ministry: string, leadershipMinistry: Member[
 }
 
 export function DirectoryScreen() {
+  const desktop = useDesktopLayout();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { copy, locale } = useLocalization();
@@ -129,9 +134,10 @@ export function DirectoryScreen() {
 
   if (Platform.OS === "web") {
     return (
-      <View style={[styles.safe, { backgroundColor: palette.background }]}>
+      <View style={[styles.safe, desktop && styles.desktopScreen, { backgroundColor: palette.background }]}>
         {stickyOverview}
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" style={styles.rosterScroll}>
+        {desktop && <View style={[styles.desktopColumnHeaders, { borderBottomColor: palette.line }]}><Text style={[styles.desktopNameHeader, { color: palette.secondaryText }]}>{locale === "uk" ? "Учасник" : "Member"}</Text><Text style={[styles.desktopMinistry, { color: palette.secondaryText }]}>{locale === "uk" ? "Служіння" : "Ministry"}</Text><Text style={[styles.desktopPhone, { color: palette.secondaryText }]}>{locale === "uk" ? "Телефон" : "Phone"}</Text><View style={{ width: 22 }} /></View>}
+        <ScrollView contentContainerStyle={styles.webContent} keyboardShouldPersistTaps="handled" style={styles.rosterScroll}>
           {sections.length === 0 ? empty : sections.map((section) => (
             <View key={section.title}>
               <Text style={[styles.sectionLetter, { color: palette.secondaryText }]}>{section.title}</Text>
@@ -171,6 +177,14 @@ const scale = 1;
 const px = (value: number) => value * scale;
 
 const styles = StyleSheet.create({
+  desktopScreen: { alignSelf: "center", maxWidth: 1200, width: "100%", paddingHorizontal: 20 },
+  desktopMemberRow: { gap: 16, minHeight: 84, paddingVertical: 12 },
+  desktopMemberCopy: { marginLeft: 0, minWidth: 0, flex: 1.3 },
+  desktopMinistry: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 21 },
+  desktopPhone: { width: 156, fontSize: 14, lineHeight: 20 },
+  desktopColumnHeaders: { flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  desktopNameHeader: { flex: 1.3, marginLeft: 72, fontSize: 14, fontWeight: "600" },
+  webContent: { paddingBottom: 28 },
   safe: { backgroundColor: "#F1F0EB", flex: 1 },
   rosterScroll: { flex: 1 },
   content: { paddingBottom: px(102) },

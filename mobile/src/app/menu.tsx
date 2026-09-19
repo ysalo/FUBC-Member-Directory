@@ -1,7 +1,10 @@
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
+import { InstallHelp } from "@/features/shell/InstallHelp";
+import { Alert } from "@/features/platform/alert";
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 
 import { type AppearancePreference, useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -20,6 +23,7 @@ const accountCopy = {
 } as const;
 
 export default function MenuRoute() {
+  const desktop = useDesktopLayout();
   const { copy, locale, setLocale } = useLocalization();
   const router = useRouter();
   const session = useSession();
@@ -57,9 +61,9 @@ export default function MenuRoute() {
 
   return (
     <View style={[styles.safe, { backgroundColor: palette.background }]}>
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.content, desktop && styles.desktopContent]}>
         <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.menu.title}</Text>
-        <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <View style={[styles.columns, desktop && styles.desktopColumns]}><View style={[styles.column, desktop && styles.columnDesktop]}><View style={[styles.card, { backgroundColor: palette.surface }]}>
           <View style={styles.row}>
             <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="language-outline" size={24} />
             <Text style={[styles.rowLabel, { color: palette.text }]}>{copy.menu.language}</Text>
@@ -92,6 +96,7 @@ export default function MenuRoute() {
           </View>
         </View>
 
+        </View><View style={[styles.column, desktop && styles.columnDesktop]}>
         {isBackendConfigured && session.status === "ready" ? <View style={[styles.accountCard, { backgroundColor: palette.surface }]}>
           <Text style={[styles.sectionLabel, { color: palette.secondaryText }]}>{labels.account}</Text>
           <Pressable
@@ -119,6 +124,8 @@ export default function MenuRoute() {
             <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={20} />
           </Pressable>
         </View>
+        <InstallHelp />
+        </View></View>
       </ScrollView>
       <WebTabBar />
       <Modal animationType="slide" onRequestClose={() => setAboutOpen(false)} presentationStyle="pageSheet" visible={aboutOpen}>
@@ -143,6 +150,7 @@ export default function MenuRoute() {
 }
 
 const styles = StyleSheet.create({
+  desktopContent: { padding: 32, paddingBottom: 48 }, columns: { gap: 0 }, desktopColumns: { flexDirection: "row", gap: 28, alignItems: "flex-start" }, columnDesktop: { flex: 1 }, column: { minWidth: 0 },
   safe: { backgroundColor: "#F1F0EB", flex: 1 },
   content: { paddingBottom: 100, paddingHorizontal: 20, paddingTop: 28 },
   title: { color: "#292D31", fontSize: 46, fontWeight: "800", letterSpacing: -1.5 },

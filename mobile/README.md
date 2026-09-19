@@ -1,4 +1,13 @@
-# Welcome to your Expo app 👋
+# FUBC Directory — native and web
+
+This is the shared Expo application for iOS and web. Web uses the same Supabase database and includes a home-screen installation manifest, mobile navigation, and desktop layouts. It intentionally does not schedule notifications or store directory data offline.
+
+- [Approved implementation plan](../docs/web-app-plan.md)
+- [Run commands, Vercel setup, verification, and release prerequisites](../docs/web-app-release.md)
+
+From this directory, use `pnpm web` for development or `pnpm build:web` followed by `pnpm serve:web` for a production preview. Vercel's project root must be `mobile`. Run `pnpm verify` before releasing.
+
+## Original Expo starter reference
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 

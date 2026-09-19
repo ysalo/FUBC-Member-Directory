@@ -1,10 +1,12 @@
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
+import { Alert } from "@/features/platform/alert";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Button, Host } from "@expo/ui";
 import SegmentedControl from "@expo/ui/community/segmented-control";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -43,6 +45,7 @@ const labels = {
 type GroupKind = ManagedGroup["kind"];
 
 export function GroupAssignmentScreen({ creating = false }: { creating?: boolean }) {
+  const desktop = useDesktopLayout();
   const { groupId } = useLocalSearchParams<{ groupId?: string }>();
   const router = useRouter();
   const { palette } = useAppearance();
@@ -120,7 +123,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
         p_deacon_ids: selectedDeacons,
         p_member_ids: selectedMembers,
       });
-      router.back();
+      (router.canGoBack() ? router.back() : router.replace("/manage/groups"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : copy.failed);
       setOperation(null);
@@ -142,7 +145,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
     setError(null);
     try {
       await managementRepository.deleteGroup(group.id, group.revision);
-      router.back();
+      (router.canGoBack() ? router.back() : router.replace("/manage/groups"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : copy.deleteFailed);
       setOperation(null);
@@ -161,7 +164,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
   if (!creating && !group) return <View style={[styles.state, { backgroundColor: palette.background }]}><Text selectable style={[styles.stateTitle, { color: palette.text }]}>{error ?? copy.unavailable}</Text></View>;
   const loaded = data!;
 
-  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
+  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.content, desktop && styles.desktopContent]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
     <View style={styles.field}>
       <Text style={[styles.label, { color: palette.secondaryText }]}>{copy.name}</Text>
       <TextInput accessibilityLabel={copy.name} autoCapitalize="sentences" autoCorrect={false} editable={!busy} maxLength={120} onChangeText={(value) => { setName(value); setError(null); }} returnKeyType="done" style={[styles.input, { backgroundColor: palette.surface, borderColor: error === copy.nameRequired ? palette.danger : palette.line, color: palette.text }]} value={name} />
@@ -173,7 +176,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
       <Text selectable style={[styles.detail, { color: palette.secondaryText }]}>{copy.typeDetail}</Text>
     </View> : null}
 
-    <Text selectable style={[styles.sectionTitle, { color: palette.text }]}>{copy.deacons}</Text>
+    <View style={[styles.columns, desktop && styles.desktopColumns]}><View style={[styles.column, desktop && styles.columnDesktop]}><Text selectable style={[styles.sectionTitle, { color: palette.text }]}>{copy.deacons}</Text>
     <Text selectable style={[styles.detail, { color: palette.secondaryText }]}>{copy.deaconDetail}</Text>
     {error ? <Text accessibilityLiveRegion="polite" selectable style={[styles.error, { color: palette.danger }]}>{error}</Text> : null}
     <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.line }]}>
@@ -189,7 +192,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
       }) : <Text selectable style={[styles.empty, { color: palette.secondaryText }]}>{copy.noDeacons}</Text>}
     </View>
 
-    <View style={styles.sectionHeading}>
+    </View><View style={[styles.column, desktop && styles.columnDesktop]}><View style={styles.sectionHeading}>
       <Text selectable style={[styles.sectionTitle, { color: palette.text }]}>{copy.members}</Text>
       <Text selectable style={[styles.count, { color: palette.accent }]}>{copy.selected(selectedMembers.length)}</Text>
     </View>
@@ -214,6 +217,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
       }) : <Text selectable style={[styles.empty, { color: palette.secondaryText }]}>{copy.noMembers}</Text>}
     </View>
 
+    </View></View>
     <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={confirmSave} style={[styles.save, { backgroundColor: palette.accent }, busy && styles.disabled]}>{operation === "saving" ? <ActivityIndicator color="#FFF" /> : null}<Text style={styles.saveText}>{operation === "saving" ? copy.saving : copy.save}</Text></Pressable>
 
     {group ? <View style={[styles.deleteSection, { borderTopColor: palette.line }]}>
@@ -226,7 +230,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create({ desktopContent: { padding: 32 }, columns: { gap: 10 }, desktopColumns: { flexDirection: "row", alignItems: "flex-start", gap: 28 }, columnDesktop: { flex: 1 }, column: { gap: 10, minWidth: 0 },
   content: { gap: 10, padding: 18, paddingBottom: 48 }, field: { gap: 7 }, label: { fontSize: 14, fontWeight: "600" },
   input: { borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, fontSize: 18, fontWeight: "700", minHeight: 52, paddingHorizontal: 14, paddingVertical: 11 },
   segmented: { height: 36 }, sectionTitle: { fontSize: 19, fontWeight: "800", marginTop: 10 }, sectionHeading: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between" },

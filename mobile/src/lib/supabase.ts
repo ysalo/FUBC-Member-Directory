@@ -22,7 +22,8 @@ export function getSupabase(): SupabaseClient<Database> | null {
         ...(Platform.OS !== "web" ? { storage: secureStorage } : {}),
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: Platform.OS === "web",
+        // The callback route owns the PKCE exchange, including remount deduplication.
+        detectSessionInUrl: false,
         flowType: "pkce",
       },
     });

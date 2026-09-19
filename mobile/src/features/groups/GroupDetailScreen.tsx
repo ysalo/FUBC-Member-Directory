@@ -1,3 +1,4 @@
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRouter } from "expo-router";
@@ -10,13 +11,14 @@ import { CareStatusBadges } from "@/features/members/care-status-badges";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { LeadershipBadge } from "@/features/members/leadership-badge";
 import { useSession } from "@/features/session/SessionProvider";
-import { disableBirthdayNotifications, syncBirthdayNotifications } from "./birthday-notifications";
+import { birthdayNotificationsSupported, disableBirthdayNotifications, syncBirthdayNotifications } from "./birthday-notifications";
 import { upcomingBirthdays } from "./birthday-notification-plan";
 import { getGroupsCopy } from "./groups-copy";
 import { groupsRepository, type AuthorizedBirthday, type GroupDetail, type GroupMember, type GroupSummary } from "./groups-repository";
 
 export function GroupDetailScreen({ groupId }: { groupId: string }) {
   const router = useRouter();
+  const desktop = useDesktopLayout();
   const { locale } = useLocalization();
   const copy = getGroupsCopy(locale);
   const session = useSession();
@@ -49,13 +51,13 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
       const [nextSummary, nextBirthdays, nextSetting] = await Promise.all([
         groupsRepository.getSummary(groupId),
         mayManageBirthdays ? groupsRepository.getAuthorizedBirthdays(groupId) : Promise.resolve([]),
-        mayManageBirthdays ? groupsRepository.getBirthdayNotificationsEnabled(groupId) : Promise.resolve(false),
+        mayManageBirthdays && birthdayNotificationsSupported ? groupsRepository.getBirthdayNotificationsEnabled(groupId) : Promise.resolve(false),
       ]);
       setGroup(nextGroup);
       setSummary(nextSummary);
       setBirthdays(nextBirthdays);
       setNotificationsEnabled(nextSetting);
-      if (mayManageBirthdays && nextSetting) {
+      if (birthdayNotificationsSupported && mayManageBirthdays && nextSetting) {
         void syncBirthdayNotifications(groupId, nextBirthdays, locale, false).catch((cause) => setNotificationError(cause instanceof Error ? cause.message : copy.notificationError));
       }
     }).catch(() => { setFailed(true); setGroup(null); });
@@ -64,7 +66,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
   useEffect(load, [account?.leadershipMinistry, account?.id, groupId, locale]);
 
   async function toggleBirthdayNotifications(enabled: boolean) {
-    if (!assignedDeacon || notificationBusy) return;
+    if (!birthdayNotificationsSupported || !assignedDeacon || notificationBusy) return;
     setNotificationBusy(true);
     setNotificationError(null);
     try {
@@ -86,19 +88,22 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
   }
 
   if (group === undefined) return <View style={[styles.state, { backgroundColor: palette.background }]}><ActivityIndicator color={palette.accent} /><Text selectable style={[styles.stateText, { color: palette.text }]}>{copy.loading}</Text></View>;
-  if (!group || failed) return <View style={[styles.state, { backgroundColor: palette.background }]}><Ionicons color={palette.secondaryText} name="people-outline" size={30} /><Text selectable style={[styles.stateText, { color: palette.text }]}>{failed ? copy.error : copy.unavailable}</Text><Text selectable style={[styles.stateDetail, { color: palette.secondaryText }]}>{failed ? "" : copy.unavailableDetail}</Text>{failed ? <Pressable accessibilityRole="button" onPress={load} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>{copy.retry}</Text></Pressable> : null}</View>;
+  if (!group || failed) return <View style={[styles.state, { backgroundColor: palette.background }]}><Ionicons color={palette.secondaryText} name="people-outline" size={30} /><Text selectable style={[styles.stateText, { color: palette.text }]}>{failed ? copy.error : copy.unavailable}</Text><Text selectable style={[styles.stateDetail, { color: palette.secondaryText }]}>{failed ? "" : copy.unavailableDetail}</Text>{failed ? <Pressable accessibilityRole="button" onPress={load} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={styles.retryText}>{copy.retry}</Text></Pressable> : null}<Pressable accessibilityRole="button" onPress={() => router.replace("/groups")} style={styles.back}><Text style={[styles.backText, { color: palette.accent }]}>{copy.back}</Text></Pressable></View>;
 
   const deacons = group.responsibleDeacons ?? [];
-  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.screen, { backgroundColor: palette.background }]} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" stickyHeaderIndices={[1]} style={{ backgroundColor: palette.background }}>
+  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.screen, desktop && styles.desktopScreen, { backgroundColor: palette.background }]} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" stickyHeaderIndices={[1]} style={{ backgroundColor: palette.background }}>
     <View style={styles.topContent}>
-      <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => router.back()} style={styles.back}><Ionicons accessibilityElementsHidden color={palette.accent} name="chevron-back" size={19} /><Text style={[styles.backText, { color: palette.accent }]}>{copy.back}</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => router.canGoBack() ? router.back() : router.replace("/groups")} style={styles.back}><Ionicons accessibilityElementsHidden color={palette.accent} name="chevron-back" size={19} /><Text style={[styles.backText, { color: palette.accent }]}>{copy.back}</Text></Pressable>
       <View style={styles.header}><Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{locale === "uk" ? group.nameUk : group.name}</Text>{assignedDeacon ? <View style={[styles.myGroupBadge, { backgroundColor: palette.accentSoft }]}><Ionicons accessibilityElementsHidden color={palette.accent} name="people" size={15} /><Text selectable style={[styles.myGroupText, { color: palette.accent }]}>{copy.myGroup}</Text></View> : null}</View>
+      <View style={[styles.relatedSections, desktop && styles.relatedSectionsDesktop]}><View style={desktop && styles.relatedColumn}>
       <Section title={copy.responsibleDeacons}>{deacons.length ? deacons.map((member) => <PersonRow key={member.id} leader locale={locale} member={member} onPress={() => router.push(`/members/${member.id}` as never)} />) : <Text selectable style={[styles.empty, { color: palette.secondaryText }]}>{copy.noDeacons}</Text>}</Section>
-      {assignedDeacon ? <Section title={copy.birthdays}>
-        <View style={[styles.notificationRow, { borderBottomColor: palette.line }]}><View style={styles.notificationCopy}><Text selectable style={[styles.notificationTitle, { color: palette.text }]}>{copy.birthdayNotifications}</Text><Text selectable style={[styles.personDetail, { color: palette.secondaryText }]}>{copy.birthdayNotificationDetail}</Text></View>{notificationBusy ? <ActivityIndicator color={palette.accent} /> : <Switch accessibilityLabel={copy.birthdayNotifications} ios_backgroundColor={palette.line} onValueChange={(enabled) => void toggleBirthdayNotifications(enabled)} thumbColor="#FFFFFF" trackColor={{ false: palette.line, true: palette.accent }} value={notificationsEnabled} />}</View>
+      </View>
+      {assignedDeacon ? <View style={desktop && styles.relatedColumn}><Section title={copy.birthdays}>
+        {birthdayNotificationsSupported ? <View style={[styles.notificationRow, { borderBottomColor: palette.line }]}><View style={styles.notificationCopy}><Text selectable style={[styles.notificationTitle, { color: palette.text }]}>{copy.birthdayNotifications}</Text><Text selectable style={[styles.personDetail, { color: palette.secondaryText }]}>{copy.birthdayNotificationDetail}</Text></View>{notificationBusy ? <ActivityIndicator color={palette.accent} /> : <Switch accessibilityLabel={copy.birthdayNotifications} ios_backgroundColor={palette.line} onValueChange={(enabled) => void toggleBirthdayNotifications(enabled)} thumbColor="#FFFFFF" trackColor={{ false: palette.line, true: palette.accent }} value={notificationsEnabled} />}</View> : null}
         {notificationError ? <Text accessibilityLiveRegion="polite" selectable style={[styles.notificationError, { color: palette.accent }]}>{notificationError}</Text> : null}
         {upcoming.length ? upcoming.map((member) => <PersonRow key={member.id} locale={locale} member={member} detail={formatBirthday(member.month, member.day, locale)} onPress={() => router.push(`/members/${member.id}` as never)} />) : <Text selectable style={[styles.empty, { color: palette.secondaryText }]}>{copy.noUpcomingBirthdays}</Text>}
-      </Section> : null}
+      </Section></View> : null}
+      </View>
     </View>
     <View style={[styles.stickySearch, { backgroundColor: palette.background }]}><View style={[styles.search, { backgroundColor: palette.subtle }]}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} /><TextInput accessibilityLabel={copy.searchMembers} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={copy.searchMembers} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} /></View></View>
     <Section title={`${copy.members} (${filteredMembers.length})`}>{filteredMembers.length ? filteredMembers.map((member) => <PersonRow key={member.id} locale={locale} member={member} onPress={() => router.push(`/members/${member.id}` as never)} />) : <Text selectable style={[styles.empty, { color: palette.secondaryText }]}>{query.trim() ? copy.noMatchingMembers : copy.noMembers}</Text>}</Section>
@@ -114,6 +119,10 @@ function Section({ children, title }: { children: React.ReactNode; title: string
 function PersonRow({ detail, leader = false, locale, member, onPress }: { detail?: string; leader?: boolean; locale: "en" | "uk"; member: Pick<GroupMember, "id" | "name" | "photo" | "leadershipMinistry" | "isOrphan" | "isWidow">; onPress: () => void }) { const { palette } = useAppearance(); return <Pressable accessibilityHint="Opens member profile" accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.person, leader && styles.leaderPerson, { borderBottomColor: palette.line }, pressed && styles.pressed]}><ProfileAvatar backgroundColor={leader ? palette.accentSoft : palette.subtle} name={member.name} source={member.photo} textColor={leader ? palette.accent : palette.text} /><View style={styles.personCopy}><Text selectable style={[styles.personName, { color: palette.text }]}>{member.name}</Text>{detail ? <Text selectable style={[styles.personDetail, { color: palette.secondaryText }]}>{detail}</Text> : null}{member.leadershipMinistry ? <LeadershipBadge leadershipMinistry={member.leadershipMinistry} locale={locale} /> : null}<CareStatusBadges isOrphan={member.isOrphan} isWidow={member.isWidow} /></View><Ionicons accessibilityElementsHidden color={palette.accent} name="chevron-forward" size={18} /></Pressable>; }
 
 const styles = StyleSheet.create({
+  desktopScreen: { alignSelf: "center", maxWidth: 1120, width: "100%", paddingHorizontal: 32, paddingTop: 28 },
+  relatedSections: { gap: 18 },
+  relatedSectionsDesktop: { flexDirection: "row", alignItems: "flex-start", gap: 24 },
+  relatedColumn: { flex: 1, minWidth: 0 },
   screen: { flexGrow: 1, gap: 18, padding: 20, paddingBottom: 110 },
   topContent: { gap: 18 },
   back: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", minHeight: 32 },

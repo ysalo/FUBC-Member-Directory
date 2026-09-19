@@ -1,8 +1,9 @@
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { type Href, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
@@ -26,6 +27,7 @@ export function VisitationListScreen() {
   const account = session.status === "ready" ? session.account : null;
   const c = visitationCopy(locale);
   const router = useRouter();
+  const desktop = useDesktopLayout();
   const [mode, setMode] = useState<VisitListMode>("current");
   const [state, setState] = useState<ListState>({ status: "loading" });
   const [refreshing, setRefreshing] = useState(false);
@@ -106,11 +108,11 @@ export function VisitationListScreen() {
             title={mode === "current" ? c.emptyCurrent : c.emptyArchive}
           />
         ) : (
-          <View style={styles.listGroups}>
+          <View style={[styles.listGroups, desktop && styles.desktopListGroups]}>
             {[
               { title: c.myVisits, visits: state.visits.filter((visit) => visit.plannerId === state.snapshot.actor.id) },
               { title: c.invitations, visits: state.visits.filter((visit) => visit.recipients.some((recipient) => recipient.accountId === state.snapshot.actor.id)) },
-            ].filter((section) => section.visits.length > 0).map((section) => <View key={section.title} style={styles.list}>
+            ].filter((section) => section.visits.length > 0).map((section) => <View key={section.title} style={[styles.list, desktop && styles.desktopList]}>
             <Text accessibilityRole="header" style={styles.listHeading}>{section.title}</Text>
             {section.visits.map((visit) => {
               const ownRecipient = visit.recipients.find((recipient) => recipient.accountId === state.snapshot.actor.id);
@@ -144,7 +146,7 @@ export function VisitationListScreen() {
           </View>)}
           </View>
         )}
-        <Text selectable style={styles.privacyNote}>{c.notificationNote}</Text>
+        <Text selectable style={styles.privacyNote}>{Platform.OS === "web" ? (locale === "uk" ? "Відкривайте відвідування, щоб переглянути оновлення. Сповіщення в цій вебверсії не надсилаються." : "Open visitations to review updates. This web version does not send notifications.") : c.notificationNote}</Text>
       </>
     );
   })();
@@ -152,7 +154,7 @@ export function VisitationListScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, desktop && styles.desktopContent]}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={visitColors.accent} onRefresh={() => { setRefreshing(true); void load(true); }} />}
       >
@@ -170,6 +172,9 @@ export function VisitationListScreen() {
 }
 
 const styles = StyleSheet.create({
+  desktopListGroups: { flexDirection: "row", alignItems: "flex-start", gap: 24 },
+  desktopList: { flex: 1, minWidth: 0 },
+  desktopContent: { maxWidth: 1120, paddingHorizontal: 32, paddingTop: 28 },
   screen: { backgroundColor: visitColors.background, flex: 1 },
   content: { alignSelf: "center", gap: 14, maxWidth: 680, paddingBottom: 104, paddingHorizontal: 18, paddingTop: 20, width: "100%" },
   titleRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },

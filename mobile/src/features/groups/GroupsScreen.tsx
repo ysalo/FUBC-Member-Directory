@@ -1,3 +1,4 @@
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -16,6 +17,7 @@ type LoadState = "loading" | "error" | "ready";
 
 export function GroupsScreen() {
   const router = useRouter();
+  const desktop = useDesktopLayout();
   const { palette } = useAppearance();
   const { locale } = useLocalization();
   const session = useSession();
@@ -44,7 +46,7 @@ export function GroupsScreen() {
 
   const openGroup = (group: MinistryGroup) => router.push({ pathname: "/groups/[groupId]", params: { groupId: group.id } });
 
-  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.screen} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
+  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.screen, desktop && styles.desktopScreen]} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
     <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
 
     {state === "ready" && assigned ? <View style={styles.featuredSection}>
@@ -63,7 +65,7 @@ export function GroupsScreen() {
     {state === "loading" ? <State icon="sync-outline" title={copy.loading} />
       : state === "error" ? <State action={load} icon="cloud-offline-outline" title={copy.error} actionLabel={copy.retry} />
         : filtered.length === 0 ? <State icon="people-outline" title={assigned && !query.trim() ? copy.noOtherGroups : copy.noGroups} detail={assigned && !query.trim() ? copy.noOtherGroupsDetail : copy.noGroupsDetail} />
-          : <View style={styles.list}>{filtered.map((group) => <GroupRow group={group} key={group.id} locale={locale} onPress={() => openGroup(group)} />)}</View>}
+          : <View style={[styles.list, desktop && styles.desktopList]}>{filtered.map((group) => <View key={group.id} style={desktop && styles.desktopCell}><GroupRow group={group} locale={locale} onPress={() => openGroup(group)} /></View>)}</View>}
   </ScrollView>;
 }
 
@@ -107,6 +109,9 @@ export function State({ action, actionLabel, detail, icon, title }: { action?: (
 }
 
 const styles = StyleSheet.create({
+  desktopScreen: { alignSelf: "center", maxWidth: 1120, width: "100%", paddingHorizontal: 32, paddingTop: 28 },
+  desktopList: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", gap: 20 },
+  desktopCell: { width: "48%", flexGrow: 1, minWidth: 0 },
   screen: { flexGrow: 1, gap: 22, padding: 20, paddingBottom: 110 },
   title: { fontSize: 36, fontWeight: "800", letterSpacing: -1 },
   featuredSection: { gap: 9 },
