@@ -3,7 +3,7 @@ import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
 import { activeAccount, privatePhotoSources, unwrap } from "@/lib/repository-helpers";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
 import { initialManagementState, managementReducer } from "./model";
-import type { GroupManagementState, ManagedDeacon, ManagedGroup, ManagedMember, ManagedMinistry, ManagementAction, ManagementState } from "./model";
+import type { GroupManagementState, ManagedDeacon, ManagedGroup, ManagedGroupMember, ManagedMember, ManagedMinistry, ManagementAction, ManagementState } from "./model";
 
 export class SupabaseManagementRepository {
   async load(): Promise<ManagementState> {
@@ -119,7 +119,7 @@ export class SupabaseManagementRepository {
     const groups = unwrap(groupsResult), people = unwrap(peopleResult), responsibilityMembers = unwrap(responsibilityMembersResult), assignments = unwrap(assignmentsResult), leadership = unwrap(leadershipResult);
     const deaconPersonIds = new Set(leadership.map((row) => row.person_id));
     const deaconPeople = people.filter((person) => deaconPersonIds.has(person.id));
-    const photos = await privatePhotoSources(deaconPeople.map((person) => person.photo_path)).catch(() => new Map());
+    const photos = await privatePhotoSources(people.map((person) => person.photo_path)).catch(() => new Map());
     const managedGroups: ManagedGroup[] = groups.map((group) => ({
       id: group.id,
       name: group.name,
@@ -135,7 +135,18 @@ export class SupabaseManagementRepository {
       currentGroupId: assignments.find((assignment) => assignment.person_id === person.id)?.group_id ?? null,
       photo: person.photo_path ? photos.get(person.photo_path) : undefined,
     }));
-    return { groups: managedGroups, deacons: deacons.sort((left, right) => left.name.localeCompare(right.name)) };
+    const members: ManagedGroupMember[] = people.map((person) => ({
+      personId: person.id,
+      name: person.name,
+      currentMembershipGroupId: person.membership_group_id,
+      currentResponsibilityGroupId: responsibilityMembers.find((member) => member.person_id === person.id)?.group_id ?? null,
+      photo: person.photo_path ? photos.get(person.photo_path) : undefined,
+    }));
+    return {
+      groups: managedGroups,
+      deacons: deacons.sort((left, right) => left.name.localeCompare(right.name)),
+      members: members.sort((left, right) => left.name.localeCompare(right.name)),
+    };
   }
   async saveGroup(args: Database["public"]["Functions"]["save_group"]["Args"]) {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
@@ -189,13 +200,56 @@ class InMemoryManagementRepository {
   private groupManagement: GroupManagementState = {
     groups: [{ id: "group-one", name: "Група один", kind: "membership", archived: false, revision: 1, memberIds: ["maria-ivanova"], deaconIds: ["deacon-slav", "deacon-alina"] }],
     deacons: [{ accountId: "deacon-slav", personId: "yaroslav-salo", name: "Yaroslav Salo", currentGroupId: "group-one" }, { accountId: "deacon-alina", personId: "alina-belashov", name: "Alina Belashov", currentGroupId: "group-one" }],
+    members: [
+      { personId: "maria-ivanova", name: "Maria Ivanova", currentMembershipGroupId: "group-one", currentResponsibilityGroupId: null },
+      { personId: "daniel-kovalenko", name: "Daniel Kovalenko", currentMembershipGroupId: null, currentResponsibilityGroupId: null },
+      { personId: "olena-petrenko", name: "Olena Petrenko", currentMembershipGroupId: null, currentResponsibilityGroupId: null },
+      { personId: "yaroslav-salo", name: "Yaroslav Salo", currentMembershipGroupId: null, currentResponsibilityGroupId: null },
+      { personId: "alina-belashov", name: "Alina Belashov", currentMembershipGroupId: null, currentResponsibilityGroupId: null },
+    ],
   };
   async listMinistries() { return structuredClone(this.ministries); }
   async saveMinistry(ministry: { id?: string | null; revision?: number | null; name: string; nameUk?: string | null; archived?: boolean }) { const item = ministry.id ? this.ministries.find((m) => m.id === ministry.id) : undefined; if (item) Object.assign(item, { name: ministry.name, nameUk: ministry.nameUk ?? null, archived: ministry.archived ?? false, revision: (item.revision ?? 0) + 1 }); else this.ministries.push({ id: `ministry-${Date.now()}`, name: ministry.name, nameUk: ministry.nameUk ?? null, archived: false, revision: 1 }); return item ?? this.ministries.at(-1); }
   async saveMemberDetails(member: { id?: string | null; revision?: number | null; name: string; birthday?: string | null; ministryIds?: string[]; phone?: string | null; address?: string | null }) { let saved = member.id ? this.state.members.find((m) => m.id === member.id) : undefined; if (saved) Object.assign(saved, { name: member.name, birthday: member.birthday ?? null, ministryIds: member.ministryIds ?? [], phone: member.phone ?? null, address: member.address ?? null, revision: (saved.revision ?? 0) + 1 }); else { saved = { id: `member-${Date.now()}`, name: member.name, group: "", archived: false, revision: 1, birthday: member.birthday ?? null, ministryIds: member.ministryIds ?? [], phone: member.phone ?? null, address: member.address ?? null, photoPath: null }; this.state.members.push(saved); } return structuredClone(saved); }
   async loadGroupManagement() { return structuredClone(this.groupManagement); }
   async listGroups() { return structuredClone(this.groupManagement.groups); }
-  async saveGroup(args: Database["public"]["Functions"]["save_group"]["Args"]) { const group = this.groupManagement.groups.find((item) => item.id === args.p_id); if (!group) throw new Error("Group not found."); const selected = args.p_deacon_ids; this.groupManagement.groups.forEach((item) => { item.deaconIds = item.id === group.id ? [...selected] : item.deaconIds.filter((id) => !selected.includes(id)); }); this.groupManagement.deacons.forEach((deacon) => { deacon.currentGroupId = selected.includes(deacon.personId) ? group.id : deacon.currentGroupId === group.id ? null : deacon.currentGroupId; }); group.revision += 1; return structuredClone(group); }
+  async saveGroup(args: Database["public"]["Functions"]["save_group"]["Args"]) {
+    const nextName = args.p_name.trim();
+    if (!nextName) throw new Error("Enter a group name.");
+    let existing = this.groupManagement.groups.find((item) => item.id === args.p_id);
+    if (!existing) {
+      if (args.p_id) throw new Error("Group not found.");
+      const nextKind = args.p_kind === "responsibility" ? "responsibility" : "membership";
+      existing = { id: `group-${Date.now()}`, name: nextName, kind: nextKind, archived: false, revision: 1, memberIds: [], deaconIds: [] };
+      this.groupManagement.groups.push(existing);
+    } else {
+      existing.name = nextName;
+      existing.revision += 1;
+    }
+    const group = existing;
+    const selectedDeacons = args.p_deacon_ids;
+    const selectedMembers = args.p_member_ids.filter((id) => !selectedDeacons.includes(id));
+    this.groupManagement.groups.forEach((item) => {
+      item.deaconIds = item.id === group.id ? [...selectedDeacons] : item.deaconIds.filter((id) => !selectedDeacons.includes(id));
+      if (item.kind === group.kind) item.memberIds = item.id === group.id ? [...selectedMembers] : item.memberIds.filter((id) => !selectedMembers.includes(id));
+    });
+    this.groupManagement.deacons.forEach((deacon) => { deacon.currentGroupId = selectedDeacons.includes(deacon.personId) ? group.id : deacon.currentGroupId === group.id ? null : deacon.currentGroupId; });
+    this.groupManagement.members.forEach((member) => {
+      const key = group.kind === "membership" ? "currentMembershipGroupId" : "currentResponsibilityGroupId";
+      member[key] = selectedMembers.includes(member.personId) ? group.id : member[key] === group.id ? null : member[key];
+    });
+    return structuredClone(group);
+  }
+  async deleteGroup(id: string, revision: number) {
+    const group = this.groupManagement.groups.find((item) => item.id === id);
+    if (!group || group.revision !== revision) throw new Error("Conflict: group changed. Reload and try again.");
+    this.groupManagement.groups = this.groupManagement.groups.filter((item) => item.id !== id);
+    this.groupManagement.deacons.forEach((deacon) => { if (deacon.currentGroupId === id) deacon.currentGroupId = null; });
+    this.groupManagement.members.forEach((member) => {
+      if (member.currentMembershipGroupId === id) member.currentMembershipGroupId = null;
+      if (member.currentResponsibilityGroupId === id) member.currentResponsibilityGroupId = null;
+    });
+  }
   async replacePhoto(person: { id: string; revision: number; photo_path?: string | null; photoPath?: string | null }, bytes: ArrayBuffer | null, mimeType?: "image/jpeg" | "image/png" | "image/webp") { if (bytes && (!mimeType || bytes.byteLength === 0 || bytes.byteLength > 5 * 1024 * 1024)) throw new Error("Choose a JPEG, PNG or WebP photo smaller than 5 MB."); const member = this.state.members.find((item) => item.id === person.id); if (member) member.photoPath = bytes ? `local:${Date.now()}` : null; return { person: structuredClone(member), cleanupWarning: null }; }
   async apply(state: ManagementState, action: ManagementAction) { this.state = managementReducer(state, action); return this.load(); }
 }

@@ -34,7 +34,15 @@ export type ManagedDeacon = {
   photo?: import("react-native").ImageSourcePropType;
 };
 
-export type GroupManagementState = { groups: ManagedGroup[]; deacons: ManagedDeacon[] };
+export type ManagedGroupMember = {
+  personId: string;
+  name: string;
+  currentMembershipGroupId: string | null;
+  currentResponsibilityGroupId: string | null;
+  photo?: import("react-native").ImageSourcePropType;
+};
+
+export type GroupManagementState = { groups: ManagedGroup[]; deacons: ManagedDeacon[]; members: ManagedGroupMember[] };
 
 export type ManagedAccount = {
   id: string;

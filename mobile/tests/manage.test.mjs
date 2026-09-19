@@ -12,6 +12,28 @@ test("member records can be archived and restored", () => {
   assert.equal(restored.members[0].archived, false);
 });
 
+test("the group management editor creates groups and searches and saves multiple existing members", async () => {
+  const [screen, list, route, repository] = await Promise.all([
+    readFile(new URL("../src/features/manage/GroupAssignmentScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/manage/GroupsManagementScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/manage/group/new.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/manage/management-repository.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(screen, /<TextInput[^>]+maxLength=\{120\}/);
+  assert.match(screen, /@expo\/ui\/community\/segmented-control/);
+  assert.match(screen, /Search members/);
+  assert.match(screen, /selectedMembers/);
+  assert.match(screen, /p_name: nextName/);
+  assert.match(screen, /p_member_ids: selectedMembers/);
+  assert.match(screen, /managementRepository\.deleteGroup\(group\.id, group\.revision\)/);
+  assert.match(screen, /Members will not be deleted/);
+  assert.match(screen, /style: "destructive"/);
+  assert.match(list, /\/manage\/group\/new/);
+  assert.match(route, /<GroupAssignmentScreen creating/);
+  assert.match(repository, /currentMembershipGroupId/);
+  assert.match(repository, /currentResponsibilityGroupId/);
+});
+
 test("the final active administrator cannot be demoted", () => {
   const next = source.managementReducer(source.initialManagementState, { type: "set-account-role", accountId: "a-2", role: "member" });
   assert.equal(next.accounts.find((account) => account.id === "a-2")?.role, "admin");

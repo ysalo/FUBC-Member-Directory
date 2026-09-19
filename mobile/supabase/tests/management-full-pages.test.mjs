@@ -37,7 +37,7 @@ before(async () => {
     "20260917080000_link_group_one_deacon_profiles.sql",
     "20260917100000_manage_care_status.sql", "20260917110000_leadership_ministries.sql", "20260917120000_visitation_leader_planning.sql",
     "20260918103000_person_based_group_deacons.sql", "20260918153000_preserve_deacon_assignments_on_member_edit.sql",
-    "20260918170000_delete_members.sql",
+    "20260918170000_delete_members.sql", "20260918190000_delete_groups_with_assignments.sql",
   ]) await db.exec(await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
   await db.query("insert into auth.users(id,email) values($1,'admin@example.com'),($2,'editor@example.com'),($3,'member@example.com')", [ids.admin, ids.editor, ids.member]);
   await db.exec(`update public.profiles set status='active',role='admin' where id='${ids.admin}';
@@ -121,6 +121,41 @@ test("group leadership accepts deacon members with or without accounts", async (
     { person_id: slavPerson, account_id: null, slot: 1 },
     { person_id: accountlessPerson, account_id: null, slot: 2 },
   ]);
+});
+
+test("editors can rename a group without changing its members or deacons", async () => {
+  const groupId = "70000000-0000-4000-8000-000000000001";
+  const group = (await db.query("select * from public.deacon_groups where id=$1", [groupId])).rows[0];
+  const deaconIds = (await db.query("select person_id from public.deacon_group_deacons where group_id=$1 order by slot", [groupId])).rows.map((row) => row.person_id);
+  const memberIds = (await db.query("select id from public.people where membership_group_id=$1 order by id", [groupId])).rows.map((row) => row.id);
+  await as("editor", "select * from public.save_group($1,$2,$3,'membership',false,$4,$5)", [group.id, group.revision, "  Renamed group  ", deaconIds, memberIds]);
+  assert.equal((await db.query("select name from public.deacon_groups where id=$1", [groupId])).rows[0].name, "Renamed group");
+  assert.deepEqual((await db.query("select person_id from public.deacon_group_deacons where group_id=$1 order by slot", [groupId])).rows.map((row) => row.person_id), deaconIds);
+  assert.deepEqual((await db.query("select id from public.people where membership_group_id=$1 order by id", [groupId])).rows.map((row) => row.id), memberIds);
+});
+
+test("editors can create a group and add multiple existing members at once", async () => {
+  const first = (await db.query("insert into public.people(name) values('New Group Member One') returning id")).rows[0].id;
+  const second = (await db.query("insert into public.people(name) values('New Group Member Two') returning id")).rows[0].id;
+  const created = (await as("editor", "select * from public.save_group(null,null,'New Membership Group','membership',false,$1,$2)", [[], [first, second]])).rows[0];
+  assert.equal(created.name, "New Membership Group");
+  assert.equal(created.kind, "membership");
+  assert.deepEqual((await db.query("select id from public.people where membership_group_id=$1 order by id", [created.id])).rows.map((row) => row.id), [first, second].sort());
+});
+
+test("deleting either kind of group removes assignments without deleting members", async () => {
+  const membershipMember = (await db.query("insert into public.people(name) values('Membership Group Survivor') returning id")).rows[0].id;
+  const careMember = (await db.query("insert into public.people(name) values('Care Group Survivor') returning id")).rows[0].id;
+  const membershipGroup = (await as("editor", "select * from public.save_group(null,null,'Temporary Membership Group','membership',false,$1,$2)", [[], [membershipMember]])).rows[0];
+  const careGroup = (await as("editor", "select * from public.save_group(null,null,'Temporary Care Group','responsibility',false,$1,$2)", [[], [careMember]])).rows[0];
+
+  await as("editor", "select public.delete_group($1,$2)", [membershipGroup.id, membershipGroup.revision]);
+  await as("editor", "select public.delete_group($1,$2)", [careGroup.id, careGroup.revision]);
+
+  assert.equal((await db.query("select count(*)::integer as count from public.deacon_groups where id in ($1,$2)", [membershipGroup.id, careGroup.id])).rows[0].count, 0);
+  assert.equal((await db.query("select count(*)::integer as count from public.people where id in ($1,$2)", [membershipMember, careMember])).rows[0].count, 2);
+  assert.equal((await db.query("select membership_group_id from public.people where id=$1", [membershipMember])).rows[0].membership_group_id, null);
+  assert.equal((await db.query("select count(*)::integer as count from public.deacon_group_members where person_id=$1", [careMember])).rows[0].count, 0);
 });
 
 test("linking an account later preserves the person's group assignment", async () => {

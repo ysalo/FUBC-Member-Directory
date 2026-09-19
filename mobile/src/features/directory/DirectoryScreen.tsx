@@ -1,6 +1,5 @@
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, SectionList, StyleSheet, View } from "react-native";
@@ -11,6 +10,7 @@ import { WebTabBar } from "@/features/shell/WebTabBar";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
 import { LeadershipBadge } from "@/features/members/leadership-badge";
+import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { formatPhoneNumber } from "@/lib/phone";
 
 import { getDirectoryVisitCount, listDirectory } from "./directory-repository";
@@ -32,7 +32,7 @@ function MemberRow({ item, locale, ministry, onPress }: { item: Member; locale: 
   const showsMinistry = Boolean(ministry) && !isLeadershipMinistryLabel(ministry, item.leadershipMinistry);
   return (
     <Pressable accessibilityHint={`Opens ${item.name}’s member profile`} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.memberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }, pressed && styles.pressed]}>
-      <Image accessibilityLabel={`${item.name} profile photo`} contentFit="cover" source={item.avatar} style={styles.avatar} />
+      <ProfileAvatar name={item.name} size={72} source={item.avatar} />
       <View style={styles.memberCopy}>
         <Text numberOfLines={1} style={[styles.memberName, { color: palette.text }]}>{item.name}</Text>
         {showsMinistry ? <Text numberOfLines={1} style={[styles.memberMinistry, { color: palette.secondaryText }]}>{ministry}</Text> : null}
@@ -211,7 +211,6 @@ const styles = StyleSheet.create({
   summaryActionLabel: { color: "#101622", flex: 1, fontSize: px(14), fontWeight: "600", lineHeight: px(18) },
   sectionLetter: { color: "#4A4C4F", fontSize: px(17), fontWeight: "600", paddingBottom: px(5), paddingHorizontal: px(19), paddingTop: px(10) },
   memberRow: { alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: px(74), paddingHorizontal: px(20), paddingVertical: px(1) },
-  avatar: { borderRadius: px(36), height: px(72), width: px(72) },
   memberCopy: { flex: 1, marginLeft: px(5) },
   memberName: { color: "#090F19", fontSize: px(18), fontWeight: "600", letterSpacing: px(0.3) },
   memberMinistry: { color: "#737477", fontSize: px(16), marginTop: px(2) },

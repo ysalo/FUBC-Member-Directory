@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+const avatarFallback = await import("../src/features/members/avatar-fallback.ts");
+
 test("group detail uses a standalone native switch instead of an unhosted SwiftUI control", async () => {
   const source = await readFile(new URL("../src/features/groups/GroupDetailScreen.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /from ["']@expo\/ui["']/);
@@ -86,7 +88,20 @@ test("group cards identify their responsible deacons", async () => {
 });
 
 test("profile avatars fall back to initials when an image fails", async () => {
-  const avatar = await readFile(new URL("../src/features/members/ProfileAvatar.tsx", import.meta.url), "utf8");
+  const [avatar, directory, profile] = await Promise.all([
+    readFile(new URL("../src/features/members/ProfileAvatar.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/directory/DirectoryScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/members/MemberProfileScreen.tsx", import.meta.url), "utf8"),
+  ]);
   assert.match(avatar, /onError=\{\(\) => setFailed\(true\)\}/);
   assert.match(avatar, /hasSource && !failed/);
+  assert.match(directory, /<ProfileAvatar name=\{item\.name\} size=\{72\} source=\{item\.avatar\}/);
+  assert.match(profile, /hasHeroPhoto \? <Image[\s\S]*: <View style=\{styles\.heroFallback\}><ProfileAvatar name=\{name\} size=\{156\}/);
+  assert.equal(avatarFallback.avatarInitials("Yaroslav Salo"), "YS");
+  assert.equal(avatarFallback.avatarInitials("Ярослав Сало"), "ЯС");
+  assert.equal(avatarFallback.avatarInitials("Mary Ann van Buren"), "MB");
+  assert.equal(avatarFallback.avatarInitials("Prince"), "P");
+  assert.equal(avatarFallback.avatarInitials("   "), "?");
+  assert.deepEqual(avatarFallback.avatarTone("Yaroslav Salo"), avatarFallback.avatarTone("Yaroslav Salo"));
+  assert.match(avatarFallback.avatarTone("Yaroslav Salo").backgroundColor, /^#[0-9A-F]{6}$/);
 });

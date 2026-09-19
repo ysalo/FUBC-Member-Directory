@@ -18,6 +18,7 @@ export default function ManageLayout() {
     <Stack.Screen name="account/[accountId]/delete" options={{ headerShown: true, title: locale === "uk" ? "Видалити обліковий запис" : "Delete account" }} />
     <Stack.Screen name="member/[memberId]/delete" options={{ headerShown: true, title: locale === "uk" ? "Видалити учасника" : "Delete member" }} />
     <Stack.Screen name="groups" options={{ headerShown: true, title: locale === "uk" ? "Групи" : "Groups" }} />
+    <Stack.Screen name="group/new" options={{ headerShown: true, title: locale === "uk" ? "Нова група" : "New group" }} />
     <Stack.Screen name="group/[groupId]" options={{ headerShown: true, title: locale === "uk" ? "Редагувати групу" : "Edit group" }} />
     <Stack.Screen name="ministries" options={{ headerShown: true, title: locale === "uk" ? "Служіння" : "Ministries" }} />
     <Stack.Screen name="ministry/new" options={{ headerShown: true, title: locale === "uk" ? "Нове служіння" : "New ministry" }} />
