@@ -107,9 +107,9 @@ button, input, textarea, select { font: inherit; }
 @media (min-width: 1024px) {
   .web-app-shell { flex-direction: row; }
   .web-navigation { display: flex; flex-direction: column; order: 0; width: 252px; border-top: 0; border-right: 1px solid var(--app-line); padding: 0 14px 14px; overflow-x: hidden; overflow-y: auto; }
-  .web-navigation-brand { align-items: flex-start; background: #091722; display: flex; flex: 0 0 auto; flex-direction: column; gap: 9px; margin: 0 -14px 18px; padding: max(22px, env(safe-area-inset-top)) 24px 20px; }
-  .web-navigation-logo { background: currentColor; color: #f8f3ea; display: block; height: 64px; mask: url("/icons/church-logo-black.png") left center / contain no-repeat; width: 68px; }
-  .web-navigation-brand-label { color: #d5aa58; font-size: 0.7em; font-weight: 650; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; }
+  .web-navigation-brand { display: flex; flex: 0 0 auto; flex-direction: column; gap: 8px; padding: max(28px, env(safe-area-inset-top)) 12px 32px; }
+  .web-navigation-logo { background: currentColor; color: var(--app-text); display: block; height: 54px; mask: url("/icons/church-logo-black.png") left center / contain no-repeat; width: 57px; }
+  .web-navigation-brand-label { color: var(--app-secondaryText); font-size: 0.8em; line-height: 1.5; }
   .web-navigation-links { flex: 1; flex-direction: column; gap: 6px; }
   .web-navigation-link { flex: 0 0 auto; flex-direction: row; justify-content: flex-start; text-align: left; gap: 12px; min-height: 48px; font-size: 0.95em; padding: 12px; overflow-wrap: normal; white-space: nowrap; }
   .web-navigation-link-label { opacity: 1; transition: opacity 120ms ease-out; }
