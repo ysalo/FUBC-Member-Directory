@@ -52,6 +52,7 @@ test("member profile presents its group as a labeled disclosure action", async (
   assert.match(source, /accessibilityHint=\{copy\.openGroup\}/);
   assert.match(source, /<Fact disclosure/);
   assert.match(source, /name="chevron-forward"/);
+  assert.match(source, /editButton: \{ left: "auto", right: 16 \}/);
 });
 
 test("deacon profiles show both belonging and responsibility groups", async () => {
@@ -85,6 +86,14 @@ test("group cards identify their responsible deacons", async () => {
   assert.match(row, /accessibilityHint=\{accessibilityHint\}/);
   assert.match(copy, /openDeaconProfile: "Opens deacon profile"/);
   assert.match(copy, /openDeaconProfile: "Відкриває профіль диякона"/);
+});
+
+test("group member search offers the same care and leadership filters as the directory", async () => {
+  const source = await readFile(new URL("../src/features/groups/GroupDetailScreen.tsx", import.meta.url), "utf8");
+  for (const filter of ["orphan", "widow", "deacon", "pastor"]) assert.match(source, new RegExp(`id: "${filter}"`));
+  assert.match(source, /accessibilityRole="checkbox"/);
+  assert.match(source, /member\.leadershipMinistry === filter/);
+  assert.match(source, /setFilters\(\[\]\)/);
 });
 
 test("profile avatars fall back to initials when an image fails", async () => {

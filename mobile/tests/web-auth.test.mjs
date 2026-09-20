@@ -75,6 +75,11 @@ test('native callback leaves the callback route without another token exchange',
   assert.match(route, /if \(Platform\.OS !== "web"\) \{ router\.replace\("\/"\); return; \}/);
 });
 
+test('Google OAuth always asks which account to use after sign-out', async () => {
+  const session = await readFile(new URL('../src/lib/session.ts', import.meta.url), 'utf8');
+  assert.match(session, /provider === "google" \? \{ prompt: "select_account" \} : undefined/);
+});
+
 test('OAuth preserves deep links but rejects external and callback destinations', () => {
   const origin = 'https://directory.example.org';
   assert.equal(safeReturnPath('/members/123?view=family#phone', origin), '/members/123?view=family#phone');

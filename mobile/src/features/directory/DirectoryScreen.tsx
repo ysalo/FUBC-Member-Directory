@@ -32,6 +32,8 @@ function MemberRow({ item, locale, ministry, onPress }: { item: Member; locale: 
   const { palette } = useAppearance();
   const desktop = useDesktopLayout();
   const showsMinistry = Boolean(ministry) && !isLeadershipMinistryLabel(ministry, item.leadershipMinistry);
+  const leadershipLabel = item.leadershipMinistry === "pastor" ? (locale === "uk" ? "Пастор" : "Pastor") : item.leadershipMinistry === "deacon" ? (locale === "uk" ? "Диякон" : "Deacon") : "";
+  const desktopMinistry = [leadershipLabel, showsMinistry ? ministry : ""].filter(Boolean).join(" · ");
   const row = (
     <Pressable accessibilityHint={locale === "uk" ? `Відкрити профіль: ${item.name}` : `Opens ${item.name}’s member profile`} accessibilityRole={Platform.OS === "web" ? "link" : "button"} onPress={Platform.OS === "web" ? undefined : onPress} style={Platform.OS === "web" ? StyleSheet.flatten([styles.memberRow, desktop && styles.desktopMemberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }]) : ({ pressed }) => [styles.memberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }, pressed && styles.pressed]}>
       <ProfileAvatar name={item.name} size={desktop ? 56 : 72} source={item.avatar} />
@@ -39,10 +41,10 @@ function MemberRow({ item, locale, ministry, onPress }: { item: Member; locale: 
         <Text numberOfLines={1} style={[styles.memberName, { color: palette.text }]}>{item.name}</Text>
         {!desktop && showsMinistry ? <Text numberOfLines={1} style={[styles.memberMinistry, { color: palette.secondaryText }]}>{ministry}</Text> : null}
         {!desktop && item.phone ? <Text numberOfLines={1} selectable style={[styles.memberPhone, { color: palette.secondaryText }]}>{formatPhoneNumber(item.phone)}</Text> : null}
-        {item.leadershipMinistry ? <LeadershipBadge leadershipMinistry={item.leadershipMinistry} locale={locale} /> : null}
+        {!desktop && item.leadershipMinistry ? <LeadershipBadge leadershipMinistry={item.leadershipMinistry} locale={locale} /> : null}
         <CareStatusBadges isOrphan={item.isOrphan} isWidow={item.isWidow} />
       </View>
-      {desktop ? <><Text style={[styles.desktopMinistry, { color: palette.secondaryText }]}>{showsMinistry ? ministry : "—"}</Text><Text style={[styles.desktopPhone, { color: palette.secondaryText }]}>{item.phone ? formatPhoneNumber(item.phone) : "—"}</Text></> : null}
+      {desktop ? <><Text style={[styles.desktopMinistry, { color: palette.secondaryText }]}>{desktopMinistry || "—"}</Text><Text style={[styles.desktopPhone, { color: palette.secondaryText }]}>{item.phone ? formatPhoneNumber(item.phone) : "—"}</Text></> : null}
       <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={px(22)} />
     </Pressable>
   );

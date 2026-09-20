@@ -7,6 +7,7 @@ export type ManagedMember = {
   birthday?: string | null;
   ministryIds?: string[];
   phone?: string | null;
+  email?: string | null;
   address?: string | null;
   isOrphan?: boolean;
   isWidow?: boolean;
@@ -112,11 +113,14 @@ export function managementReducer(state: ManagementState, action: ManagementActi
         accounts: state.accounts.map((account) => account.id === action.accountId ? { ...account, role: action.role } : account),
       };
     }
-    case "link-account":
+    case "link-account": {
+      const accountEmail = state.accounts.find((account) => account.id === action.accountId)?.email ?? null;
       return {
         ...state,
         accounts: state.accounts.map((account) => account.id === action.accountId ? { ...account, personId: action.personId } : account),
+        members: state.members.map((member) => member.id === action.personId ? { ...member, email: accountEmail } : member),
       };
+    }
     case "unlink-account":
       return {
         ...state,

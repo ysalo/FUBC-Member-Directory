@@ -16,6 +16,8 @@ import { upcomingBirthdays } from "./birthday-notification-plan";
 import { getGroupsCopy } from "./groups-copy";
 import { groupsRepository, type AuthorizedBirthday, type GroupDetail, type GroupMember, type GroupSummary } from "./groups-repository";
 
+type GroupMemberFilter = "orphan" | "widow" | "deacon" | "pastor";
+
 export function GroupDetailScreen({ groupId }: { groupId: string }) {
   const router = useRouter();
   const desktop = useDesktopLayout();
@@ -32,14 +34,24 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
   const [notificationError, setNotificationError] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<GroupMemberFilter[]>([]);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const assignedDeacon = Boolean(group && account?.leadershipMinistry === "deacon" && group.responsibleDeaconIds.includes(account.id));
   const upcoming = useMemo(() => upcomingBirthdays(birthdays), [birthdays]);
   const filteredMembers = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
-    if (!group || !needle) return group?.members ?? [];
-    return group.members.filter((member) => member.name.toLocaleLowerCase(locale).includes(needle));
-  }, [group, locale, query]);
+    return (group?.members ?? [])
+      .filter((member) => filters.length === 0 || filters.some((filter) => filter === "orphan" ? member.isOrphan : filter === "widow" ? member.isWidow : member.leadershipMinistry === filter))
+      .filter((member) => !needle || member.name.toLocaleLowerCase(locale).includes(needle));
+  }, [filters, group, locale, query]);
+  const filterOptions: Array<{ id: GroupMemberFilter; label: string }> = [
+    { id: "orphan", label: locale === "uk" ? "Сироти" : "Orphans" },
+    { id: "widow", label: locale === "uk" ? "Вдови та вдівці" : "Widows & widowers" },
+    { id: "deacon", label: locale === "uk" ? "Диякони" : "Deacons" },
+    { id: "pastor", label: locale === "uk" ? "Пастори" : "Pastors" },
+  ];
+  const toggleFilter = (filter: GroupMemberFilter) => setFilters((current) => current.includes(filter) ? current.filter((value) => value !== filter) : [...current, filter]);
 
   const load = () => {
     setGroup(undefined);
@@ -105,7 +117,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
       </Section></View> : null}
       </View>
     </View>
-    <View style={[styles.stickySearch, { backgroundColor: palette.background }]}><View style={[styles.search, { backgroundColor: palette.subtle }]}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} /><TextInput accessibilityLabel={copy.searchMembers} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={copy.searchMembers} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} /></View></View>
+    <View style={[styles.stickySearch, { backgroundColor: palette.background }]}><View style={[styles.search, { backgroundColor: palette.subtle }]}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} /><TextInput accessibilityLabel={copy.searchMembers} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={copy.searchMembers} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} /><Pressable accessibilityLabel={locale === "uk" ? "Фільтри" : "Filters"} accessibilityRole="button" accessibilityState={{ expanded: filterOpen }} onPress={() => setFilterOpen((open) => !open)} style={styles.filterButton}><Ionicons accessibilityElementsHidden color={filters.length ? palette.accent : palette.secondaryText} name="options-outline" size={21} />{filters.length ? <View style={[styles.filterCount, { backgroundColor: palette.accent }]}><Text style={styles.filterCountText}>{filters.length}</Text></View> : null}</Pressable></View>{filterOpen ? <View accessibilityViewIsModal style={[styles.filterPopover, { backgroundColor: palette.elevated, borderColor: palette.line }]}><View style={styles.filterHeader}><Text accessibilityRole="header" style={[styles.filterTitle, { color: palette.text }]}>{locale === "uk" ? "Фільтри" : "Filters"}</Text>{filters.length ? <Pressable accessibilityRole="button" onPress={() => setFilters([])} style={styles.clearButton}><Text style={[styles.clearText, { color: palette.accent }]}>{locale === "uk" ? "Очистити" : "Clear"}</Text></Pressable> : null}</View>{filterOptions.map((option) => { const selected = filters.includes(option.id); return <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: selected }} key={option.id} onPress={() => toggleFilter(option.id)} style={styles.filterOption}><View style={[styles.checkbox, { backgroundColor: selected ? palette.accent : "transparent", borderColor: selected ? palette.accent : palette.line }]}>{selected ? <Ionicons accessibilityElementsHidden color="#FFF" name="checkmark" size={15} /> : null}</View><Text style={[styles.filterOptionText, { color: palette.text }]}>{option.label}</Text></Pressable>; })}<Pressable accessibilityRole="button" onPress={() => setFilterOpen(false)} style={[styles.doneButton, { backgroundColor: palette.accent }]}><Text style={styles.doneText}>{locale === "uk" ? "Готово" : "Done"}</Text></Pressable></View> : null}</View>
     <Section title={`${copy.members} (${filteredMembers.length})`}>{filteredMembers.length ? filteredMembers.map((member) => <PersonRow key={member.id} locale={locale} member={member} onPress={() => router.push(`/members/${member.id}` as never)} />) : <Text selectable style={[styles.empty, { color: palette.secondaryText }]}>{query.trim() ? copy.noMatchingMembers : copy.noMembers}</Text>}</Section>
     <Text accessibilityRole="summary" selectable style={[styles.summary, { color: palette.secondaryText }]}>{copy.summary(summary.total || group.members.length, summary.orphans, summary.widows)}</Text>
   </ScrollView>;
@@ -137,6 +149,19 @@ const styles = StyleSheet.create({
   stickySearch: { marginHorizontal: -20, paddingBottom: 10, paddingHorizontal: 20, paddingTop: 2, zIndex: 2 },
   search: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, flexDirection: "row", gap: 10, minHeight: 46, paddingHorizontal: 14 },
   searchInput: { flex: 1, fontSize: 16, paddingVertical: 11 },
+  filterButton: { alignItems: "center", justifyContent: "center", minHeight: 40, minWidth: 40, position: "relative" },
+  filterCount: { alignItems: "center", borderRadius: 8, height: 16, justifyContent: "center", position: "absolute", right: -2, top: 1, width: 16 },
+  filterCountText: { color: "#FFF", fontSize: 10, fontWeight: "800" },
+  filterPopover: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, elevation: 8, marginTop: 7, padding: 12, position: "absolute", right: 20, shadowColor: "#000", shadowOffset: { height: 4, width: 0 }, shadowOpacity: .18, shadowRadius: 12, top: 50, width: 244, zIndex: 20 },
+  filterHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 34, paddingHorizontal: 4 },
+  filterTitle: { fontSize: 17, fontWeight: "800" },
+  clearButton: { justifyContent: "center", minHeight: 36, paddingLeft: 12 },
+  clearText: { fontSize: 14, fontWeight: "700" },
+  filterOption: { alignItems: "center", flexDirection: "row", gap: 11, minHeight: 44, paddingHorizontal: 4 },
+  checkbox: { alignItems: "center", borderRadius: 6, borderWidth: 1.5, height: 23, justifyContent: "center", width: 23 },
+  filterOptionText: { flex: 1, fontSize: 15, fontWeight: "600" },
+  doneButton: { alignItems: "center", borderRadius: 11, justifyContent: "center", marginTop: 7, minHeight: 42 },
+  doneText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
   person: { alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 11, minHeight: 62, paddingHorizontal: 14, paddingVertical: 9 },
   pressed: { opacity: .7 },
   leaderPerson: { backgroundColor: "rgba(255,255,255,0.025)" },

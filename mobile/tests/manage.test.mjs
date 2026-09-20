@@ -47,6 +47,12 @@ test("unlinking returns an account to approval without changing member ministrie
   assert.equal(next.accounts[0].personId, null);
 });
 
+test("linking an account copies its email to the member", () => {
+  const state = { members: [{ id: "person", name: "Member", group: "", archived: false }], accounts: [{ id: "account", name: "Member", email: "member@example.com", status: "pending", role: "member" }] };
+  const linked = source.managementReducer(state, { type: "link-account", accountId: "account", personId: "person" });
+  assert.equal(linked.members[0].email, "member@example.com");
+});
+
 test("account settings no longer expose Pastor or Deacon designation controls", async () => {
   const screen = await readFile(new URL("../src/features/manage/AccountDetailScreen.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(screen, /set-account-designation|Ministry designation|Позначка служіння/);
@@ -148,11 +154,25 @@ test("directory creation stays management-only and personal deletion stays colla
   assert.match(menu, /accessibilityState=\{\{ expanded: advancedOpen \}\}/);
 });
 
-test("directory rows use the leadership badge without duplicating its ministry label", async () => {
+test("directory rows put leadership in the desktop ministry column without duplicating it", async () => {
   const directory = await readFile(new URL("../src/features/directory/DirectoryScreen.tsx", import.meta.url), "utf8");
   assert.match(directory, /isLeadershipMinistryLabel/);
-  assert.match(directory, /showsMinistry \? <Text/);
+  assert.match(directory, /desktopMinistry/);
+  assert.match(directory, /!desktop && item\.leadershipMinistry/);
   assert.match(directory, /normalized === "deacon" \|\| normalized === "диякон"/);
+});
+
+test("member email is editable and account linking copies the account email", async () => {
+  const [editor, repository] = await Promise.all([
+    readFile(new URL("../src/features/manage/MemberFormScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/manage/management-repository.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(editor, /setEmail\(found\.email \?\? ""\)/);
+  assert.match(editor, /keyboardType="email-address"/);
+  assert.match(editor, /email: email\.trim\(\) \|\| null/);
+  assert.match(repository, /email: row\.email/);
+  assert.match(repository, /current\.email !== snapshot\.email/);
+  assert.match(repository, /\{ name: current\.name, email: snapshot\.email \}/);
 });
 
 test("menu identifies the linked member and treats sign out as destructive", async () => {

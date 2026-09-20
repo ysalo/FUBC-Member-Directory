@@ -67,7 +67,7 @@ export async function signInWithIdentityToken(provider: "apple" | "google", toke
   if (error) throw error;
 }
 export async function beginOAuth(provider: "apple" | "google", redirectTo: string): Promise<string> {
-  const { data, error } = await requireSupabase().auth.signInWithOAuth({ provider, options: { redirectTo, skipBrowserRedirect: true } });
+  const { data, error } = await requireSupabase().auth.signInWithOAuth({ provider, options: { redirectTo, skipBrowserRedirect: true, queryParams: provider === "google" ? { prompt: "select_account" } : undefined } });
   if (error) throw error;
   if (!data.url) throw new Error("Sign-in did not return an authorization URL.");
   return data.url;
