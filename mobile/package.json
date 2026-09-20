@@ -56,7 +56,9 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
-  "engines": { "node": "24.x" },
+  "engines": {
+    "node": "24.x"
+  },
   "private": true,
   "packageManager": "pnpm@12.4.1"
 }

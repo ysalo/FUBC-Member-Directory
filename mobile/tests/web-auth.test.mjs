@@ -77,7 +77,7 @@ test('native callback leaves the callback route without another token exchange',
 
 test('Google OAuth always asks which account to use after sign-out', async () => {
   const session = await readFile(new URL('../src/lib/session.ts', import.meta.url), 'utf8');
-  assert.match(session, /provider === "google" \? \{ prompt: "select_account" \} : undefined/);
+  assert.match(session, /provider === "google"\s*\? \{ prompt: "select_account" \}\s*: undefined/);
 });
 
 test('OAuth preserves deep links but rejects external and callback destinations', () => {

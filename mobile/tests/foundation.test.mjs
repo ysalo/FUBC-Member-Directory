@@ -141,7 +141,7 @@ test('appearance preferences theme browser-only visitation surfaces', async () =
 test('pending approval screen offers a resilient sign-out action', async () => {
   const gate = await readFile(new URL('../src/features/session/AccessGate.tsx', import.meta.url), 'utf8');
   assert.match(gate, /status === "pending"[^;]+secondaryAction=\{\(\) => void submitSignOut\(\)\}/);
-  assert.match(gate, /accessibilityState=\{\{ busy: secondaryActionBusy, disabled: secondaryActionBusy \}\}/);
+  assert.match(gate, /accessibilityState=\{\{[\s\S]*?busy: secondaryActionBusy,[\s\S]*?disabled: secondaryActionBusy[\s\S]*?\}\}/);
   assert.match(gate, /secondaryActionError/);
 });
 

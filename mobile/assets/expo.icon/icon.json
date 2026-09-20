@@ -1,16 +1,16 @@
 {
-  "fill" : {
-    "solid" : "srgb:0.97255,0.95294,0.91765,1.00000"
+  "fill": {
+    "solid": "srgb:0.97255,0.95294,0.91765,1.00000"
   },
-  "groups" : [
+  "groups": [
     {
-      "layers" : [
+      "layers": [
         {
-          "image-name" : "church-logo-black.png",
-          "name" : "FUBC church logo",
-          "position" : {
-            "scale" : 0.7,
-            "translation-in-points" : [
+          "image-name": "church-logo-black.png",
+          "name": "FUBC church logo",
+          "position": {
+            "scale": 0.7,
+            "translation-in-points": [
               0,
               0
             ]
@@ -19,10 +19,10 @@
       ]
     }
   ],
-  "supported-platforms" : {
-    "circles" : [
+  "supported-platforms": {
+    "circles": [
       "watchOS"
     ],
-    "squares" : "shared"
+    "squares": "shared"
   }
 }
