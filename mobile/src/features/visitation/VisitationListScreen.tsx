@@ -115,7 +115,6 @@ export function VisitationListScreen() {
             ].filter((section) => section.visits.length > 0).map((section) => <View key={section.title} style={[styles.list, desktop && styles.desktopList]}>
             <Text accessibilityRole="header" style={styles.listHeading}>{section.title}</Text>
             {section.visits.map((visit) => {
-              const ownRecipient = visit.recipients.find((recipient) => recipient.accountId === state.snapshot.actor.id);
               const status = visit.archivedAt ? "archived" : visit.status;
               const tone = status === "completed" ? "success" : status === "cancelled" ? "danger" : status === "archived" ? "neutral" : "accent";
               return (
@@ -128,7 +127,6 @@ export function VisitationListScreen() {
                 >
                   <View style={styles.visitTopline}>
                     <StatusPill label={c[status]} tone={tone} />
-                    {ownRecipient ? <StatusPill label={c[ownRecipient.response]} tone={ownRecipient.response === "accepted" ? "success" : ownRecipient.response === "declined" ? "danger" : "neutral"} /> : null}
                   </View>
                   <Text selectable style={styles.memberName}>{visit.memberName}</Text>
                   <View style={styles.metaRow}>
@@ -139,6 +137,17 @@ export function VisitationListScreen() {
                     <Ionicons accessibilityElementsHidden color={visitColors.secondaryText} name="location-outline" size={17} />
                     <Text numberOfLines={2} selectable style={styles.metaText}>{visit.location}</Text>
                   </View>
+                  {visit.recipients.length > 0 ? <View style={styles.responseList}>
+                    {visit.recipients.map((recipient) => (
+                      <View key={recipient.participantPersonId} style={styles.responseRow}>
+                        <Text numberOfLines={1} style={styles.responseName}>{recipient.participantName}</Text>
+                        <StatusPill
+                          label={recipient.accountId ? c[recipient.response] : c.noAccount}
+                          tone={recipient.response === "accepted" ? "success" : recipient.response === "declined" ? "danger" : "neutral"}
+                        />
+                      </View>
+                    ))}
+                  </View> : null}
                   <Ionicons accessibilityElementsHidden color={visitColors.secondaryText} name="chevron-forward" size={21} style={styles.chevron} />
                 </Pressable>
               );
@@ -192,12 +201,15 @@ const styles = StyleSheet.create({
   segmentLabelActive: { color: visitColors.text },
   list: { gap: 10 },
   listGroups: { gap: 20 },
-  listHeading: { color: visitColors.text, fontSize: 19, fontWeight: "700", paddingHorizontal: 2, paddingTop: 3 },
+  listHeading: { color: visitColors.text, fontSize: 17, fontWeight: "700", lineHeight: 23, paddingHorizontal: 2, paddingTop: 3 },
   visitCard: { backgroundColor: visitColors.surface, borderColor: visitColors.line, borderCurve: "continuous", borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, gap: 9, padding: 16, paddingRight: 43 },
   visitTopline: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   memberName: { color: visitColors.text, fontSize: 20, fontWeight: "700", lineHeight: 26 },
   metaRow: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
   metaText: { color: visitColors.secondaryText, flex: 1, fontSize: 14, lineHeight: 20 },
+  responseList: { borderTopColor: visitColors.line, borderTopWidth: StyleSheet.hairlineWidth, gap: 7, marginTop: 2, paddingTop: 10 },
+  responseName: { color: visitColors.text, flex: 1, fontSize: 14, fontWeight: "600" },
+  responseRow: { alignItems: "center", flexDirection: "row", gap: 10, justifyContent: "space-between" },
   chevron: { position: "absolute", right: 14, top: "48%" },
   privacyNote: { color: visitColors.secondaryText, fontSize: 12, lineHeight: 18, paddingHorizontal: 8, textAlign: "center" },
   pressed: { opacity: 0.68, transform: [{ scale: 0.99 }] },

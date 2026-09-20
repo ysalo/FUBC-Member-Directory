@@ -6,6 +6,7 @@ import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
+import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
 import { canManageDirectory } from "@/lib/permissions";
 
 const tabs = [
@@ -27,6 +28,7 @@ export function WebTabBar() {
   const { copy } = useLocalization();
   const { palette } = useAppearance();
   const session = useSession();
+  const activeVisitationCount = useActiveVisitationCount();
   const visibleTabs = tabs.filter((tab) => tab.labelKey !== "manage" || (session.status === "ready" && canManageDirectory(session.account)));
   if (Platform.OS === "ios") return null;
 
@@ -42,7 +44,14 @@ export function WebTabBar() {
             onPress={() => router.replace(("href" in tab ? tab.href : tab.path) as never)}
             style={styles.tab}
           >
-            <TabIcon active={active} activeColor={palette.accent} filled={tab.icon} inactive={palette.secondaryText} outline={tab.outlineIcon} />
+            <View style={styles.iconContainer}>
+              <TabIcon active={active} activeColor={palette.accent} filled={tab.icon} inactive={palette.secondaryText} outline={tab.outlineIcon} />
+              {tab.labelKey === "visitation" && activeVisitationCount > 0 ? (
+                <View style={[styles.badge, { backgroundColor: palette.accent }]}>
+                  <Text style={styles.badgeText}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text numberOfLines={1} style={[styles.tabLabel, { color: active ? palette.accent : palette.secondaryText }]}>{copy.tabs[tab.labelKey]}</Text>
           </Pressable>
         );
@@ -56,6 +65,9 @@ const px = (value: number) => value * scale;
 
 const styles = StyleSheet.create({
   bar: { backgroundColor: "rgba(250,249,246,0.97)", borderTopColor: "#C9C6BF", borderTopWidth: StyleSheet.hairlineWidth, bottom: 0, flexDirection: "row", minHeight: px(66), paddingBottom: px(4), paddingTop: px(4), position: "absolute", width: "100%" },
+  badge: { alignItems: "center", borderRadius: 9, height: 18, justifyContent: "center", minWidth: 18, paddingHorizontal: 4, position: "absolute", right: -12, top: -5 },
+  badgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800", lineHeight: 14 },
+  iconContainer: { position: "relative" },
   tab: { alignItems: "center", flex: 1, gap: px(5), justifyContent: "center", minWidth: px(52) },
   tabLabel: { color: "#6F7073", fontSize: px(13), fontWeight: "600" },
   activeLabel: { color: "#EF5A24" },

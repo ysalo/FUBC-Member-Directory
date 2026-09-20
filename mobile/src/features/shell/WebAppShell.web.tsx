@@ -5,6 +5,7 @@ import { type ComponentProps, type PropsWithChildren, useEffect, useState } from
 import { useTextSize } from "@/features/accessibility/TextSizeProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
+import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
 import { dismissAllWebAlerts } from "@/features/platform/alert.web";
 import { canManageDirectory } from "@/lib/permissions";
 
@@ -26,6 +27,7 @@ export function WebAppShell({ children }: PropsWithChildren) {
   const { copy, locale } = useLocalization();
   const { scale } = useTextSize();
   const session = useSession();
+  const activeVisitationCount = useActiveVisitationCount();
   const accountId = session.status === "ready" ? session.account.id : null;
   const [online, setOnline] = useState(true);
   useEffect(() => {
@@ -54,6 +56,7 @@ export function WebAppShell({ children }: PropsWithChildren) {
         return <Link key={item.key} href={item.href} asChild><NavigationAnchor className="web-navigation-link" aria-current={active ? "page" : undefined}>
           <span aria-hidden="true"><Ionicons name={item.icon} size={24} color="currentColor" /></span>
           <span className="web-navigation-link-label">{label}</span>
+          {item.key === "visitation" && activeVisitationCount > 0 ? <span className="web-navigation-badge" aria-label={`${activeVisitationCount} active visitations`}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</span> : null}
         </NavigationAnchor></Link>;
       })}</div>
       {account ? <Link href="/menu" asChild><NavigationAnchor className="web-navigation-account">

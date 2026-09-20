@@ -9,6 +9,7 @@ import { AccessGate } from "@/features/session/AccessGate";
 import { SessionProvider } from "@/features/session/SessionProvider";
 import { AppearanceProvider, useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useSession } from "@/features/session/SessionProvider";
+import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
 import { canManageDirectory } from "@/lib/permissions";
 import { TextSizeProvider, useTextSize } from "@/features/accessibility/TextSizeProvider";
 
@@ -21,6 +22,7 @@ function IosTabs() {
   const { palette, preference, resolved } = useAppearance();
   const session = useSession();
   const showManage = session.status === "ready" && canManageDirectory(session.account);
+  const activeVisitationCount = useActiveVisitationCount();
   const { scale } = useTextSize();
   return (
     <NativeTabs
@@ -43,6 +45,7 @@ function IosTabs() {
       <NativeTabs.Trigger name="visitation">
         <NativeTabs.Trigger.Icon sf={{ default: "calendar", selected: "calendar.badge.checkmark" }} />
         <NativeTabs.Trigger.Label>{copy.tabs.visitation}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Badge hidden={activeVisitationCount === 0}>{String(activeVisitationCount)}</NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>
       {showManage ? <NativeTabs.Trigger name="manage">
         <NativeTabs.Trigger.Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />

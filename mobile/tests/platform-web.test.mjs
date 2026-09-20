@@ -197,6 +197,23 @@ test("visit details use member identities and identify the current planner", asy
     assert.match(detail, /<ProfileAvatar name=\{candidate\.participantName\}/);
 });
 
+test("visitation navigation shows active counts and cards show every invite response", async () => {
+    const [layout, tabBar, shell, list] = await Promise.all([
+        readFile(new URL("../src/app/_layout.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../src/features/shell/WebTabBar.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../src/features/shell/WebAppShell.web.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../src/features/visitation/VisitationListScreen.tsx", import.meta.url), "utf8"),
+    ]);
+
+    assert.match(layout, /NativeTabs\.Trigger\.Badge/);
+    assert.match(tabBar, /activeVisitationCount/);
+    assert.match(shell, /web-navigation-badge/);
+    assert.match(list, /visit\.recipients\.map/);
+    assert.match(list, /recipient\.participantName/);
+    assert.match(list, /c\[recipient\.response\]/);
+    assert.match(list, /c\.noAccount/);
+});
+
 test("dialog cleanup removes private content and disables stale actions without confirming or canceling", () => {
     // Minimal DOM host tests adapter lifecycle; browser QA verifies native focus trapping.
     const elements = [];
