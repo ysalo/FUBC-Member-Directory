@@ -151,7 +151,7 @@ test("web reminders are unsupported and callable without native modules or permi
 });
 
 test("visit planning uses avatar rows, responsive scheduling fields, and optional participants", async () => {
-    const [form, nativeDateTimeField, repository, copy] = await Promise.all([
+    const [form, nativeDateTimeField, webDateTimeField, repository, copy] = await Promise.all([
         readFile(
             new URL(
                 "../src/features/visitation/VisitFormScreen.tsx",
@@ -162,6 +162,13 @@ test("visit planning uses avatar rows, responsive scheduling fields, and optiona
         readFile(
             new URL(
                 "../src/features/forms/NativeDateTimeField.tsx",
+                import.meta.url,
+            ),
+            "utf8",
+        ),
+        readFile(
+            new URL(
+                "../src/features/forms/NativeDateTimeField.web.tsx",
                 import.meta.url,
             ),
             "utf8",
@@ -188,7 +195,12 @@ test("visit planning uses avatar rows, responsive scheduling fields, and optiona
     assert.match(form, /choiceScroll: \{ maxHeight: 310 \}/);
     assert.match(form, /fieldStack: \{ gap: 12, minWidth: 0 \}/);
     assert.match(form, /fullWidthField: \{ minWidth: 0 \}/);
-    assert.match(nativeDateTimeField, /iosField: \{ alignSelf: "stretch", flexShrink: 1, minWidth: 0, overflow: "hidden", width: "auto" \}/);
+    assert.match(nativeDateTimeField, /iosPickerOverlay: \{ bottom: 0, left: 0, opacity: 0\.01, position: "absolute", right: 0, top: 0 \}/);
+    assert.match(nativeDateTimeField, /date\.toLocaleDateString/);
+    assert.match(webDateTimeField, /boxSizing: "border-box"/);
+    assert.match(webDateTimeField, /alignSelf: "stretch"/);
+    assert.match(webDateTimeField, /inlineSize: "auto"/);
+    assert.doesNotMatch(webDateTimeField, /width: "100%"/);
     assert.doesNotMatch(form, /detail=\{c\.fixedPdt\}/);
     assert.doesNotMatch(copy, /fixedPdt/);
     assert.doesNotMatch(form, /participantAccountIds\.length < 1/);
@@ -217,7 +229,10 @@ test("visitation navigation shows active counts and cards show every invite resp
     ]);
 
     assert.match(layout, /NativeTabs\.Trigger\.Badge/);
+    assert.match(layout, /badgeBackgroundColor="#EF5A24B8"/);
     assert.match(tabBar, /activeVisitationCount/);
+    assert.match(tabBar, /opacity: 0\.72/);
+    assert.match(tabBar, /right: 8, top: 4/);
     assert.match(shell, /web-navigation-badge/);
     assert.match(list, /visit\.recipients\.map/);
     assert.match(list, /recipient\.participantName/);

@@ -27,6 +27,7 @@ function IosTabs() {
   return (
     <NativeTabs
       tintColor={accent}
+      badgeBackgroundColor="#EF5A24B8"
       iconColor={{ default: palette.secondaryText, selected: accent }}
       labelStyle={{ default: { color: palette.secondaryText, fontSize: 10 * scale }, selected: { color: accent, fontSize: 10 * scale } }}
       backgroundColor={palette.chrome}
