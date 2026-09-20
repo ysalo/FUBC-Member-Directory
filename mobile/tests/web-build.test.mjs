@@ -30,3 +30,14 @@ test('home-screen manifest references correctly sized PNG assets', async () => {
     assert.equal(png.readUInt32BE(20), height);
   }
 });
+
+test('Vercel does not cache the installed app shell across deployments', async () => {
+  const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+  const routeHeaders = config.headers.find((entry) => entry.source === '/(.*)').headers;
+  const cacheControl = routeHeaders.find((header) => header.key === 'Cache-Control');
+  const staticHeaders = config.headers.find((entry) => entry.source === '/_expo/static/(.*)').headers;
+  const staticCacheControl = staticHeaders.find((header) => header.key === 'Cache-Control');
+
+  assert.equal(cacheControl.value, 'private, no-store, max-age=0, must-revalidate');
+  assert.match(staticCacheControl.value, /immutable/);
+});
