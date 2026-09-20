@@ -426,7 +426,7 @@ export function VisitFormScreen({
             </SectionCard>
         );
         const timeField = (
-            <SectionCard detail={c.fixedPdt} title={c.time}>
+            <SectionCard title={c.time}>
                 <View style={desktop ? styles.fieldRow : styles.fieldStack}>
                     <View style={desktop ? styles.flex : styles.fullWidthField}>
                         <Text style={styles.fieldLabel}>{c.date}</Text>

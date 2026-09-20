@@ -151,10 +151,17 @@ test("web reminders are unsupported and callable without native modules or permi
 });
 
 test("visit planning uses avatar rows, responsive scheduling fields, and optional participants", async () => {
-    const [form, repository, copy] = await Promise.all([
+    const [form, nativeDateTimeField, repository, copy] = await Promise.all([
         readFile(
             new URL(
                 "../src/features/visitation/VisitFormScreen.tsx",
+                import.meta.url,
+            ),
+            "utf8",
+        ),
+        readFile(
+            new URL(
+                "../src/features/forms/NativeDateTimeField.tsx",
                 import.meta.url,
             ),
             "utf8",
@@ -181,6 +188,9 @@ test("visit planning uses avatar rows, responsive scheduling fields, and optiona
     assert.match(form, /choiceScroll: \{ maxHeight: 310 \}/);
     assert.match(form, /fieldStack: \{ gap: 12, minWidth: 0 \}/);
     assert.match(form, /fullWidthField: \{ minWidth: 0 \}/);
+    assert.match(nativeDateTimeField, /iosField: \{ alignSelf: "stretch", flexShrink: 1, minWidth: 0, overflow: "hidden", width: "auto" \}/);
+    assert.doesNotMatch(form, /detail=\{c\.fixedPdt\}/);
+    assert.doesNotMatch(copy, /fixedPdt/);
     assert.doesNotMatch(form, /participantAccountIds\.length < 1/);
     assert.match(repository, /privatePhotoSources/);
     assert.match(repository, /person_leadership_ministries/);

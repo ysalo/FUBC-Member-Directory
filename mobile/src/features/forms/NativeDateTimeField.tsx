@@ -45,7 +45,7 @@ export function NativeDateTimeField({ accessibilityLabel, accentColor, backgroun
 
 const styles = StyleSheet.create({
   field: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", justifyContent: "flex-start", minHeight: 50, paddingHorizontal: 12 },
-  iosField: { overflow: "hidden" },
+  iosField: { alignSelf: "stretch", flexShrink: 1, minWidth: 0, overflow: "hidden", width: "auto" },
   iosDatePicker: { height: 38, width: 155 },
   iosTimePicker: { height: 38, width: 105 },
   value: { fontSize: 17, fontVariant: ["tabular-nums"] },
