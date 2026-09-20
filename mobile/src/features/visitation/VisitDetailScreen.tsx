@@ -11,6 +11,7 @@ import { canManageVisit, canRespondToVisit } from "@/lib/permissions";
 import { WebTabBar } from "@/features/shell/WebTabBar";
 import { formatFixedPdt } from "@/lib/dates";
 import { formatPhoneNumber } from "@/lib/phone";
+import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 
 import { visitationCopy } from "./copy";
 import { calendarSnapshotExporter } from "./calendar";
@@ -125,7 +126,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
     return (
       <>
         <View style={styles.headingBlock}>
-          <Text selectable style={styles.eyebrow}>{c.plannedBy}: {visit.plannerName}</Text>
+          <Text selectable style={styles.eyebrow}>{plannerOwnsVisit ? c.plannedByMe : `${c.plannedBy}: ${visit.plannerName}`}</Text>
           <Text accessibilityRole="header" selectable style={styles.title}>{visit.memberName}</Text>
           <StatusPill label={c[status]} tone={status === "completed" ? "success" : status === "cancelled" ? "danger" : status === "open" ? "accent" : "neutral"} />
         </View>
@@ -171,20 +172,21 @@ export function VisitDetailScreen({ id }: { id: string }) {
         </View><View style={[styles.detailColumn, desktop && styles.detailColumnDesktop]}>
         <SectionCard title={c.participants}>
           <View style={styles.recipientList}>
-            {visit.recipients.map((candidate) => (
-              <View key={candidate.accountId} style={styles.recipientRow}>
+            {visit.recipients.length ? visit.recipients.map((candidate) => (
+              <View key={candidate.participantPersonId} style={styles.recipientRow}>
+                <ProfileAvatar name={candidate.participantName} size={40} source={candidate.photo} />
                 <View style={styles.flex}>
                   <Text selectable style={styles.recipientName}>{candidate.participantName}</Text>
                   <Text selectable style={styles.reasonText}>{c[candidate.leadershipMinistry]}</Text>
                   {candidate.reason ? <Text selectable style={styles.reasonText}>{candidate.reason}</Text> : null}
                 </View>
-                <StatusPill
+                {candidate.accountId ? <StatusPill
                   icon={candidate.response === "accepted" ? "checkmark" : candidate.response === "declined" ? "close" : "time-outline"}
                   label={c[candidate.response]}
                   tone={candidate.response === "accepted" ? "success" : candidate.response === "declined" ? "danger" : "neutral"}
-                />
+                /> : <StatusPill label={c.noAccount} />}
               </View>
-            ))}
+            )) : <Text selectable style={styles.muted}>{c.plannerOnly}</Text>}
           </View>
         </SectionCard>
 

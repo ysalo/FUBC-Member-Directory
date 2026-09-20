@@ -23,5 +23,5 @@ export function NativeDateTimeField({ accessibilityLabel, accentColor, backgroun
       const next = event.currentTarget.value;
       if (event.currentTarget.validity.valid && acceptsDateFieldValue(next, mode, maximum)) onChange(next);
     }}
-    style={{ accentColor: String(accentColor), background: String(backgroundColor), border: `1px solid ${String(borderColor)}`, borderRadius: 14, boxSizing: "border-box", color: String(textColor), font: "inherit", fontSize: 17 * scale, minHeight: 50, minWidth: 0, padding: "10px 12px", width: "100%" }} />;
+    style={{ accentColor: String(accentColor), background: String(backgroundColor), border: `1px solid ${String(borderColor)}`, borderRadius: 14, boxSizing: "border-box", color: String(textColor), display: "block", flexShrink: 1, font: "inherit", fontSize: 17 * scale, maxWidth: "100%", minHeight: 50, minWidth: 0, padding: "10px 12px", width: "100%" }} />;
 }

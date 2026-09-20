@@ -1,10 +1,10 @@
 import type { VisitActor, VisitParticipant, VisitPerson, VisitRecord } from "./types";
 
 export const visitationActors: VisitActor[] = [
-  { id: "pastor-olena", displayName: "Olena Kovalenko", leadershipMinistry: "pastor", role: "member", status: "active", revision: 1 },
-  { id: "pastor-mykola", displayName: "Mykola Petrenko", leadershipMinistry: "pastor", role: "member", status: "active", revision: 1 },
-  { id: "deacon-marko", displayName: "Marko Melnyk", leadershipMinistry: "deacon", role: "member", status: "active", revision: 1 },
-  { id: "deacon-leah", displayName: "Leah Thompson", leadershipMinistry: "deacon", role: "editor", status: "active", revision: 1 },
+  { id: "pastor-olena", personId: "olena-kovalenko", displayName: "Olena Account", leadershipMinistry: "pastor", role: "member", status: "active", revision: 1 },
+  { id: "pastor-mykola", personId: "mykola-petrenko", displayName: "Mykola Account", leadershipMinistry: "pastor", role: "member", status: "active", revision: 1 },
+  { id: "deacon-marko", personId: "marko-melnyk", displayName: "Marko Account", leadershipMinistry: "deacon", role: "member", status: "active", revision: 1 },
+  { id: "deacon-leah", personId: "leah-thompson", displayName: "Leah Account", leadershipMinistry: "deacon", role: "editor", status: "active", revision: 1 },
 ];
 
 export const visitationPeople: VisitPerson[] = [
@@ -36,6 +36,7 @@ export const visitationParticipants: VisitParticipant[] = [
   { accountId: "pastor-mykola", personId: "mykola-petrenko", name: "Mykola Petrenko", leadershipMinistry: "pastor", responsibilityGroupId: null },
   { accountId: "deacon-marko", personId: "marko-melnyk", name: "Marko Melnyk", leadershipMinistry: "deacon", responsibilityGroupId: "responsibility-east" },
   { accountId: "deacon-leah", personId: "leah-thompson", name: "Leah Thompson", leadershipMinistry: "deacon", responsibilityGroupId: "responsibility-central" },
+  { accountId: null, personId: "deacon-no-account", name: "No Account Deacon", leadershipMinistry: "deacon", responsibilityGroupId: "responsibility-east" },
 ];
 
 export const visitationVisits: VisitRecord[] = [

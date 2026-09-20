@@ -5,7 +5,7 @@ export type VisitListMode = "current" | "archive";
 
 export type VisitActor = Pick<
     Account,
-    "id" | "displayName" | "leadershipMinistry" | "status" | "role" | "revision"
+    "id" | "personId" | "displayName" | "leadershipMinistry" | "status" | "role" | "revision"
 >;
 
 export type VisitPerson = {
@@ -18,8 +18,8 @@ export type VisitPerson = {
 };
 
 export type VisitParticipant = {
-    accountId: string;
-    personId: string | null;
+    accountId: string | null;
+    personId: string;
     name: string;
     photo?: ImageSourcePropType;
     leadershipMinistry: "pastor" | "deacon";
@@ -28,7 +28,8 @@ export type VisitParticipant = {
 
 export type VisitRecipientDetails = VisitRecipient & {
     participantName: string;
-    participantPersonId: string | null;
+    participantPersonId: string;
+    photo?: ImageSourcePropType;
     leadershipMinistry: "pastor" | "deacon";
     lastViewedRevision: number;
 };
@@ -60,7 +61,7 @@ export type VisitDraft = {
     scheduledAt: string;
     location: string;
     notes: string;
-    participantAccountIds: string[];
+    participantPersonIds: string[];
     submissionId: string;
 };
 

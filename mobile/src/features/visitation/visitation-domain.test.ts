@@ -91,7 +91,7 @@ const tests: Array<{ name: string; run: () => void | Promise<void> }> = [
                 scheduledAt: fixedPdtToIso("2027-02-01", "19:00"),
                 location: "2480 Fair Oaks Boulevard",
                 notes: "Front entrance",
-                participantAccountIds: ["deacon-marko", "deacon-leah"],
+                participantPersonIds: ["marko-melnyk", "leah-thompson"],
                 submissionId: "test-idempotency-key",
             };
             const created = await repository.create(draft);
@@ -147,10 +147,11 @@ const tests: Array<{ name: string; run: () => void | Promise<void> }> = [
                 scheduledAt: fixedPdtToIso("2027-03-01", "18:00"),
                 location: "3900 J Street",
                 notes: "",
-                participantAccountIds: [
-                    "pastor-olena",
-                    "pastor-mykola",
-                    "deacon-leah",
+                participantPersonIds: [
+                    "olena-kovalenko",
+                    "mykola-petrenko",
+                    "leah-thompson",
+                    "deacon-no-account",
                 ],
                 submissionId: "deacon-planner-many-participants",
             });
@@ -161,9 +162,11 @@ const tests: Array<{ name: string; run: () => void | Promise<void> }> = [
             );
             equal(
                 created.recipients.length,
-                3,
+                4,
                 "Participant selection has no two-person cap",
             );
+            equal(created.plannerName, "Marko Melnyk", "Planner uses linked member name");
+            equal(created.recipients.find((participant) => participant.participantPersonId === "deacon-no-account")?.accountId, null, "Accountless leader remains an attendee");
             await repository.setActor("pastor-olena");
             const accepted = await repository.respond(
                 created.id,
@@ -185,7 +188,7 @@ const tests: Array<{ name: string; run: () => void | Promise<void> }> = [
                         scheduledAt: fixedPdtToIso("2027-03-02", "18:00"),
                         location: "3900 J Street",
                         notes: "",
-                        participantAccountIds: ["deacon-marko"],
+                        participantPersonIds: ["marko-melnyk"],
                         submissionId: "planner-cannot-select-self",
                     }),
                 "invalid",
@@ -203,7 +206,7 @@ const tests: Array<{ name: string; run: () => void | Promise<void> }> = [
                 scheduledAt: fixedPdtToIso("2027-03-03", "18:00"),
                 location: "3900 J Street",
                 notes: "",
-                participantAccountIds: [],
+                participantPersonIds: [],
                 submissionId: "planner-only-visit",
             });
             equal(

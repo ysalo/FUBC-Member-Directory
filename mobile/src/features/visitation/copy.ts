@@ -11,6 +11,7 @@ const en = {
     previewIdentity: "Preview identity",
     previewHint: "Local fixture mode",
     plannedBy: "Planned by",
+    plannedByMe: "Planned by me",
     person: "Person to visit",
     choosePerson: "Choose a person",
     noResults: "No matches found.",
@@ -24,8 +25,9 @@ const en = {
     participants: "Participants",
     chooseParticipants:
         "Optional. Invite pastors or deacons; you are already included as the planner.",
-    noParticipants:
-        "No other pastors or deacons with active accounts are available.",
+    noParticipants: "No other pastor or deacon members are available.",
+    noAccount: "No account",
+    plannerOnly: "No additional participants. The planner is attending.",
     pastor: "Pastor",
     deacon: "Deacon",
     groupDeacon: "Responsibility group",
@@ -106,6 +108,7 @@ const uk: Record<keyof typeof en, string> = {
     previewIdentity: "Перегляд від імені",
     previewHint: "Локальний демонстраційний режим",
     plannedBy: "Запланував",
+    plannedByMe: "Заплановано мною",
     person: "Кого відвідати",
     choosePerson: "Оберіть людину",
     noResults: "Збігів не знайдено.",
@@ -119,8 +122,9 @@ const uk: Record<keyof typeof en, string> = {
     participants: "Учасники",
     chooseParticipants:
         "Необов’язково. Запросіть пасторів або дияконів; ви вже берете участь як організатор.",
-    noParticipants:
-        "Немає інших пасторів або дияконів з активними обліковими записами.",
+    noParticipants: "Немає інших членів-пасторів або дияконів.",
+    noAccount: "Без облікового запису",
+    plannerOnly: "Додаткових учасників немає. Організатор бере участь.",
     pastor: "Пастор",
     deacon: "Диякон",
     groupDeacon: "Група відповідальності",

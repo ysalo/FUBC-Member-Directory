@@ -59,15 +59,17 @@ export class SupabaseVisitationRepository implements VisitationRepository {
         const [
             peopleResult,
             ministriesResult,
+            accountsResult,
             memberGroupsResult,
             deaconGroupsResult,
             defaultsResult,
         ] = await Promise.all([
             client
                 .from("people")
-                .select("id,name,phone,photo_path")
+                .select("id,name,phone,photo_path,membership_group_id")
                 .is("archived_at", null)
                 .order("name"),
+            client.from("person_leadership_ministries").select("*"),
             client.from("ministry_accounts").select("*"),
             client.from("deacon_group_members").select("*"),
             client.from("deacon_group_deacons").select("*"),
@@ -77,6 +79,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
         ]);
         const people = unwrap(peopleResult),
             ministries = unwrap(ministriesResult),
+            accounts = unwrap(accountsResult),
             memberGroups = unwrap(memberGroupsResult),
             deaconGroups = unwrap(deaconGroupsResult),
             defaults = unwrap(defaultsResult);
@@ -98,35 +101,27 @@ export class SupabaseVisitationRepository implements VisitationRepository {
                         ?.address ?? "",
                 responsibilityGroupId:
                     memberGroups.find((item) => item.person_id === person.id)
-                        ?.group_id ?? null,
+                        ?.group_id ?? person.membership_group_id ?? null,
             })),
-            eligibleParticipants: ministries
-                .filter((account) => account.id !== actor.id)
-                .map((account) => ({
-                    accountId: account.id,
-                    personId: account.person_id,
-                    name:
-                        people.find((person) => person.id === account.person_id)
-                            ?.name || account.display_name,
-                    photo: people.find(
-                        (person) => person.id === account.person_id,
-                    )?.photo_path
-                        ? photos.get(
-                              people.find(
-                                  (person) => person.id === account.person_id,
-                              )?.photo_path as string,
-                          )
-                        : undefined,
-                    leadershipMinistry: account.leadership_ministry,
+            eligibleParticipants: people.flatMap((person) => {
+                const leadership = ministries.find((item) => item.person_id === person.id)?.leadership_ministry;
+                if (!leadership || person.id === actor.personId) return [];
+                const account = accounts.find((item) => item.person_id === person.id);
+                return [{
+                    accountId: account?.id ?? null,
+                    personId: person.id,
+                    name: person.name,
+                    photo: person.photo_path ? photos.get(person.photo_path) : undefined,
+                    leadershipMinistry: leadership,
                     responsibilityGroupId:
-                        account.leadership_ministry === "deacon" &&
-                        account.person_id
+                        leadership === "deacon"
                             ? (deaconGroups.find(
                                   (item) =>
-                                      item.person_id === account.person_id,
+                                      item.person_id === person.id,
                               )?.group_id ?? null)
                             : null,
-                })),
+                }];
+            }),
         };
     }
     async list(mode: VisitListMode) {
@@ -170,7 +165,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
             p_scheduled_at: draft.scheduledAt,
             p_location: draft.location,
             p_notes: draft.notes,
-            p_participant_ids: draft.participantAccountIds,
+            p_participant_ids: draft.participantPersonIds,
         });
         if (result.error) this.raise(result.error.message);
         const row = unwrap(result);
@@ -187,7 +182,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
             p_scheduled_at: edit.scheduledAt,
             p_location: edit.location,
             p_notes: edit.notes,
-            p_participant_ids: current.recipients.map((item) => item.accountId),
+            p_participant_ids: current.recipients.map((item) => item.participantPersonId),
         });
         if (result.error) this.raise(result.error.message);
         this.emit();
@@ -240,24 +235,25 @@ export class SupabaseVisitationRepository implements VisitationRepository {
     private async hydrate(rows: VisitRow[]): Promise<VisitRecord[]> {
         if (!rows.length) return [];
         const client = requireSupabase();
-        const [peopleResult, accountsResult, recipientsResult] =
-            await Promise.all([
-                client
-                    .from("people")
-                    .select("id,name,phone")
-                    .in("id", [...new Set(rows.map((row) => row.person_id))]),
-                client.from("ministry_accounts").select("*"),
-                client
-                    .from("visit_participants")
-                    .select("*")
-                    .in(
-                        "visit_id",
-                        rows.map((row) => row.id),
-                    ),
-            ]);
-        const people = unwrap(peopleResult),
-            accounts = unwrap(accountsResult),
-            recipients = unwrap(recipientsResult);
+        const [accountsResult, recipientsResult] = await Promise.all([
+            client.from("ministry_accounts").select("*"),
+            client.from("visit_participants").select("*").in("visit_id", rows.map((row) => row.id)),
+        ]);
+        const accounts = unwrap(accountsResult), recipients = unwrap(recipientsResult);
+        const personIds = [...new Set([
+            ...rows.map((row) => row.person_id),
+            ...rows.flatMap((row) => {
+                const planner = accounts.find((account) => account.id === row.planner_id);
+                return planner?.person_id ? [planner.person_id] : [];
+            }),
+            ...recipients.map((recipient) => recipient.person_id),
+        ])];
+        const [peopleResult, leadershipResult] = await Promise.all([
+            client.from("people").select("id,name,phone,photo_path").in("id", personIds),
+            client.from("person_leadership_ministries").select("*").in("person_id", personIds),
+        ]);
+        const people = unwrap(peopleResult), leadership = unwrap(leadershipResult);
+        const photos = await privatePhotoSources(people.map((person) => person.photo_path)).catch(() => new Map());
         return rows.map((row) => ({
             id: row.id,
             plannerId: row.planner_id ?? "",
@@ -276,24 +272,24 @@ export class SupabaseVisitationRepository implements VisitationRepository {
             memberPhone:
                 people.find((person) => person.id === row.person_id)?.phone ??
                 null,
-            plannerName:
-                accounts.find((account) => account.id === row.planner_id)
-                    ?.display_name ?? "Planner",
+            plannerName: (() => {
+                const account = accounts.find((candidate) => candidate.id === row.planner_id);
+                return people.find((person) => person.id === account?.person_id)?.name ?? account?.display_name ?? "Planner";
+            })(),
             updatedFields: row.updated_fields ?? [],
             recipients: recipients
                 .filter((recipient) => recipient.visit_id === row.id)
                 .map((recipient) => {
-                    const account = accounts.find(
-                        (candidate) => candidate.id === recipient.account_id,
-                    );
+                    const person = people.find((candidate) => candidate.id === recipient.person_id);
+                    const account = accounts.find((candidate) => candidate.person_id === recipient.person_id);
                     return {
-                        accountId: recipient.account_id,
+                        accountId: account?.id ?? null,
                         response: recipient.response,
                         reason: recipient.reason,
-                        participantName: account?.display_name ?? "Participant",
-                        participantPersonId: account?.person_id ?? null,
-                        leadershipMinistry:
-                            account?.leadership_ministry ?? "deacon",
+                        participantName: person?.name ?? "Participant",
+                        participantPersonId: recipient.person_id,
+                        photo: person?.photo_path ? photos.get(person.photo_path) : undefined,
+                        leadershipMinistry: leadership.find((item) => item.person_id === recipient.person_id)?.leadership_ministry ?? "deacon",
                         lastViewedRevision: recipient.last_viewed_revision ?? 0,
                     };
                 }),

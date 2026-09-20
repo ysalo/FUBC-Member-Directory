@@ -10,6 +10,10 @@ The deployed contract reports `expo-directory-v3`. The leadership-ministry migra
 
 `20260920000000_optional_visit_participants.sql` was applied through the authenticated SQL Editor on 2026-09-19. A catalog check confirmed that `save_visit` accepts an empty participant array while retaining distinct-participant validation. The planner remains an implicit attendee.
 
+`20260920010000_person_based_visit_participants.sql` was applied through the authenticated SQL Editor on 2026-09-19. It makes the directory person the durable visit-participant identity and keeps the account link optional for responses and notifications. Live catalog checks confirmed `person_id` is required, `account_id` is optional, and response authorization resolves through the linked person. Eight active Pastor/Deacon members were present; seven had no active account and are now selectable attendees.
+
+`20260920010000_person_based_visit_participants.sql` was applied through the authenticated SQL Editor on 2026-09-19. Catalog checks confirmed member-based participant identity, nullable account links, and person-based response authorization. The live directory had eight active Pastor/Deacon members; seven had no active account and are now valid selectable attendees.
+
 The dashboard execution does not create or reconcile Supabase CLI migration history. Do **not** run `supabase db push` against this project until the linked migration history has been inspected and reconciled. The retired migration chain used the timestamp `20260916010000` for different SQL than the mobile contract file with that timestamp.
 
 `20260918170000_delete_members.sql` and the `delete-member` Edge Function are additive release artifacts for the administrator member-deletion feature. Apply the SQL through the authenticated SQL Editor, then deploy the Edge Function, before merging the client route that invokes it.

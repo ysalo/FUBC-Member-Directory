@@ -182,12 +182,19 @@ test("visit planning uses avatar rows, responsive scheduling fields, and optiona
     assert.match(form, /fullWidthField: \{ minWidth: 0, width: "100%" \}/);
     assert.doesNotMatch(form, /participantAccountIds\.length < 1/);
     assert.match(repository, /privatePhotoSources/);
-    assert.match(
-        repository,
-        /people\.find\([\s\S]*?person\.id === account\.person_id[\s\S]*?\)\?\.name/,
-    );
+    assert.match(repository, /person_leadership_ministries/);
+    assert.match(repository, /accountId: account\?\.id \?\? null/);
+    assert.match(repository, /name: person\.name/);
+    assert.match(form, /participantPersonIds/);
     assert.match(copy, /Optional\. Invite pastors or deacons/);
     assert.match(copy, /Необов’язково\. Запросіть пасторів або дияконів/);
+});
+
+test("visit details use member identities and identify the current planner", async () => {
+    const detail = await readFile(new URL("../src/features/visitation/VisitDetailScreen.tsx", import.meta.url), "utf8");
+    assert.match(detail, /plannerOwnsVisit \? c\.plannedByMe/);
+    assert.match(detail, /key=\{candidate\.participantPersonId\}/);
+    assert.match(detail, /<ProfileAvatar name=\{candidate\.participantName\}/);
 });
 
 test("dialog cleanup removes private content and disables stale actions without confirming or canceling", () => {

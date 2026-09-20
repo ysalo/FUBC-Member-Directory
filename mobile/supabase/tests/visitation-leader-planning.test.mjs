@@ -18,6 +18,7 @@ const ids = {
     otherDeaconPerson: id(14),
     memberPerson: id(15),
     ordinaryPerson: id(16),
+    accountlessDeaconPerson: id(17),
     oldSubmission: id(21),
     newSubmission: id(22),
 };
@@ -62,7 +63,8 @@ before(async () => {
     insert into public.people(id,name) values
       ('${ids.pastorPerson}','Pastor Planner'),('${ids.deaconPerson}','Deacon Planner'),
       ('${ids.otherPastorPerson}','Pastor Participant'),('${ids.otherDeaconPerson}','Deacon Participant'),
-      ('${ids.memberPerson}','Member to Visit'),('${ids.ordinaryPerson}','Ordinary Member');
+    ('${ids.memberPerson}','Member to Visit'),('${ids.ordinaryPerson}','Ordinary Member'),
+    ('${ids.accountlessDeaconPerson}','Accountless Deacon');
     insert into public.person_ministries(person_id,ministry_id)
       select '${ids.pastorPerson}',id from public.ministries where system_key='pastor';
     insert into public.person_ministries(person_id,ministry_id)
@@ -71,6 +73,8 @@ before(async () => {
       select '${ids.otherPastorPerson}',id from public.ministries where system_key='pastor';
     insert into public.person_ministries(person_id,ministry_id)
       select '${ids.otherDeaconPerson}',id from public.ministries where system_key='deacon';
+        insert into public.person_ministries(person_id,ministry_id)
+            select '${ids.accountlessDeaconPerson}',id from public.ministries where system_key='deacon';
   `);
     for (const [accountId, personId] of [
         [ids.pastor, ids.pastorPerson],
@@ -120,6 +124,15 @@ before(async () => {
             "utf8",
         ),
     );
+    await db.exec(
+        await readFile(
+            new URL(
+                "../migrations/20260920010000_person_based_visit_participants.sql",
+                import.meta.url,
+            ),
+            "utf8",
+        ),
+    );
 });
 
 after(async () => db.close());
@@ -142,6 +155,10 @@ test("migration preserves existing visits and participant responses under generi
         1,
     );
     assert.equal(
+        (await db.query("select person_id from public.visit_participants where visit_id=$1", [visit.id])).rows[0].person_id,
+        ids.otherDeaconPerson,
+    );
+    assert.equal(
         (
             await as(
                 ids.pastor,
@@ -161,7 +178,7 @@ test("a deacon can plan for any member with more than two additional leaders", a
         "2027-02-20T20:00:00Z",
         "Member home",
         "",
-        [ids.pastor, ids.otherPastor, ids.otherDeacon],
+        [ids.pastorPerson, ids.otherPastorPerson, ids.otherDeaconPerson, ids.accountlessDeaconPerson],
     ];
     const created = (
         await as(
@@ -179,7 +196,11 @@ test("a deacon can plan for any member with more than two additional leaders", a
                 [created.id],
             )
         ).rows[0].count,
-        3,
+        4,
+    );
+    assert.equal(
+        (await db.query("select account_id from public.visit_participants where visit_id=$1 and person_id=$2", [created.id, ids.accountlessDeaconPerson])).rows[0].account_id,
+        null,
     );
     const responded = (
         await as(
@@ -240,7 +261,7 @@ test("planner self-selection and non-leader planning are rejected without leakin
                 "2027-03-20T20:00:00Z",
                 "Home",
                 "",
-                [ids.deacon],
+                [ids.deaconPerson],
             ],
         ),
         /already included/,
@@ -255,7 +276,7 @@ test("planner self-selection and non-leader planning are rejected without leakin
                 "2027-03-20T20:00:00Z",
                 "Home",
                 "",
-                [ids.pastor],
+                [ids.pastorPerson],
             ],
         ),
         /Only active pastors or deacons/,

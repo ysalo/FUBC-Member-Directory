@@ -18,7 +18,7 @@ export type Database = {
       deacon_group_members: Table<{ group_id: string; person_id: string }>;
       deacon_group_deacons: Table<{ group_id: string; person_id: string; account_id: string | null; slot: number }>;
       visit_requests: Table<VisitRow>;
-      visit_participants: Table<{ visit_id: string; account_id: string; response: "pending" | "accepted" | "declined"; reason: string | null; responded_at: string | null; last_viewed_revision: number }>;
+      visit_participants: Table<{ visit_id: string; person_id: string; account_id: string | null; response: "pending" | "accepted" | "declined"; reason: string | null; responded_at: string | null; last_viewed_revision: number }>;
       favorites: Table<{ account_id: string; person_id: string }>;
       personal_reminders: Table<{ id: string; account_id: string; person_id: string; title: string; remind_at: string; completed_at: string | null; notification_enabled: boolean; revision: number }>;
       preferences: Table<{ account_id: string; locale: "en" | "uk"; appearance: "system" | "light" | "dark"; notifications_enabled: boolean }>;

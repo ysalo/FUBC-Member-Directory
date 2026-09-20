@@ -34,7 +34,7 @@ export type Group = {
 export type VisitStatus = "open" | "cancelled" | "completed";
 export type VisitResponse = "pending" | "accepted" | "declined";
 export type VisitRecipient = {
-  accountId: string;
+  accountId: string | null;
   response: VisitResponse;
   reason: string | null;
 };

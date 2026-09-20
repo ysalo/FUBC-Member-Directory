@@ -38,6 +38,7 @@ before(async () => {
     "20260917100000_manage_care_status.sql", "20260917110000_leadership_ministries.sql", "20260917120000_visitation_leader_planning.sql",
     "20260918103000_person_based_group_deacons.sql", "20260918153000_preserve_deacon_assignments_on_member_edit.sql",
     "20260918170000_delete_members.sql", "20260918190000_delete_groups_with_assignments.sql",
+    "20260920000000_optional_visit_participants.sql", "20260920010000_person_based_visit_participants.sql",
   ]) await db.exec(await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
   await db.query("insert into auth.users(id,email) values($1,'admin@example.com'),($2,'editor@example.com'),($3,'member@example.com')", [ids.admin, ids.editor, ids.member]);
   await db.exec(`update public.profiles set status='active',role='admin' where id='${ids.admin}';
@@ -210,7 +211,7 @@ test("only administrators can hard-delete an unlinked member and all person-owne
   await db.query("insert into public.favorites(account_id,person_id) values($1,$2)", [ids.admin, person.id]);
   await db.query("insert into public.personal_reminders(account_id,person_id,title,remind_at) values($1,$2,'Follow up',now())", [ids.admin, person.id]);
   const visit = (await db.query("insert into public.visit_requests(planner_id,person_id,scheduled_at,location,submission_id) values($1,$2,now(),'Church',gen_random_uuid()) returning id", [ids.admin, person.id])).rows[0];
-  await db.query("insert into public.visit_participants(visit_id,account_id) values($1,$2)", [visit.id, ids.editor]);
+  await db.query("insert into public.visit_participants(visit_id,account_id,person_id) select $1,id,person_id from public.profiles where id=$2", [visit.id, ids.editor]);
   await db.query("insert into public.visit_notification_events(visit_id,account_id,revision,kind) values($1,$2,1,'visit.updated')", [visit.id, ids.editor]);
 
   await assert.rejects(as("editor", "select * from public.delete_member_record($1,null)", [person.id]), /Not authorized/);

@@ -163,18 +163,14 @@ export class InMemoryVisitationRepository implements VisitationRepository {
         );
         if (!person)
             throw new VisitRepositoryError("invalid", "Choose a valid person.");
-        const recipientIds = [...new Set(draft.participantAccountIds)];
-        const recipients = recipientIds.map((accountId) => {
+        const recipientIds = [...new Set(draft.participantPersonIds)];
+        const recipients = recipientIds.map((personId) => {
             const participant = this.eligibleParticipants.find(
-                (candidate) => candidate.accountId === accountId,
-            );
-            const account = this.actors.find(
-                (candidate) => candidate.id === accountId,
+                (candidate) => candidate.personId === personId,
             );
             if (
                 !participant ||
-                accountId === actor.id ||
-                !canCreateVisit(account)
+                personId === actor.personId
             ) {
                 throw new VisitRepositoryError(
                     "invalid",
@@ -182,7 +178,7 @@ export class InMemoryVisitationRepository implements VisitationRepository {
                 );
             }
             return {
-                accountId,
+                accountId: participant.accountId,
                 participantName: participant.name,
                 participantPersonId: participant.personId,
                 leadershipMinistry: participant.leadershipMinistry,
@@ -197,7 +193,7 @@ export class InMemoryVisitationRepository implements VisitationRepository {
             id: `visit-${draft.submissionId}`,
             plannerId: actor.id,
             personId: person.id,
-            plannerName: actor.displayName,
+            plannerName: this.eligibleParticipants.find((participant) => participant.personId === actor.personId)?.name ?? actor.displayName,
             memberName: person.name,
             memberPhone: person.phone,
             scheduledAt: draft.scheduledAt,

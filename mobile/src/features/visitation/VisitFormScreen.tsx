@@ -39,7 +39,7 @@ type FormValues = {
     time: string;
     location: string;
     notes: string;
-    participantAccountIds: string[];
+    participantPersonIds: string[];
 };
 
 const newSubmissionId = () =>
@@ -55,7 +55,7 @@ const initialValues = (personId = ""): FormValues => {
         time: "18:00",
         location: "",
         notes: "",
-        participantAccountIds: [],
+        participantPersonIds: [],
     };
 };
 
@@ -119,8 +119,8 @@ export function VisitFormScreen({
                     time,
                     location: visit.location,
                     notes: visit.notes,
-                    participantAccountIds: visit.recipients.map(
-                        (recipient) => recipient.accountId,
+                    participantPersonIds: visit.recipients.map(
+                        (recipient) => recipient.participantPersonId,
                     ),
                 });
             } else if (initialPersonId) {
@@ -136,12 +136,12 @@ export function VisitFormScreen({
                                 participant.responsibilityGroupId ===
                                     person.responsibilityGroupId,
                         )
-                        .map((participant) => participant.accountId);
+                        .map((participant) => participant.personId);
                     setValues((current) => ({
                         ...current,
                         personId: person.id,
                         location: person.address,
-                        participantAccountIds: groupDeacons,
+                        participantPersonIds: groupDeacons,
                     }));
                 }
             }
@@ -209,28 +209,28 @@ export function VisitFormScreen({
                     participant.responsibilityGroupId ===
                         person.responsibilityGroupId,
             )
-            .map((participant) => participant.accountId);
+            .map((participant) => participant.personId);
         setValues((current) => ({
             ...current,
             personId,
             location: person.address,
-            participantAccountIds: groupDeacons,
+            participantPersonIds: groupDeacons,
         }));
         setQuery("");
         setValidation(null);
     };
 
-    const toggleParticipant = (accountId: string) => {
+    const toggleParticipant = (personId: string) => {
         if (editing) return;
         setValues((current) => {
-            const selected = current.participantAccountIds.includes(accountId);
+            const selected = current.participantPersonIds.includes(personId);
             return {
                 ...current,
-                participantAccountIds: selected
-                    ? current.participantAccountIds.filter(
-                          (id) => id !== accountId,
+                participantPersonIds: selected
+                    ? current.participantPersonIds.filter(
+                          (id) => id !== personId,
                       )
-                    : [...current.participantAccountIds, accountId],
+                    : [...current.participantPersonIds, personId],
             };
         });
     };
@@ -272,7 +272,7 @@ export function VisitFormScreen({
                           scheduledAt,
                           location: values.location,
                           notes: values.notes,
-                          participantAccountIds: values.participantAccountIds,
+                          participantPersonIds: values.participantPersonIds,
                           submissionId,
                       });
             router.replace(`/visitation/${visit.id}` as Href);
@@ -428,7 +428,7 @@ export function VisitFormScreen({
         const timeField = (
             <SectionCard detail={c.fixedPdt} title={c.time}>
                 <View style={desktop ? styles.fieldRow : styles.fieldStack}>
-                    <View style={styles.flex}>
+                    <View style={desktop ? styles.flex : styles.fullWidthField}>
                         <Text style={styles.fieldLabel}>{c.date}</Text>
                         <NativeDateTimeField
                             accessibilityLabel={c.date}
@@ -485,8 +485,8 @@ export function VisitFormScreen({
                     style={styles.choiceScroll}
                 >
                     {visibleParticipants.map((participant) => {
-                        const selected = values.participantAccountIds.includes(
-                            participant.accountId,
+                        const selected = values.participantPersonIds.includes(
+                            participant.personId,
                         );
                         const groupMatch = Boolean(
                             participant.leadershipMinistry === "deacon" &&
@@ -498,9 +498,9 @@ export function VisitFormScreen({
                             <Pressable
                                 accessibilityRole="checkbox"
                                 accessibilityState={{ checked: selected }}
-                                key={participant.accountId}
+                                key={participant.personId}
                                 onPress={() =>
-                                    toggleParticipant(participant.accountId)
+                                    toggleParticipant(participant.personId)
                                 }
                                 style={({ pressed }) => [
                                     styles.choiceRow,
@@ -558,7 +558,7 @@ export function VisitFormScreen({
             <SectionCard title={c.participants}>
                 {state.visit?.recipients.map((recipient) => (
                     <Text
-                        key={recipient.accountId}
+                        key={recipient.participantPersonId}
                         selectable
                         style={styles.readonlyValue}
                     >
