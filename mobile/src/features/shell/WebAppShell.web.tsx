@@ -62,7 +62,7 @@ export function WebAppShell({ children }: PropsWithChildren) {
       {account ? <Link href="/menu" asChild><NavigationAnchor className="web-navigation-account">
         <span className="web-navigation-avatar" aria-hidden="true">{accountInitials}</span>
         <span className="web-navigation-account-copy"><strong>{account.displayName}</strong><small>{accountRole}</small></span>
-        <Ionicons className="web-navigation-account-arrow" aria-hidden name="chevron-forward" size={18} />
+        <span className="web-navigation-account-arrow" aria-hidden><Ionicons name="chevron-forward" size={18} /></span>
       </NavigationAnchor></Link> : null}
     </nav>
     <main id="app-content" className="web-app-content" tabIndex={-1}>
