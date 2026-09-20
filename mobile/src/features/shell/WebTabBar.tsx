@@ -46,13 +46,13 @@ export function WebTabBar() {
           >
             <View style={styles.iconContainer}>
               <TabIcon active={active} activeColor={palette.accent} filled={tab.icon} inactive={palette.secondaryText} outline={tab.outlineIcon} />
+              {tab.labelKey === "visitation" && activeVisitationCount > 0 ? (
+                <View style={[styles.badge, { backgroundColor: palette.accent }]}>
+                  <Text style={styles.badgeText}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</Text>
+                </View>
+              ) : null}
             </View>
             <Text numberOfLines={1} style={[styles.tabLabel, { color: active ? palette.accent : palette.secondaryText }]}>{copy.tabs[tab.labelKey]}</Text>
-            {tab.labelKey === "visitation" && activeVisitationCount > 0 ? (
-              <View style={[styles.badge, { backgroundColor: palette.accent }]}>
-                <Text style={styles.badgeText}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</Text>
-              </View>
-            ) : null}
           </Pressable>
         );
       })}
@@ -65,10 +65,10 @@ const px = (value: number) => value * scale;
 
 const styles = StyleSheet.create({
   bar: { backgroundColor: "rgba(250,249,246,0.97)", borderTopColor: "#C9C6BF", borderTopWidth: StyleSheet.hairlineWidth, bottom: 0, flexDirection: "row", minHeight: px(66), paddingBottom: px(4), paddingTop: px(4), position: "absolute", width: "100%" },
-  badge: { alignItems: "center", borderRadius: 9, height: 18, justifyContent: "center", minWidth: 18, opacity: 0.72, paddingHorizontal: 4, position: "absolute", right: 8, top: 4 },
+  badge: { alignItems: "center", borderRadius: 9, height: 18, justifyContent: "center", minWidth: 18, opacity: 0.78, paddingHorizontal: 4, position: "absolute", right: -9, top: -7 },
   badgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800", lineHeight: 14 },
-  iconContainer: { position: "relative" },
-  tab: { alignItems: "center", flex: 1, gap: px(5), justifyContent: "center", minWidth: px(52), position: "relative" },
+  iconContainer: { alignItems: "center", height: 28, justifyContent: "center", overflow: "visible", position: "relative", width: 32 },
+  tab: { alignItems: "center", flex: 1, gap: px(5), justifyContent: "center", minWidth: px(52) },
   tabLabel: { color: "#6F7073", fontSize: px(13), fontWeight: "600" },
   activeLabel: { color: "#EF5A24" },
 });

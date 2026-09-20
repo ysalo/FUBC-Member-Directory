@@ -231,8 +231,9 @@ test("visitation navigation shows active counts and cards show every invite resp
     assert.match(layout, /NativeTabs\.Trigger\.Badge/);
     assert.match(layout, /badgeBackgroundColor="#EF5A24B8"/);
     assert.match(tabBar, /activeVisitationCount/);
-    assert.match(tabBar, /opacity: 0\.72/);
-    assert.match(tabBar, /right: 8, top: 4/);
+    assert.match(tabBar, /opacity: 0\.78/);
+    assert.match(tabBar, /right: -9, top: -7/);
+    assert.match(tabBar, /iconContainer: \{ alignItems: "center", height: 28,[^}]+width: 32 \}/);
     assert.match(shell, /web-navigation-badge/);
     assert.match(list, /visit\.recipients\.map/);
     assert.match(list, /recipient\.participantName/);
