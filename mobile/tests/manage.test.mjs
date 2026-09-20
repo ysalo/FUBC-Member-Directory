@@ -8,8 +8,26 @@ const routeParams = await import("../src/features/manage/route-params.ts");
 test("member records can be archived and restored", () => {
   const archived = source.managementReducer(source.initialManagementState, { type: "toggle-member-archive", memberId: "maria-ivanova" });
   assert.equal(archived.members[0].archived, true);
+  assert.equal(archived.members[0].group, "");
+  assert.ok(archived.members[0].leftAt);
   const restored = source.managementReducer(archived, { type: "toggle-member-archive", memberId: "maria-ivanova" });
   assert.equal(restored.members[0].archived, false);
+  assert.equal(restored.members[0].leftAt, null);
+});
+
+test("membership departure removes group assignments and stays available to managers", async () => {
+  const [editor, repository, manage] = await Promise.all([
+    readFile(new URL("../src/features/manage/MemberFormScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/manage/management-repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/features/manage/ManageScreen.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(editor, /managementRepository\.setMembershipActive\(member, active\)/);
+  assert.match(editor, /hidden from the directory and removed from every group/);
+  assert.match(repository, /group\.memberIds\.filter\(\(id\) => id !== member\.id\)/);
+  assert.match(repository, /group\.deaconIds\.filter\(\(id\) => id !== member\.id\)/);
+  assert.match(repository, /membership_group_id: null, archived: !active/);
+  assert.match(manage, /formerMembers: "Former members"/);
+  assert.match(manage, /archived === showFormer/);
 });
 
 test("the group management editor creates groups and searches and saves multiple existing members", async () => {

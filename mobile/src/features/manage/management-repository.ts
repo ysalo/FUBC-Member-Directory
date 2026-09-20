@@ -20,7 +20,7 @@ export class SupabaseManagementRepository {
     // Photos enrich the list but must never prevent an administrator from reaching
     // account approval or directory-management controls.
     const photos = await privatePhotoSources(people.map((row) => row.photo_path)).catch(() => new Map());
-    return { members: people.map((row) => ({ id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), revision: row.revision, phone: row.phone, email: row.email, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined })),
+    return { members: people.map((row) => ({ id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), leftAt: row.archived_at, revision: row.revision, phone: row.phone, email: row.email, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined })),
       accounts: accounts.map((row) => ({ id: row.id, name: row.display_name, email: row.email ?? "", status: row.status, role: row.role, personId: row.person_id, revision: row.revision, createdAt: row.created_at })),
     };
   }
@@ -40,7 +40,7 @@ export class SupabaseManagementRepository {
     const row = personResult.data;
     const groups = unwrap(groupsResult);
     const photos = await privatePhotoSources([row.photo_path]).catch(() => new Map());
-    return { accounts, members: [{ id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), revision: row.revision, phone: row.phone, email: row.email, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined }] };
+    return { accounts, members: [{ id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), leftAt: row.archived_at, revision: row.revision, phone: row.phone, email: row.email, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined }] };
   }
   async loadMember(id: string): Promise<ManagedMember | null> {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
@@ -56,17 +56,14 @@ export class SupabaseManagementRepository {
     const groups = unwrap(groupsResult);
     const details = unwrap(detailsResult)[0];
     const photos = await privatePhotoSources([row.photo_path]);
-    return { id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), revision: row.revision, birthday: details?.birth_date ?? null, address: details?.address ?? null, isOrphan: Boolean(details?.orphan_status), isWidow: ["widow", "widowed", "вдова", "вдівець", "вдівець/вдова"].includes(details?.marital_status?.trim().toLocaleLowerCase() ?? ""), ministryIds: details?.ministry_ids ?? [], phone: row.phone, email: row.email, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined };
+    return { id: row.id, name: row.name, group: groups.find((group) => group.id === row.membership_group_id)?.name ?? "", archived: Boolean(row.archived_at), leftAt: row.archived_at, revision: row.revision, birthday: details?.birth_date ?? null, address: details?.address ?? null, isOrphan: Boolean(details?.orphan_status), isWidow: ["widow", "widowed", "вдова", "вдівець", "вдівець/вдова"].includes(details?.marital_status?.trim().toLocaleLowerCase() ?? ""), ministryIds: details?.ministry_ids ?? [], phone: row.phone, email: row.email, photoPath: row.photo_path, photo: row.photo_path ? photos.get(row.photo_path) : undefined };
   }
   async apply(state: ManagementState, action: ManagementAction): Promise<ManagementState> {
     const actor = activeAccount();
     if (action.type === "toggle-member-archive") {
-      if (!canManageDirectory(actor)) throw new Error("Not authorized.");
       const snapshot = state.members.find((item) => item.id === action.memberId);
       if (snapshot?.revision == null) throw new Error("Reload this member before making changes.");
-      const currentResult = await requireSupabase().from("people").select("*").eq("id", snapshot.id).single();
-      const current = unwrap(currentResult);
-      await this.saveMember(current.id, snapshot.revision, { ...personData(current), archived: !snapshot.archived });
+      await this.setMembershipActive(snapshot, snapshot.archived);
     } else {
       if (!canManageAccounts(actor)) throw new Error("Not authorized.");
       const snapshot = state.accounts.find((item) => item.id === action.accountId);
@@ -102,6 +99,20 @@ export class SupabaseManagementRepository {
   async saveMemberDetails(member: { id?: string | null; revision?: number | null; name: string; birthday?: string | null; ministryIds?: string[]; phone?: string | null; email?: string | null; address?: string | null; isOrphan?: boolean; isWidow?: boolean }) {
     if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
     return unwrap(await requireSupabase().rpc("save_person", { p_id: member.id ?? null, p_revision: member.revision ?? null, p_data: { name: member.name, birth_date: member.birthday ?? null, ministry_ids: member.ministryIds ?? [], phone: member.phone ?? null, email: member.email ?? null, address: member.address ?? null, orphan_status: member.isOrphan ?? false, widow_status: member.isWidow ?? false } }));
+  }
+  async setMembershipActive(member: ManagedMember, active: boolean) {
+    if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
+    if (member.archived === !active) return member;
+    if (!active) {
+      const groups = await this.loadGroupManagement();
+      for (const group of groups.groups.filter((item) => item.memberIds.includes(member.id) || item.deaconIds.includes(member.id))) {
+        await this.saveGroup({ p_id: group.id, p_revision: group.revision, p_name: group.name, p_kind: group.kind, p_archived: group.archived, p_deacon_ids: group.deaconIds.filter((id) => id !== member.id), p_member_ids: group.memberIds.filter((id) => id !== member.id) });
+      }
+    }
+    const currentResult = await requireSupabase().from("people").select("*").eq("id", member.id).single();
+    const current = unwrap(currentResult);
+    await this.saveMember(current.id, current.revision, { ...personData(current), membership_group_id: null, archived: !active });
+    return this.loadMember(member.id);
   }
   async saveAccount(args: Database["public"]["Functions"]["update_account"]["Args"]) {
     if (!canManageAccounts(activeAccount())) throw new Error("Not authorized.");
@@ -216,6 +227,7 @@ class InMemoryManagementRepository {
   async listMinistries() { return structuredClone(this.ministries); }
   async saveMinistry(ministry: { id?: string | null; revision?: number | null; name: string; nameUk?: string | null; archived?: boolean }) { const item = ministry.id ? this.ministries.find((m) => m.id === ministry.id) : undefined; if (item) Object.assign(item, { name: ministry.name, nameUk: ministry.nameUk ?? null, archived: ministry.archived ?? false, revision: (item.revision ?? 0) + 1 }); else this.ministries.push({ id: `ministry-${Date.now()}`, name: ministry.name, nameUk: ministry.nameUk ?? null, archived: false, revision: 1 }); return item ?? this.ministries.at(-1); }
   async saveMemberDetails(member: { id?: string | null; revision?: number | null; name: string; birthday?: string | null; ministryIds?: string[]; phone?: string | null; email?: string | null; address?: string | null }) { let saved = member.id ? this.state.members.find((m) => m.id === member.id) : undefined; if (saved) Object.assign(saved, { name: member.name, birthday: member.birthday ?? null, ministryIds: member.ministryIds ?? [], phone: member.phone ?? null, email: member.email ?? null, address: member.address ?? null, revision: (saved.revision ?? 0) + 1 }); else { saved = { id: `member-${Date.now()}`, name: member.name, group: "", archived: false, revision: 1, birthday: member.birthday ?? null, ministryIds: member.ministryIds ?? [], phone: member.phone ?? null, email: member.email ?? null, address: member.address ?? null, photoPath: null }; this.state.members.push(saved); } return structuredClone(saved); }
+  async setMembershipActive(member: ManagedMember, active: boolean) { if (member.archived === !active) return structuredClone(member); this.state = managementReducer(this.state, { type: "toggle-member-archive", memberId: member.id }); return structuredClone(this.state.members.find((item) => item.id === member.id)); }
   async loadGroupManagement() { return structuredClone(this.groupManagement); }
   async listGroups() { return structuredClone(this.groupManagement.groups); }
   async saveGroup(args: Database["public"]["Functions"]["save_group"]["Args"]) {

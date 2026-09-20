@@ -3,6 +3,7 @@ export type ManagedMember = {
   name: string;
   group: string;
   archived: boolean;
+  leftAt?: string | null;
   revision?: number;
   birthday?: string | null;
   ministryIds?: string[];
@@ -97,7 +98,7 @@ export function managementReducer(state: ManagementState, action: ManagementActi
     case "toggle-member-archive":
       return {
         ...state,
-        members: state.members.map((member) => member.id === action.memberId ? { ...member, archived: !member.archived } : member),
+        members: state.members.map((member) => member.id === action.memberId ? { ...member, archived: !member.archived, group: member.archived ? member.group : "", leftAt: member.archived ? null : new Date().toISOString() } : member),
       };
     case "set-account-status":
       return {

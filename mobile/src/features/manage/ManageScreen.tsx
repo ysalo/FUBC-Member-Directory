@@ -22,7 +22,7 @@ import { initialManagementState, orderedAccounts, pendingAccounts, type ManagedA
 const labels = {
   en: {
     title: "Manage", subtitle: "Keep the directory accurate and access up to date.", members: "Members", accounts: "Accounts",
-    active: "Active", archived: "Archived", pending: "Pending", denied: "Denied", revoked: "Revoked",
+    active: "Active", archived: "Left membership", formerMembers: "Former members", pending: "Pending", denied: "Denied", revoked: "Revoked",
     groups: "Groups", groupsDetail: "Assign deacons and review rosters", ministries: "Ministries", ministriesDetail: "Maintain ministry names",
     addMember: "Add member", loading: "Preparing management tools…", loadingDetail: "Loading members and account access.",
     error: "Management tools didn’t load", retry: "Try again", noAccess: "You don’t have permission to manage directory records.",
@@ -33,7 +33,7 @@ const labels = {
   },
   uk: {
     title: "Керування", subtitle: "Підтримуйте довідник і доступ в актуальному стані.", members: "Учасники", accounts: "Облікові записи",
-    active: "Активний", archived: "Архівний", pending: "Очікує", denied: "Відхилено", revoked: "Відкликано",
+    active: "Активний", archived: "Вийшов із членства", formerMembers: "Колишні члени", pending: "Очікує", denied: "Відхилено", revoked: "Відкликано",
     groups: "Групи", groupsDetail: "Призначення дияконів і склад груп", ministries: "Служіння", ministriesDetail: "Назви служінь",
     addMember: "Додати учасника", loading: "Готуємо інструменти керування…", loadingDetail: "Завантажуємо учасників і доступ до облікових записів.",
     error: "Не вдалося завантажити керування", retry: "Спробувати ще раз", noAccess: "У вас немає дозволу керувати записами довідника.",
@@ -59,6 +59,7 @@ export function ManageScreen() {
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [showFormer, setShowFormer] = useState(false);
 
   const load = useCallback(() => {
     if (!allowed) return;
@@ -76,8 +77,10 @@ export function ManageScreen() {
   const data = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
     const source = panel === "members" ? state.members : accountsAllowed ? orderedAccounts(state.accounts) : [];
-    return source.filter((item) => !needle || (panel === "members" ? `${(item as ManagedMember).name} ${(item as ManagedMember).group}` : `${(item as ManagedAccount).name} ${(item as ManagedAccount).email}`).toLocaleLowerCase(locale).includes(needle));
-  }, [accountsAllowed, locale, panel, query, state]);
+    return source
+      .filter((item) => panel !== "members" || (item as ManagedMember).archived === showFormer)
+      .filter((item) => !needle || (panel === "members" ? `${(item as ManagedMember).name} ${(item as ManagedMember).group}` : `${(item as ManagedAccount).name} ${(item as ManagedAccount).email}`).toLocaleLowerCase(locale).includes(needle));
+  }, [accountsAllowed, locale, panel, query, showFormer, state]);
   const openAccount = (accountId: string) => {
     router.push(managedAccountRoute(accountId));
   };
@@ -112,7 +115,7 @@ export function ManageScreen() {
           </Pressable>)}
         </View>
 
-        <View style={[styles.search, { backgroundColor: palette.subtle }]}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} /><TextInput accessibilityLabel={panel === "members" ? copy.searchMembers : copy.searchAccounts} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={panel === "members" ? copy.searchMembers : copy.searchAccounts} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} /></View>
+        <View style={[styles.search, { backgroundColor: palette.subtle }]}><Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} /><TextInput accessibilityLabel={panel === "members" ? copy.searchMembers : copy.searchAccounts} autoCapitalize="none" clearButtonMode="while-editing" onChangeText={setQuery} placeholder={panel === "members" ? copy.searchMembers : copy.searchAccounts} placeholderTextColor={palette.secondaryText} returnKeyType="search" style={[styles.searchInput, { color: palette.text }]} value={query} />{panel === "members" ? <Pressable accessibilityLabel={copy.formerMembers} accessibilityRole="checkbox" accessibilityState={{ checked: showFormer }} onPress={() => setShowFormer((value) => !value)} style={[styles.formerFilter, showFormer && { backgroundColor: palette.accentSoft }]}><Ionicons accessibilityElementsHidden color={showFormer ? palette.accent : palette.secondaryText} name="archive-outline" size={19} /><Text style={[styles.formerFilterText, { color: showFormer ? palette.accent : palette.secondaryText }]}>{copy.formerMembers}</Text></Pressable> : null}</View>
 
         <View style={[styles.shortcuts, desktop && styles.desktopShortcuts]}>
           <Shortcut detail={copy.groupsDetail} icon="people-outline" label={copy.groups} onPress={() => router.push("/manage/groups" as Href)} />
@@ -162,9 +165,12 @@ export function ManageScreen() {
   }
 
   function MemberRow({ item, onPress }: { item: ManagedMember; onPress: () => void }) {
+    const detail = item.archived && item.leftAt
+      ? `${locale === "uk" ? "Дата виходу" : "Left"}: ${new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { dateStyle: "medium" }).format(new Date(item.leftAt))}`
+      : item.group;
     return <Pressable accessibilityHint={copy.opensMember} accessibilityLabel={item.name} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, { backgroundColor: palette.surface, borderColor: palette.line }, pressed && styles.pressed]}>
       <ProfileAvatar backgroundColor={palette.accentSoft} name={item.name} source={item.photo} textColor={palette.accent} />
-      <View style={styles.flex}><Text style={[styles.cardTitle, { color: palette.text }]}>{item.name}</Text>{item.group ? <Text numberOfLines={1} style={[styles.rowDetail, { color: palette.secondaryText }]}>{item.group}</Text> : null}</View>
+      <View style={styles.flex}><Text style={[styles.cardTitle, { color: palette.text }]}>{item.name}</Text>{detail ? <Text numberOfLines={1} style={[styles.rowDetail, { color: palette.secondaryText }]}>{detail}</Text> : null}</View>
       {item.archived ? <StatusPill label={copy.archived} tone="muted" /> : null}
       <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={19} />
     </Pressable>;
@@ -201,6 +207,7 @@ const styles = StyleSheet.create({
   add: { alignItems: "center", borderCurve: "continuous", borderRadius: 15, height: 46, justifyContent: "center", width: 46 }, segmented: { borderCurve: "continuous", borderRadius: 13, flexDirection: "row", marginTop: 14, padding: 3 },
   segment: { alignItems: "center", borderCurve: "continuous", borderRadius: 10, flex: 1, minHeight: 40, justifyContent: "center", paddingHorizontal: 10 }, segmentText: { fontSize: 15, fontWeight: "700" },
   search: { alignItems: "center", borderRadius: 13, flexDirection: "row", gap: 9, marginTop: 4, minHeight: 46, paddingHorizontal: 13 }, searchInput: { flex: 1, fontSize: 16, paddingVertical: 10 },
+  formerFilter: { alignItems: "center", borderRadius: 9, flexDirection: "row", gap: 6, minHeight: 36, paddingHorizontal: 9 }, formerFilterText: { fontSize: 12, fontWeight: "700" },
   shortcuts: { gap: 8, marginTop: 4 }, shortcut: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 11, minHeight: 66, paddingHorizontal: 12, paddingVertical: 10 },
   shortcutIcon: { alignItems: "center", borderRadius: 10, height: 38, justifyContent: "center", width: 38 }, shortcutTitle: { fontSize: 16, fontWeight: "700" }, shortcutDetail: { fontSize: 13, lineHeight: 17, marginTop: 2 },
   approval: { borderCurve: "continuous", borderRadius: 16, marginBottom: 4, marginTop: 6, overflow: "hidden", paddingHorizontal: 14, paddingTop: 14 }, approvalHeading: { alignItems: "flex-start", flexDirection: "row", gap: 11, paddingBottom: 13 },
