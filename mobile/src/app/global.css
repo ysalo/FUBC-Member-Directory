@@ -112,7 +112,8 @@ button, input, textarea, select { font: inherit; }
 }
 .web-navigation-link[aria-current="page"] { color: var(--app-text); background: var(--app-accentSoft); }
 .web-navigation-link[aria-current="page"] > span:first-child { color: var(--app-accent); }
-.web-navigation-badge { align-items: center; background: var(--app-accent); border-radius: 999px; color: #fff; display: inline-flex; font-size: 0.7em; font-weight: 800; justify-content: center; line-height: 1; min-height: 19px; min-width: 19px; padding: 3px 5px; }
+.web-navigation-icon { align-items: center; display: flex; height: 24px; justify-content: center; position: relative; width: 28px; }
+.web-navigation-badge { align-items: center; background: color-mix(in srgb, var(--app-accent) 78%, transparent); border: 1px solid color-mix(in srgb, #fff 55%, transparent); border-radius: 999px; color: #fff; display: inline-flex; font-size: 0.7em; font-weight: 800; justify-content: center; line-height: 1; min-height: 18px; min-width: 18px; padding: 2px 4px; position: absolute; right: -10px; top: -8px; }
 @media (hover: hover) { .web-navigation-link:hover { color: var(--app-text); background: var(--app-subtle); } }
 .web-network-status { padding: 12px 20px; color: var(--app-text); background: var(--app-warningSoft, var(--app-accentSoft)); font-size: 0.875em; line-height: 1.5; }
 .web-skip-link { position: fixed; top: -100px; left: 12px; z-index: 100; padding: 12px 18px; background: var(--app-surface); color: var(--app-text); border-radius: 8px; }

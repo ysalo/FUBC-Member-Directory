@@ -235,6 +235,8 @@ test("visitation navigation shows active counts and cards show every invite resp
     assert.match(tabBar, /right: -9, top: -7/);
     assert.match(tabBar, /iconContainer: \{ alignItems: "center", height: 28,[^}]+width: 32 \}/);
     assert.match(shell, /web-navigation-badge/);
+    assert.match(shell, /className="web-navigation-icon"/);
+    assert.match(shell, /web-navigation-icon[\s\S]*?web-navigation-badge[\s\S]*?web-navigation-link-label/);
     assert.match(list, /visit\.recipients\.map/);
     assert.match(list, /recipient\.participantName/);
     assert.match(list, /c\[recipient\.response\]/);

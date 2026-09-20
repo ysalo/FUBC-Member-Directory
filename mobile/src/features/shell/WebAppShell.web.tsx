@@ -54,9 +54,11 @@ export function WebAppShell({ children }: PropsWithChildren) {
         const active = item.href === "/" ? pathname === "/" || pathname.startsWith("/members/") : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const label = copy.tabs[item.key];
         return <Link key={item.key} href={item.href} asChild><NavigationAnchor className="web-navigation-link" aria-current={active ? "page" : undefined}>
-          <span aria-hidden="true"><Ionicons name={item.icon} size={24} color="currentColor" /></span>
+          <span className="web-navigation-icon">
+            <span aria-hidden="true"><Ionicons name={item.icon} size={24} color="currentColor" /></span>
+            {item.key === "visitation" && activeVisitationCount > 0 ? <span className="web-navigation-badge" aria-label={`${activeVisitationCount} active visitations`}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</span> : null}
+          </span>
           <span className="web-navigation-link-label">{label}</span>
-          {item.key === "visitation" && activeVisitationCount > 0 ? <span className="web-navigation-badge" aria-label={`${activeVisitationCount} active visitations`}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</span> : null}
         </NavigationAnchor></Link>;
       })}</div>
       {account ? <Link href="/menu" asChild><NavigationAnchor className="web-navigation-account">
