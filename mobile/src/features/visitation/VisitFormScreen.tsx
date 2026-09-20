@@ -822,8 +822,8 @@ const styles = StyleSheet.create({
         paddingTop: 2,
     },
     fieldRow: { flexDirection: "row", gap: 10 },
-    fieldStack: { gap: 12, minWidth: 0, width: "100%" },
-    fullWidthField: { minWidth: 0, width: "100%" },
+    fieldStack: { gap: 12, minWidth: 0 },
+    fullWidthField: { minWidth: 0 },
     timeField: { width: 120 },
     fieldLabel: {
         color: visitColors.text,

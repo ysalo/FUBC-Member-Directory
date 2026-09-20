@@ -179,7 +179,8 @@ test("visit planning uses avatar rows, responsive scheduling fields, and optiona
     assert.match(form, /eligibleParticipants\.slice/);
     assert.match(form, /count \+ choicePageSize/);
     assert.match(form, /choiceScroll: \{ maxHeight: 310 \}/);
-    assert.match(form, /fullWidthField: \{ minWidth: 0, width: "100%" \}/);
+    assert.match(form, /fieldStack: \{ gap: 12, minWidth: 0 \}/);
+    assert.match(form, /fullWidthField: \{ minWidth: 0 \}/);
     assert.doesNotMatch(form, /participantAccountIds\.length < 1/);
     assert.match(repository, /privatePhotoSources/);
     assert.match(repository, /person_leadership_ministries/);
