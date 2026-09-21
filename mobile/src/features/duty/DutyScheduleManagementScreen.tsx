@@ -1,17 +1,21 @@
 import { Text } from "@/features/accessibility/app-text";
+import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
+import { listDirectory } from "@/features/directory/directory-repository";
+import type { Member } from "@/features/directory/members";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { canManageDirectory } from "@/lib/permissions";
 import { useSession } from "@/features/session/SessionProvider";
 import { errorMessage } from "@/lib/async-state";
-import { DeaconRow } from "./DeaconRow";
+import { ProfileAvatar } from "@/features/members/ProfileAvatar";
+import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
-import { fridayBeforeSunday, weekendLabel } from "./duty-domain";
+import { fridayBeforeSunday, weekendLabel, type DutyCandidate } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
 
 const labels = {
@@ -29,7 +33,11 @@ const labels = {
     rotationOrder: "Rotation order (alphabetical by last name)",
     schedule: "Generated schedule",
     empty: "Nothing generated for this year yet.",
-    reassign: "Tap a weekend, then choose a different deacon.",
+    reassign: "Tap a weekend to reassign it to a different deacon.",
+    pickerTitle: "Reassign this weekend",
+    pickerSearch: "Search deacons",
+    pickerNoMatches: "No deacons match your search.",
+    done: "Done",
   },
   uk: {
     title: "Розклад",
@@ -46,6 +54,10 @@ const labels = {
     schedule: "Створений розклад",
     empty: "На цей рік ще нічого не створено.",
     reassign: "Торкніться вихідних, щоб призначити іншого диякона.",
+    pickerTitle: "Змінити диякона на ці вихідні",
+    pickerSearch: "Пошук дияконів",
+    pickerNoMatches: "Дияконів не знайдено.",
+    done: "Готово",
   },
 } as const;
 
@@ -60,6 +72,7 @@ export function DutyScheduleManagementScreen() {
   const [year, setYear] = useState(() => Number(today.slice(0, 4)));
   const [state, setState] = useState<{ status: "loading" | "error" | "ready"; year?: DutyYear; message?: string }>({ status: "loading" });
   const [saving, setSaving] = useState(false);
+  const [reassignSundayOn, setReassignSundayOn] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!allowed) return;
@@ -70,6 +83,12 @@ export function DutyScheduleManagementScreen() {
       .catch((cause) => setState({ status: "error", message: errorMessage(cause) }));
   }, [allowed, year]);
   useFocusEffect(useCallback(load, [load]));
+
+  const [directoryMembers, setDirectoryMembers] = useState<Member[]>([]);
+  useFocusEffect(useCallback(() => {
+    listDirectory().then(setDirectoryMembers).catch(() => setDirectoryMembers([]));
+  }, []));
+  const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
 
   const orderedIds = useMemo(() => (state.status === "ready" ? state.year!.eligibleDeacons.map((deacon) => deacon.personId) : []), [state]);
 
@@ -83,10 +102,14 @@ export function DutyScheduleManagementScreen() {
       .finally(() => setSaving(false));
   };
 
-  const reassign = (sundayOn: string, expectedRevision: number, personId: string) => {
+  const reassigningPeriod = state.status === "ready" ? state.year!.periods.find((period) => period.sundayOn === reassignSundayOn) : undefined;
+
+  const reassign = (deacon: DutyCandidate) => {
+    if (!reassigningPeriod) return;
     setSaving(true);
+    setReassignSundayOn(null);
     dutyRepository
-      .reassignPeriod(year, sundayOn, personId, expectedRevision)
+      .reassignPeriod(year, reassigningPeriod.sundayOn, deacon.personId, reassigningPeriod.revision)
       .then((saved) => setState({ status: "ready", year: saved }))
       .catch((cause) => setState({ status: "error", message: errorMessage(cause) }))
       .finally(() => setSaving(false));
@@ -128,12 +151,17 @@ export function DutyScheduleManagementScreen() {
               {state.year!.eligibleDeacons.length === 0 ? (
                 <Text style={{ color: palette.secondaryText }}>{copy.noDeacons}</Text>
               ) : (
-                state.year!.eligibleDeacons.map((deacon, index) => (
-                  <View key={deacon.personId} style={styles.orderRow}>
-                    <Text style={[styles.orderIndex, { color: palette.secondaryText }]}>{index + 1}</Text>
-                    <Text style={{ color: palette.text }}>{deacon.name}</Text>
-                  </View>
-                ))
+                <View style={styles.orderList}>
+                  {state.year!.eligibleDeacons.map((deacon, index) => (
+                    <View key={deacon.personId} style={[styles.row, { backgroundColor: palette.background, borderColor: palette.line }]}>
+                      <View style={[styles.orderBadge, { backgroundColor: palette.accentSoft }]}>
+                        <Text style={[styles.orderBadgeText, { color: palette.accent }]}>{index + 1}</Text>
+                      </View>
+                      <ProfileAvatar name={deacon.name} size={40} source={memberById.get(deacon.personId)?.avatar} />
+                      <Text numberOfLines={1} style={[styles.cardTitle, { color: palette.text, flex: 1 }]}>{deacon.name}</Text>
+                    </View>
+                  ))}
+                </View>
               )}
               <Text style={[styles.warning, { color: palette.secondaryText }]}>{copy.replaceWarning.replace("{year}", String(year))}</Text>
               <Pressable
@@ -146,23 +174,50 @@ export function DutyScheduleManagementScreen() {
               </Pressable>
             </View>
 
-            <Text style={[styles.eyebrow, { color: palette.secondaryText, marginTop: 20 }]}>{copy.schedule}</Text>
+            <Text style={[styles.eyebrow, { color: palette.secondaryText, marginTop: 24 }]}>{copy.schedule}</Text>
             <Text style={[styles.reassignHint, { color: palette.secondaryText }]}>{copy.reassign}</Text>
             {state.year!.periods.length === 0 ? (
               <Text style={{ color: palette.secondaryText }}>{copy.empty}</Text>
             ) : (
-              state.year!.periods.map((period) => (
-                <View key={period.sundayOn} style={[styles.periodRow, { borderBottomColor: palette.line }]}>
-                  <Text style={[styles.periodDates, { color: palette.secondaryText }]}>
-                    {weekendLabel(fridayBeforeSunday(period.sundayOn), period.sundayOn, locale)}
-                  </Text>
-                  <DeaconRow locale={locale} name={state.year!.eligibleDeacons.find((d) => d.personId === period.personId)?.name ?? period.personId} personId={period.personId} />
-                </View>
-              ))
+              state.year!.periods.map((period) => {
+                const member = memberById.get(period.personId);
+                const name = state.year!.eligibleDeacons.find((deacon) => deacon.personId === period.personId)?.name ?? period.personId;
+                return (
+                  <View key={period.sundayOn} style={styles.weekendBlock}>
+                    <Text style={[styles.periodDates, { color: palette.text }]}>
+                      {weekendLabel(fridayBeforeSunday(period.sundayOn), period.sundayOn, locale)}
+                    </Text>
+                    <Pressable
+                      accessibilityHint={copy.reassign}
+                      accessibilityRole="button"
+                      disabled={saving}
+                      onPress={() => setReassignSundayOn(period.sundayOn)}
+                      style={({ pressed }) => [styles.row, { backgroundColor: palette.surface, borderColor: palette.line }, pressed && styles.pressed]}
+                    >
+                      <ProfileAvatar name={name} size={40} source={member?.avatar} />
+                      <Text numberOfLines={1} style={[styles.cardTitle, { color: palette.text, flex: 1 }]}>{name}</Text>
+                      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="create-outline" size={19} />
+                    </Pressable>
+                  </View>
+                );
+              })
             )}
           </>
         )}
       </ScrollView>
+
+      <DeaconPickerSheet
+        deacons={state.status === "ready" ? state.year!.eligibleDeacons : []}
+        doneLabel={copy.done}
+        memberById={memberById}
+        noMatchesLabel={copy.pickerNoMatches}
+        onClose={() => setReassignSundayOn(null)}
+        onSelect={reassign}
+        searchLabel={copy.pickerSearch}
+        selectedPersonId={reassigningPeriod?.personId ?? null}
+        title={copy.pickerTitle}
+        visible={reassignSundayOn !== null}
+      />
     </SafeAreaView>
   );
 }
@@ -180,12 +235,16 @@ const styles = StyleSheet.create({
   retryText: { color: "#FFF", fontWeight: "700" },
   card: { borderRadius: 16, borderWidth: 1, marginTop: 12, padding: 14 },
   eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, textTransform: "uppercase" },
-  orderRow: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 5 },
-  orderIndex: { fontSize: 12, fontWeight: "800", width: 18 },
-  warning: { fontSize: 12, marginTop: 10 },
+  orderList: { gap: 8, marginTop: 10 },
+  row: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 11, minHeight: 62, padding: 10 },
+  pressed: { opacity: 0.72 },
+  cardTitle: { fontSize: 15, fontWeight: "700" },
+  orderBadge: { alignItems: "center", borderRadius: 12, height: 24, justifyContent: "center", width: 24 },
+  orderBadgeText: { fontSize: 12, fontWeight: "800" },
+  warning: { fontSize: 12, marginTop: 12 },
   generateButton: { alignItems: "center", borderRadius: 10, marginTop: 12, paddingVertical: 12 },
   generateText: { color: "#FFF", fontWeight: "800" },
-  reassignHint: { fontSize: 12, marginBottom: 8 },
-  periodRow: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 6 },
-  periodDates: { fontSize: 12, fontWeight: "700", marginBottom: 2 },
+  reassignHint: { fontSize: 12, marginBottom: 12 },
+  weekendBlock: { marginBottom: 14 },
+  periodDates: { fontSize: 15, fontWeight: "800", marginBottom: 8 },
 });

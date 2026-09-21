@@ -1,4 +1,4 @@
-import { Text, TextInput } from "@/features/accessibility/app-text";
+import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Link, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -14,6 +14,7 @@ import { WebTabBar } from "@/features/shell/WebTabBar";
 import { errorMessage } from "@/lib/async-state";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DeaconRow } from "./DeaconRow";
+import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
 import { currentPeriod, fridayBeforeSunday, nextPeriodForPerson, periodsByMonth, weekendLabel, type DutyCandidate } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
@@ -97,9 +98,9 @@ function WeekendRow({
       onPress={Platform.OS === "web" ? undefined : onPress}
       style={({ pressed }) => [styles.personCard, { backgroundColor: palette.surface, borderColor: palette.line }, pressed && styles.pressed]}
     >
-      <ProfileAvatar name={name} size={52} source={avatar} />
-      <Text numberOfLines={1} style={[styles.name, { color: palette.text }]}>{name}</Text>
-      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={22} />
+      <ProfileAvatar name={name} size={40} source={avatar} />
+      <Text numberOfLines={1} style={[styles.name, { color: palette.text, flex: 1 }]}>{name}</Text>
+      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={19} />
     </Pressable>
   );
   return (
@@ -156,17 +157,11 @@ export function DutyScheduleScreen() {
   }, [viewerIsDeacon, viewerPersonId]));
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerQuery, setPickerQuery] = useState("");
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [showPastMonths, setShowPastMonths] = useState(false);
 
   const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
   const eligibleDeacons = state.status === "ready" ? state.year!.eligibleDeacons : [];
-  const filteredDeacons = useMemo(() => {
-    const needle = pickerQuery.trim().toLocaleLowerCase(locale);
-    if (!needle) return eligibleDeacons;
-    return eligibleDeacons.filter((deacon) => deacon.name.toLocaleLowerCase(locale).includes(needle));
-  }, [eligibleDeacons, pickerQuery, locale]);
 
   const active = state.status === "ready" ? currentPeriod(state.year!.periods, today) : null;
   const focused = state.status === "ready" && focusPersonId ? nextPeriodForPerson(state.year!.periods, focusPersonId, today) : null;
@@ -176,7 +171,6 @@ export function DutyScheduleScreen() {
   const selectDeacon = (deacon: DutyCandidate | null) => {
     setFocusPersonId(deacon?.personId ?? null);
     setPickerOpen(false);
-    setPickerQuery("");
   };
 
   return (
@@ -325,62 +319,20 @@ export function DutyScheduleScreen() {
       </ScrollView>
       <WebTabBar />
 
-      <Modal animationType="slide" onRequestClose={() => setPickerOpen(false)} presentationStyle="pageSheet" visible={pickerOpen}>
-        <View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: palette.background }]}>
-          <View style={[styles.sheetHeader, { borderBottomColor: palette.line }]}>
-            <Text accessibilityRole="header" style={[styles.sheetTitle, { color: palette.text }]}>{copy.pickerTitle}</Text>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setPickerOpen(false)} style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}>
-              <Text style={[styles.doneText, { color: palette.accent }]}>{copy.done}</Text>
-            </Pressable>
-          </View>
-          <View style={[styles.searchField, { backgroundColor: palette.subtle, margin: 20 }]}>
-            <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} />
-            <TextInput
-              accessibilityLabel={copy.pickerSearch}
-              autoCapitalize="none"
-              autoFocus
-              clearButtonMode="while-editing"
-              onChangeText={setPickerQuery}
-              placeholder={copy.pickerSearch}
-              placeholderTextColor={palette.secondaryText}
-              style={[styles.searchInput, { color: palette.text }]}
-              value={pickerQuery}
-            />
-          </View>
-          <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled">
-            {!pickerQuery ? (
-              <Pressable accessibilityRole="button" onPress={() => selectDeacon(null)} style={({ pressed }) => [styles.pickerRow, pressed && styles.pressed]}>
-                <View style={[styles.everyoneIcon, { backgroundColor: palette.subtle }]}>
-                  <Ionicons color={palette.accent} name="people-outline" size={20} />
-                </View>
-                <Text style={[styles.pickerRowName, { color: palette.text, flex: 1 }]}>{copy.pickerClear}</Text>
-                {focusPersonId === null ? <Ionicons color={palette.accent} name="checkmark" size={20} /> : null}
-              </Pressable>
-            ) : null}
-            {filteredDeacons.length === 0 ? (
-              <Text style={[styles.centerText, { color: palette.secondaryText, marginTop: 20 }]}>{copy.pickerNoMatches}</Text>
-            ) : (
-              filteredDeacons.map((deacon) => {
-                const member = memberById.get(deacon.personId);
-                const selected = deacon.personId === focusPersonId;
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    key={deacon.personId}
-                    onPress={() => selectDeacon(deacon)}
-                    style={({ pressed }) => [styles.pickerRow, pressed && styles.pressed]}
-                  >
-                    <ProfileAvatar name={deacon.name} size={42} source={member?.avatar} />
-                    <Text numberOfLines={1} style={[styles.pickerRowName, { color: palette.text, flex: 1 }]}>{deacon.name}</Text>
-                    {selected ? <Ionicons color={palette.accent} name="checkmark" size={20} /> : null}
-                  </Pressable>
-                );
-              })
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
+      <DeaconPickerSheet
+        clearOption={{ label: copy.pickerClear, selected: focusPersonId === null }}
+        deacons={eligibleDeacons}
+        doneLabel={copy.done}
+        memberById={memberById}
+        noMatchesLabel={copy.pickerNoMatches}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(deacon) => selectDeacon(deacon)}
+        onSelectClear={() => selectDeacon(null)}
+        searchLabel={copy.pickerSearch}
+        selectedPersonId={focusPersonId}
+        title={copy.pickerTitle}
+        visible={pickerOpen}
+      />
     </SafeAreaView>
   );
 }
@@ -414,21 +366,10 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.65 },
   dateLine: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 12 },
   dateText: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, lineHeight: 25 },
-  personCard: { alignItems: "center", borderCurve: "continuous", borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 14, minHeight: 84, paddingHorizontal: 16, paddingVertical: 16 },
-  name: { flex: 1, fontSize: 18, fontWeight: "700" },
+  personCard: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 11, minHeight: 70, padding: 12 },
+  name: { flex: 1, fontSize: 16, fontWeight: "700" },
   tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
-  sheet: { flex: 1 },
-  sheetHeader: { alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 58, paddingHorizontal: 20 },
-  sheetTitle: { flex: 1, fontSize: 20, fontWeight: "700" },
-  doneButton: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
-  doneText: { fontSize: 17, fontWeight: "600" },
-  sheetContent: { paddingBottom: 40, paddingHorizontal: 20 },
-  searchField: { alignItems: "center", borderRadius: 14, flexDirection: "row", gap: 10, minHeight: 46, paddingHorizontal: 14 },
-  searchInput: { flex: 1, fontSize: 16, paddingVertical: 11 },
-  pickerRow: { alignItems: "center", flexDirection: "row", gap: 11, minHeight: 62, paddingVertical: 9 },
-  pickerRowName: { fontSize: 16, fontWeight: "700" },
-  everyoneIcon: { alignItems: "center", borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
 });
 
 
