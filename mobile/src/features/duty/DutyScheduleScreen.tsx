@@ -244,6 +244,7 @@ export function DutyScheduleScreen() {
                   <DeaconRow
                     avatar={viewerMember?.avatar}
                     detail={weekendLabel(fridayBeforeSunday(viewerNext.sundayOn), viewerNext.sundayOn, locale)}
+                    emphasizeDetail
                     locale={locale}
                     name={viewerMember?.name ?? viewerPersonId}
                     personId={viewerPersonId}
