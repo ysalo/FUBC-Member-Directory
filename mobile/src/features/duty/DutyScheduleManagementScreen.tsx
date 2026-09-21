@@ -24,6 +24,8 @@ const labels = {
     subtitle: "Generate the year, then reassign individual weekends as needed.",
     year: "Year",
     generate: "Generate {year} schedule",
+    regenerate: "Regenerate {year} schedule",
+    generating: "Generating…",
     replaceWarning: "This replaces every weekend already generated for {year}.",
     noAccess: "You don’t have permission to manage the schedule.",
     loading: "Loading…",
@@ -47,6 +49,8 @@ const labels = {
     subtitle: "Створіть рік, потім за потреби змініть окремі вихідні.",
     year: "Рік",
     generate: "Створити розклад на {year}",
+    regenerate: "Створити розклад на {year} знову",
+    generating: "Створення…",
     replaceWarning: "Це замінить усі вже створені вихідні на {year}.",
     noAccess: "У вас немає дозволу керувати розкладом.",
     loading: "Завантаження…",
@@ -101,6 +105,7 @@ export function DutyScheduleManagementScreen() {
   const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
 
   const orderedIds = useMemo(() => orderedDeacons.map((deacon) => deacon.personId), [orderedDeacons]);
+  const hasGeneratedSchedule = state.status === "ready" && state.year!.periods.length > 0;
 
   const generate = () => {
     if (state.status !== "ready" || orderedIds.length === 0) return;
@@ -201,11 +206,16 @@ export function DutyScheduleManagementScreen() {
               <Text style={[styles.warning, { color: palette.secondaryText }]}>{copy.replaceWarning.replace("{year}", String(year))}</Text>
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ busy: saving, disabled: saving || orderedDeacons.length === 0 }}
                 disabled={saving || orderedDeacons.length === 0}
                 onPress={generate}
                 style={[styles.generateButton, { backgroundColor: palette.accent, opacity: saving ? 0.6 : 1 }]}
               >
-                <Text style={styles.generateText}>{copy.generate.replace("{year}", String(year))}</Text>
+                <Text style={styles.generateText}>
+                  {saving
+                    ? copy.generating
+                    : (hasGeneratedSchedule ? copy.regenerate : copy.generate).replace("{year}", String(year))}
+                </Text>
               </Pressable>
             </View>
 

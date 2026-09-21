@@ -57,6 +57,8 @@ Deno.serve(async (request: Request) => {
     if (deletedAccountId) {
       const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(deletedAccountId, false);
       if (authDeleteError && !isMissingIdentity(authDeleteError)) throw authDeleteError;
+      const { error: profileDeleteError } = await adminClient.from("profiles").delete().eq("id", deletedAccountId);
+      if (profileDeleteError) throw profileDeleteError;
     }
 
     if (person.photo_path) {

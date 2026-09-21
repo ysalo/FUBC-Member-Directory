@@ -181,3 +181,12 @@ test('schedule deacons use the shared Manage-style member card', async () => {
   assert.doesNotMatch(schedule, /View a deacon’s schedule|Переглянути розклад диякона/);
 });
 
+test('schedule management keeps regeneration available after a generated year', async () => {
+  const manageSchedule = await readFile(new URL('../src/features/duty/DutyScheduleManagementScreen.tsx', import.meta.url), 'utf8');
+  assert.match(manageSchedule, /regenerate: "Regenerate \{year\} schedule"/);
+  assert.match(manageSchedule, /hasGeneratedSchedule = state\.status === "ready" && state\.year!\.periods\.length > 0/);
+  assert.match(manageSchedule, /hasGeneratedSchedule \? copy\.regenerate : copy\.generate/);
+  assert.match(manageSchedule, /accessibilityState=\{\{ busy: saving, disabled: saving \|\| orderedDeacons\.length === 0 \}\}/);
+  assert.doesNotMatch(manageSchedule, /disabled=\{[^}]*hasGeneratedSchedule/);
+});
+
