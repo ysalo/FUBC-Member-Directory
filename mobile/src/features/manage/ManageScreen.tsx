@@ -48,6 +48,8 @@ const labels = {
         groupsDetail: "Assign deacons and review rosters",
         ministries: "Ministries",
         ministriesDetail: "Maintain ministry names",
+        duty: "Duty schedule",
+        dutyDetail: "Generate and adjust the Friday/Sunday deacon rotation",
         addMember: "Add member",
         loading: "Preparing management tools…",
         loadingDetail: "Loading members and account access.",
@@ -84,6 +86,8 @@ const labels = {
         revoked: "Відкликано",
         groups: "Групи",
         groupsDetail: "Призначення дияконів і склад груп",
+        duty: "Розклад чергування",
+        dutyDetail: "Створення та коригування чергування дияконів у п’ятницю й неділю",
         ministries: "Служіння",
         ministriesDetail: "Назви служінь",
         addMember: "Додати учасника",
@@ -500,6 +504,14 @@ export function ManageScreen() {
                                     router.push("/manage/ministries" as Href)
                                 }
                             />
+                            <Shortcut
+                                detail={copy.dutyDetail}
+                                icon="calendar-outline"
+                                label={copy.duty}
+                                onPress={() =>
+                                    router.push("/manage/duty" as Href)
+                                }
+                            />
                         </View>
 
                         {accountsAllowed &&
@@ -582,7 +594,7 @@ export function ManageScreen() {
         onPress,
     }: {
         detail: string;
-        icon: "people-outline" | "layers-outline";
+        icon: "people-outline" | "layers-outline" | "calendar-outline";
         label: string;
         onPress: () => void;
     }) {

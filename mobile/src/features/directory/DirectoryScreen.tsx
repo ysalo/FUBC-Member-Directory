@@ -20,6 +20,7 @@ import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
 import { LeadershipBadge } from "@/features/members/leadership-badge";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
+import { DutySummary } from "@/features/duty/DutySummary";
 import { formatPhoneNumber } from "@/lib/phone";
 
 import { getDirectoryVisitCount, listDirectory } from "./directory-repository";
@@ -623,6 +624,7 @@ export function DirectoryScreen() {
                 ]}
             >
                 {stickyOverview}
+                <DutySummary directoryMembers={directoryMembers} locale={locale} />
                 {desktop && (
                     <View
                         style={[
@@ -703,6 +705,7 @@ export function DirectoryScreen() {
     return (
         <View style={[styles.safe, { backgroundColor: palette.background }]}>
             {stickyOverview}
+            <DutySummary directoryMembers={directoryMembers} locale={locale} />
             <SectionList
                 contentContainerStyle={styles.content}
                 keyboardDismissMode="on-drag"

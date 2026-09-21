@@ -44,7 +44,7 @@ function IosTabs() {
         <NativeTabs.Trigger.Label>{copy.tabs.groups}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="visitation">
-        <NativeTabs.Trigger.Icon sf={{ default: "calendar", selected: "calendar.badge.checkmark" }} />
+        <NativeTabs.Trigger.Icon sf={{ default: "house", selected: "house.fill" }} />
         <NativeTabs.Trigger.Label>{copy.tabs.visitation}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Badge hidden={activeVisitationCount === 0}>{String(activeVisitationCount)}</NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>

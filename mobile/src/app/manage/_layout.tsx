@@ -23,5 +23,6 @@ export default function ManageLayout() {
     <Stack.Screen name="ministries" options={{ headerShown: true, title: locale === "uk" ? "Служіння" : "Ministries" }} />
     <Stack.Screen name="ministry/new" options={{ headerShown: true, title: locale === "uk" ? "Нове служіння" : "New ministry" }} />
     <Stack.Screen name="ministry/[ministryId]" options={{ headerShown: true, title: locale === "uk" ? "Редагувати служіння" : "Edit ministry" }} />
+    <Stack.Screen name="duty" options={{ headerShown: true, title: locale === "uk" ? "Розклад чергування" : "Duty schedule" }} />
   </Stack>;
 }

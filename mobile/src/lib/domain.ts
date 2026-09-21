@@ -66,3 +66,9 @@ export type Preferences = {
   appearance: "system" | "light" | "dark";
   notificationsEnabled: boolean;
 };
+/** One deacon covers the Friday two days before `sundayOn` through that Sunday. */
+export type DutyPeriod = {
+  sundayOn: DateOnly;
+  personId: string;
+  revision: number;
+};
