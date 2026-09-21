@@ -14,6 +14,16 @@ export function sortCandidatesByLastName(candidates: readonly DutyCandidate[], l
   );
 }
 
+/** Moves one candidate by a single position while preserving every other candidate's order. */
+export function moveCandidate(candidates: readonly DutyCandidate[], personId: string, offset: -1 | 1): DutyCandidate[] {
+  const currentIndex = candidates.findIndex((candidate) => candidate.personId === personId);
+  const nextIndex = currentIndex + offset;
+  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= candidates.length) return [...candidates];
+  const reordered = [...candidates];
+  [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+  return reordered;
+}
+
 function isSunday(year: number, month: number, day: number): boolean {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay() === 0;
 }

@@ -15,7 +15,7 @@ import { errorMessage } from "@/lib/async-state";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
-import { fridayBeforeSunday, weekendLabel, type DutyCandidate } from "./duty-domain";
+import { fridayBeforeSunday, moveCandidate, weekendLabel, type DutyCandidate } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
 
 const labels = {
@@ -30,7 +30,10 @@ const labels = {
     error: "Couldn’t load the schedule",
     retry: "Try again",
     noDeacons: "No active deacons are available to schedule yet.",
-    rotationOrder: "Rotation order (alphabetical by last name)",
+    rotationOrder: "Rotation order",
+    reorderHint: "Use the arrows to set the repeating order before generating.",
+    moveUp: (name: string) => `Move ${name} up`,
+    moveDown: (name: string) => `Move ${name} down`,
     schedule: "Generated schedule",
     empty: "Nothing generated for this year yet.",
     reassign: "Tap a weekend to reassign it to a different deacon.",
@@ -50,7 +53,10 @@ const labels = {
     error: "Не вдалося завантажити розклад",
     retry: "Спробувати ще раз",
     noDeacons: "Поки немає активних дияконів для розкладу.",
-    rotationOrder: "Порядок чергування (за алфавітом прізвищ)",
+    rotationOrder: "Порядок чергування",
+    reorderHint: "Стрілками встановіть порядок повторення перед створенням.",
+    moveUp: (name: string) => `Перемістити ${name} вгору`,
+    moveDown: (name: string) => `Перемістити ${name} вниз`,
     schedule: "Створений розклад",
     empty: "На цей рік ще нічого не створено.",
     reassign: "Торкніться вихідних, щоб призначити іншого диякона.",
@@ -73,13 +79,17 @@ export function DutyScheduleManagementScreen() {
   const [state, setState] = useState<{ status: "loading" | "error" | "ready"; year?: DutyYear; message?: string }>({ status: "loading" });
   const [saving, setSaving] = useState(false);
   const [reassignSundayOn, setReassignSundayOn] = useState<string | null>(null);
+  const [orderedDeacons, setOrderedDeacons] = useState<DutyCandidate[]>([]);
 
   const load = useCallback(() => {
     if (!allowed) return;
     setState({ status: "loading" });
     dutyRepository
       .loadYear(year)
-      .then((loaded) => setState({ status: "ready", year: loaded }))
+      .then((loaded) => {
+        setState({ status: "ready", year: loaded });
+        setOrderedDeacons(loaded.eligibleDeacons);
+      })
       .catch((cause) => setState({ status: "error", message: errorMessage(cause) }));
   }, [allowed, year]);
   useFocusEffect(useCallback(load, [load]));
@@ -90,7 +100,7 @@ export function DutyScheduleManagementScreen() {
   }, []));
   const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
 
-  const orderedIds = useMemo(() => (state.status === "ready" ? state.year!.eligibleDeacons.map((deacon) => deacon.personId) : []), [state]);
+  const orderedIds = useMemo(() => orderedDeacons.map((deacon) => deacon.personId), [orderedDeacons]);
 
   const generate = () => {
     if (state.status !== "ready" || orderedIds.length === 0) return;
@@ -148,17 +158,42 @@ export function DutyScheduleManagementScreen() {
           <>
             <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.line }]}>
               <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>{copy.rotationOrder}</Text>
-              {state.year!.eligibleDeacons.length === 0 ? (
+              <Text style={[styles.reorderHint, { color: palette.secondaryText }]}>{copy.reorderHint}</Text>
+              {orderedDeacons.length === 0 ? (
                 <Text style={{ color: palette.secondaryText }}>{copy.noDeacons}</Text>
               ) : (
                 <View style={styles.orderList}>
-                  {state.year!.eligibleDeacons.map((deacon, index) => (
+                  {orderedDeacons.map((deacon, index) => (
                     <View key={deacon.personId} style={[styles.row, { backgroundColor: palette.background, borderColor: palette.line }]}>
                       <View style={[styles.orderBadge, { backgroundColor: palette.accentSoft }]}>
                         <Text style={[styles.orderBadgeText, { color: palette.accent }]}>{index + 1}</Text>
                       </View>
                       <ProfileAvatar name={deacon.name} size={40} source={memberById.get(deacon.personId)?.avatar} />
                       <Text numberOfLines={1} style={[styles.cardTitle, { color: palette.text, flex: 1 }]}>{deacon.name}</Text>
+                      <View style={styles.reorderControls}>
+                        <Pressable
+                          accessibilityLabel={copy.moveUp(deacon.name)}
+                          accessibilityRole="button"
+                          accessibilityState={{ disabled: saving || index === 0 }}
+                          disabled={saving || index === 0}
+                          hitSlop={4}
+                          onPress={() => setOrderedDeacons((current) => moveCandidate(current, deacon.personId, -1))}
+                          style={({ pressed }) => [styles.reorderButton, { opacity: index === 0 ? 0.3 : pressed ? 0.6 : 1 }]}
+                        >
+                          <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-up" size={19} />
+                        </Pressable>
+                        <Pressable
+                          accessibilityLabel={copy.moveDown(deacon.name)}
+                          accessibilityRole="button"
+                          accessibilityState={{ disabled: saving || index === orderedDeacons.length - 1 }}
+                          disabled={saving || index === orderedDeacons.length - 1}
+                          hitSlop={4}
+                          onPress={() => setOrderedDeacons((current) => moveCandidate(current, deacon.personId, 1))}
+                          style={({ pressed }) => [styles.reorderButton, { opacity: index === orderedDeacons.length - 1 ? 0.3 : pressed ? 0.6 : 1 }]}
+                        >
+                          <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-down" size={19} />
+                        </Pressable>
+                      </View>
                     </View>
                   ))}
                 </View>
@@ -166,7 +201,7 @@ export function DutyScheduleManagementScreen() {
               <Text style={[styles.warning, { color: palette.secondaryText }]}>{copy.replaceWarning.replace("{year}", String(year))}</Text>
               <Pressable
                 accessibilityRole="button"
-                disabled={saving || state.year!.eligibleDeacons.length === 0}
+                disabled={saving || orderedDeacons.length === 0}
                 onPress={generate}
                 style={[styles.generateButton, { backgroundColor: palette.accent, opacity: saving ? 0.6 : 1 }]}
               >
@@ -235,12 +270,15 @@ const styles = StyleSheet.create({
   retryText: { color: "#FFF", fontWeight: "700" },
   card: { borderRadius: 16, borderWidth: 1, marginTop: 12, padding: 14 },
   eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, textTransform: "uppercase" },
-  orderList: { gap: 8, marginTop: 10 },
+  reorderHint: { fontSize: 12, lineHeight: 17, marginTop: 5 },
+  orderList: { gap: 8, marginTop: 12 },
   row: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 11, minHeight: 62, padding: 10 },
   pressed: { opacity: 0.72 },
   cardTitle: { fontSize: 15, fontWeight: "700" },
   orderBadge: { alignItems: "center", borderRadius: 12, height: 24, justifyContent: "center", width: 24 },
   orderBadgeText: { fontSize: 12, fontWeight: "800" },
+  reorderControls: { flexDirection: "row", gap: 2 },
+  reorderButton: { alignItems: "center", height: 40, justifyContent: "center", width: 34 },
   warning: { fontSize: 12, marginTop: 12 },
   generateButton: { alignItems: "center", borderRadius: 10, marginTop: 12, paddingVertical: 12 },
   generateText: { color: "#FFF", fontWeight: "800" },

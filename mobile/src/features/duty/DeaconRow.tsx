@@ -1,7 +1,7 @@
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { Link, useRouter } from "expo-router";
-import { Platform, Pressable, StyleSheet, View, type ImageSourcePropType } from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, StyleSheet, View, type ImageSourcePropType } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
@@ -23,11 +23,11 @@ export function DeaconRow({ personId, name, avatar, card = false, detail, locale
   const router = useRouter();
   const { palette } = useAppearance();
   const onPress = () => router.push(`/members/${personId}` as never);
-  const row = (
+  return (
     <Pressable
       accessibilityHint={locale === "uk" ? `Відкрити профіль: ${name}` : `Opens ${name}’s member profile`}
-      accessibilityRole={Platform.OS === "web" ? "link" : "button"}
-      onPress={Platform.OS === "web" ? undefined : onPress}
+      accessibilityRole="button"
+      onPress={onPress}
       style={({ pressed }) => [
         styles.row,
         card && styles.card,
@@ -49,13 +49,6 @@ export function DeaconRow({ personId, name, avatar, card = false, detail, locale
       </View>
       <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={18} />
     </Pressable>
-  );
-  return Platform.OS === "web" ? (
-    <Link asChild href={`/members/${personId}`}>
-      {row}
-    </Link>
-  ) : (
-    row
   );
 }
 
