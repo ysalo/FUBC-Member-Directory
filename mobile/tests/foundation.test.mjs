@@ -138,16 +138,25 @@ test('Expo OAuth rejects numeric-IP callbacks and accepts tunnel/custom-scheme c
 });
 
 test('appearance preferences theme browser-only visitation surfaces', async () => {
-  const [appearance, visitation, gate] = await Promise.all([
+  const [appearance, visitation, gate, globalCss, layout] = await Promise.all([
     readFile(new URL('../src/features/appearance/AppearanceProvider.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/features/visitation/VisitationUi.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/features/session/AccessGate.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/app/global.css', import.meta.url), 'utf8'),
+    readFile(new URL('../src/app/_layout.tsx', import.meta.url), 'utf8'),
   ]);
   assert.match(appearance, /document\.documentElement\.style\.colorScheme = resolved/);
   assert.match(appearance, /--app-\$\{token\}/);
   assert.match(appearance, /DynamicColorIOS/);
   assert.match(appearance, /preference === "system" && Platform\.OS === "ios" \? systemPalette/);
   assert.match(visitation, /var\(--app-\$\{token\}\)/);
+  assert.match(appearance, /accent: "#8A6418", accentSoft: "#F4E8C8"/);
+  assert.match(appearance, /accent: "#E8C878", accentSoft: "#3B321F"/);
+  assert.match(visitation, /accent: adaptive\("#8A6418", "#E8C878", "accent"\)/);
+  assert.match(globalCss, /--app-accent: #8a6418;/);
+  assert.match(globalCss, /--app-accent: #e8c878;/);
+  assert.match(layout, /tintColor=\{palette\.accent\}/);
+  assert.doesNotMatch(`${appearance}\n${visitation}\n${globalCss}\n${layout}`, /#(?:EF5A24|FF8052|FCE6DD|4A2820)/i);
   assert.doesNotMatch(gate, /useAppearance/);
   assert.match(gate, /<StatusBar style="light"/);
 });

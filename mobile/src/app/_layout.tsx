@@ -15,8 +15,6 @@ import { TextSizeProvider, useTextSize } from "@/features/accessibility/TextSize
 
 import "./global.css";
 
-const accent = "#EF5A24";
-
 function IosTabs() {
   const { copy } = useLocalization();
   const { palette, preference, resolved } = useAppearance();
@@ -26,10 +24,10 @@ function IosTabs() {
   const { scale } = useTextSize();
   return (
     <NativeTabs
-      tintColor={accent}
-      badgeBackgroundColor="#EF5A24B8"
-      iconColor={{ default: palette.secondaryText, selected: accent }}
-      labelStyle={{ default: { color: palette.secondaryText, fontSize: 10 * scale }, selected: { color: accent, fontSize: 10 * scale } }}
+      tintColor={palette.accent}
+      badgeBackgroundColor={palette.accent}
+      iconColor={{ default: palette.secondaryText, selected: palette.accent }}
+      labelStyle={{ default: { color: palette.secondaryText, fontSize: 10 * scale }, selected: { color: palette.accent, fontSize: 10 * scale } }}
       backgroundColor={palette.chrome}
       blurEffect={preference === "system" ? "systemMaterial" : resolved === "dark" ? "systemMaterialDark" : "systemMaterialLight"}
       disableTransparentOnScrollEdge

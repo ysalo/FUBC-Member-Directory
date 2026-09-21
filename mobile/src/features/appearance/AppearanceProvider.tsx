@@ -24,8 +24,8 @@ export type AppPalette = {
 };
 
 const palettes: Record<"light" | "dark", AppPalette> = {
-  light: { background: "#F1F0EB", surface: "#FAF9F6", elevated: "#FFFFFF", subtle: "#E2DFD9", line: "#D8D5CE", text: "#171B20", secondaryText: "#686B70", chrome: "rgba(250,249,246,0.98)", accent: "#EF5A24", accentSoft: "#FCE6DD", danger: "#B42318", dangerSoft: "#FCE8E6", success: "#237A46", successSoft: "#DDEFE2", warningSoft: "#FFF0C9" },
-  dark: { background: "#111315", surface: "#1A1D20", elevated: "#22262A", subtle: "#292D31", line: "#34383D", text: "#F4F1EA", secondaryText: "#B2B4B7", chrome: "rgba(26,29,32,0.98)", accent: "#FF8052", accentSoft: "#4A2820", danger: "#FF8B82", dangerSoft: "#492422", success: "#74C88D", successSoft: "#1E3A29", warningSoft: "#493B1D" },
+  light: { background: "#F1F0EB", surface: "#FAF9F6", elevated: "#FFFFFF", subtle: "#E2DFD9", line: "#D8D5CE", text: "#171B20", secondaryText: "#686B70", chrome: "rgba(250,249,246,0.98)", accent: "#8A6418", accentSoft: "#F4E8C8", danger: "#B42318", dangerSoft: "#FCE8E6", success: "#237A46", successSoft: "#DDEFE2", warningSoft: "#FFF0C9" },
+  dark: { background: "#111315", surface: "#1A1D20", elevated: "#22262A", subtle: "#292D31", line: "#34383D", text: "#F4F1EA", secondaryText: "#B2B4B7", chrome: "rgba(26,29,32,0.98)", accent: "#E8C878", accentSoft: "#3B321F", danger: "#FF8B82", dangerSoft: "#492422", success: "#74C88D", successSoft: "#1E3A29", warningSoft: "#493B1D" },
 };
 
 const systemPalette: AppPalette = Object.fromEntries(
