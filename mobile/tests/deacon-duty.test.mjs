@@ -8,6 +8,7 @@ import {
   moveCandidate,
   nextPeriodForPerson,
   periodsByMonth,
+  periodsForPerson,
   sortCandidatesByLastName,
   sundaysInYear,
   surnameKey,
@@ -91,6 +92,17 @@ test('periodsByMonth groups chronologically by calendar month', () => {
   assert.ok(groups.every((group, index) => index === 0 || group.month > groups[index - 1].month));
 });
 
+test('periodsForPerson filters the full schedule and preserves Everyone', () => {
+  const periods = buildRotation(2026, [
+    { personId: 'a', name: 'A' },
+    { personId: 'b', name: 'B' },
+  ]);
+  const filtered = periodsForPerson(periods, 'a');
+  assert.ok(filtered.length > 1);
+  assert.ok(filtered.every((period) => period.personId === 'a'));
+  assert.deepEqual(periodsForPerson(periods, null), periods);
+});
+
 test('Visitation uses a house icon on native and web, never a heart', async () => {
   const [nativeLayout, webTabBar, webShell] = await Promise.all([
     readFile(new URL('../src/app/_layout.tsx', import.meta.url), 'utf8'),
@@ -131,7 +143,10 @@ test('schedule deacons use the shared Manage-style member card', async () => {
   assert.doesNotMatch(deaconRow, /Link asChild|Platform\.OS === "web"/);
   assert.match(deaconRow, /accessibilityRole="button"\s+onPress=\{onPress\}/);
   assert.match(schedule, /monthIndex > 0 \? <View style=\{\[styles\.monthSeparator/);
-  assert.match(schedule, /monthSeparator: \{ height: StyleSheet\.hairlineWidth/);
+  assert.match(schedule, /periodsForPerson\(state\.year!\.periods, filterPersonId\)/);
+  assert.match(schedule, /viewerNext = .*nextPeriodForPerson\(state\.year!\.periods, viewerPersonId, today\)/);
+  assert.doesNotMatch(schedule, /nextDutyFor|selectedTag/);
+  assert.match(schedule, /monthSeparator: \{ height: 2, marginBottom: 16 \}/);
   assert.doesNotMatch(schedule, /View a deacon’s schedule|Переглянути розклад диякона/);
 });
 

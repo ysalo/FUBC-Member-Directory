@@ -16,7 +16,7 @@ import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DeaconRow } from "./DeaconRow";
 import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
-import { currentPeriod, fridayBeforeSunday, nextPeriodForPerson, periodsByMonth, weekendLabel, type DutyCandidate } from "./duty-domain";
+import { currentPeriod, fridayBeforeSunday, nextPeriodForPerson, periodsByMonth, periodsForPerson, weekendLabel, type DutyCandidate } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
 
 const labels = {
@@ -29,7 +29,6 @@ const labels = {
     empty: "No schedule has been generated for this year yet.",
     todayTag: "Today",
     youTag: "You",
-    selectedTag: "Selected",
     pickerPlaceholder: "Choose a deacon",
     pickerTitle: "Select a deacon",
     pickerSearch: "Search deacons",
@@ -37,7 +36,6 @@ const labels = {
     pickerNoMatches: "No deacons match your search.",
     done: "Done",
     yourNext: "Your next duty",
-    nextDutyFor: (name: string) => `${name}’s next duty`,
     noUpcoming: (name: string) => `${name} has no upcoming duty this year.`,
     options: "Options",
     showPastMonths: "Show previous months",
@@ -51,7 +49,6 @@ const labels = {
     empty: "Розклад на цей рік ще не створено.",
     todayTag: "Сьогодні",
     youTag: "Ви",
-    selectedTag: "Обрано",
     pickerPlaceholder: "Оберіть диякона",
     pickerTitle: "Обрати диякона",
     pickerSearch: "Пошук дияконів",
@@ -59,7 +56,6 @@ const labels = {
     pickerNoMatches: "Дияконів не знайдено.",
     done: "Готово",
     yourNext: "Ваше наступне чергування",
-    nextDutyFor: (name: string) => `Наступне чергування: ${name}`,
     noUpcoming: (name: string) => `У ${name} немає майбутнього чергування цього року.`,
     options: "Параметри",
     showPastMonths: "Показати минулі місяці",
@@ -128,11 +124,7 @@ export function DutyScheduleScreen() {
 
   const viewerPersonId = session.status === "ready" ? session.account.personId : null;
   const viewerIsDeacon = session.status === "ready" && session.account.leadershipMinistry === "deacon";
-  const [focusPersonId, setFocusPersonId] = useState<string | null>(null);
-  useFocusEffect(useCallback(() => {
-    setFocusPersonId((current) => current ?? (viewerIsDeacon ? viewerPersonId : null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewerIsDeacon, viewerPersonId]));
+  const [filterPersonId, setFilterPersonId] = useState<string | null>(null);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -142,12 +134,14 @@ export function DutyScheduleScreen() {
   const eligibleDeacons = state.status === "ready" ? state.year!.eligibleDeacons : [];
 
   const active = state.status === "ready" ? currentPeriod(state.year!.periods, today) : null;
-  const focused = state.status === "ready" && focusPersonId ? nextPeriodForPerson(state.year!.periods, focusPersonId, today) : null;
-  const focusedMember = focusPersonId ? memberById.get(focusPersonId) : undefined;
-  const months = state.status === "ready" ? periodsByMonth(state.year!.periods).filter((group) => showPastMonths || group.month >= currentMonth) : [];
+  const viewerNext = state.status === "ready" && viewerIsDeacon && viewerPersonId ? nextPeriodForPerson(state.year!.periods, viewerPersonId, today) : null;
+  const viewerMember = viewerPersonId ? memberById.get(viewerPersonId) : undefined;
+  const filteredPeriods = state.status === "ready" ? periodsForPerson(state.year!.periods, filterPersonId) : [];
+  const months = periodsByMonth(filteredPeriods).filter((group) => showPastMonths || group.month >= currentMonth);
+  const filteredMember = filterPersonId ? memberById.get(filterPersonId) : undefined;
 
   const selectDeacon = (deacon: DutyCandidate | null) => {
-    setFocusPersonId(deacon?.personId ?? null);
+    setFilterPersonId(deacon?.personId ?? null);
     setPickerOpen(false);
   };
 
@@ -193,13 +187,13 @@ export function DutyScheduleScreen() {
                     onPress={() => setPickerOpen(true)}
                     style={[styles.pickerTrigger, { backgroundColor: palette.subtle }]}
                   >
-                    {focusedMember ? (
-                      <ProfileAvatar name={focusedMember.name} size={28} source={focusedMember.avatar} />
+                    {filteredMember ? (
+                      <ProfileAvatar name={filteredMember.name} size={28} source={filteredMember.avatar} />
                     ) : (
                       <Ionicons color={palette.secondaryText} name="person-circle-outline" size={24} />
                     )}
-                    <Text numberOfLines={1} style={[styles.pickerTriggerText, { color: focusedMember ? palette.text : palette.secondaryText }]}>
-                      {focusedMember?.name ?? copy.pickerPlaceholder}
+                    <Text numberOfLines={1} style={[styles.pickerTriggerText, { color: filteredMember ? palette.text : palette.secondaryText }]}>
+                      {filteredMember?.name ?? copy.pickerPlaceholder}
                     </Text>
                     <Ionicons color={palette.secondaryText} name="chevron-down" size={18} />
                   </Pressable>
@@ -243,24 +237,22 @@ export function DutyScheduleScreen() {
               </View>
             ) : null}
 
-            {focusPersonId ? (
+            {viewerIsDeacon && viewerPersonId ? (
               <View style={[styles.card, { backgroundColor: palette.accentSoft, borderColor: palette.accent, borderStyle: "dashed" }]}>
-                <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>
-                  {focusPersonId === viewerPersonId ? copy.yourNext : copy.nextDutyFor(focusedMember?.name ?? "")}
-                </Text>
-                {focused ? (
+                <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>{copy.yourNext}</Text>
+                {viewerNext ? (
                   <DeaconRow
-                    avatar={focusedMember?.avatar}
-                    detail={weekendLabel(fridayBeforeSunday(focused.sundayOn), focused.sundayOn, locale)}
+                    avatar={viewerMember?.avatar}
+                    detail={weekendLabel(fridayBeforeSunday(viewerNext.sundayOn), viewerNext.sundayOn, locale)}
                     locale={locale}
-                    name={focusedMember?.name ?? focusPersonId}
-                    personId={focusPersonId}
+                    name={viewerMember?.name ?? viewerPersonId}
+                    personId={viewerPersonId}
                     size={48}
-                    tag={focusPersonId === viewerPersonId ? copy.youTag : copy.selectedTag}
+                    tag={copy.youTag}
                     tagTone="you"
                   />
                 ) : (
-                  <Text style={{ color: palette.secondaryText }}>{copy.noUpcoming(focusedMember?.name ?? "")}</Text>
+                  <Text style={{ color: palette.secondaryText }}>{copy.noUpcoming(viewerMember?.name ?? "")}</Text>
                 )}
               </View>
             ) : null}
@@ -275,7 +267,6 @@ export function DutyScheduleScreen() {
                   {group.periods.map((period) => {
                     const member = memberById.get(period.personId);
                     const isToday = active?.sundayOn === period.sundayOn;
-                    const isFocused = period.personId === focusPersonId && focused?.sundayOn === period.sundayOn;
                     return (
                       <WeekendRow
                         avatar={member?.avatar}
@@ -284,8 +275,7 @@ export function DutyScheduleScreen() {
                         locale={locale}
                         name={member?.name ?? period.personId}
                         personId={period.personId}
-                        tag={isToday ? copy.todayTag : isFocused ? (focusPersonId === viewerPersonId ? copy.youTag : copy.selectedTag) : undefined}
-                        tagTone={isFocused && focusPersonId !== viewerPersonId ? "you" : "today"}
+                        tag={isToday ? copy.todayTag : undefined}
                       />
                     );
                   })}
@@ -298,7 +288,7 @@ export function DutyScheduleScreen() {
       <WebTabBar />
 
       <DeaconPickerSheet
-        clearOption={{ label: copy.pickerClear, selected: focusPersonId === null }}
+        clearOption={{ label: copy.pickerClear, selected: filterPersonId === null }}
         deacons={eligibleDeacons}
         doneLabel={copy.done}
         memberById={memberById}
@@ -307,7 +297,7 @@ export function DutyScheduleScreen() {
         onSelect={(deacon) => selectDeacon(deacon)}
         onSelectClear={() => selectDeacon(null)}
         searchLabel={copy.pickerSearch}
-        selectedPersonId={focusPersonId}
+        selectedPersonId={filterPersonId}
         title={copy.pickerTitle}
         visible={pickerOpen}
       />
@@ -323,10 +313,10 @@ const styles = StyleSheet.create({
   centerText: { fontSize: 14, textAlign: "center" },
   retryButton: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
   retryText: { color: "#FFF", fontWeight: "700" },
-  card: { borderRadius: 16, borderWidth: 1, marginBottom: 20, padding: 16 },
+  card: { borderRadius: 16, borderWidth: 1, marginBottom: 16, padding: 16 },
   todayCard: { borderWidth: 1.5 },
   eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, marginBottom: 10, textTransform: "uppercase" },
-  pickerBlock: { marginBottom: 24, position: "relative", zIndex: 5 },
+  pickerBlock: { marginBottom: 16, position: "relative", zIndex: 5 },
   pickerAndOptions: { flexDirection: "row", gap: 10 },
   pickerTrigger: { alignItems: "center", borderRadius: 14, flex: 1, flexDirection: "row", gap: 10, minHeight: 52, paddingHorizontal: 14 },
   pickerTriggerText: { flex: 1, fontSize: 15, fontWeight: "700" },
@@ -338,10 +328,10 @@ const styles = StyleSheet.create({
   optionText: { flex: 1, fontSize: 14, fontWeight: "600" },
   optionsDone: { alignItems: "center", borderRadius: 10, marginTop: 10, paddingVertical: 9 },
   optionsDoneText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
-  monthBlock: { marginBottom: 24 },
-  monthSeparator: { height: StyleSheet.hairlineWidth, marginBottom: 22, marginTop: 2 },
-  monthLabel: { fontSize: 27, fontWeight: "800", letterSpacing: -0.5, marginBottom: 14 },
-  weekendBlock: { marginBottom: 14 },
+  monthBlock: { marginBottom: 16 },
+  monthSeparator: { height: 2, marginBottom: 16 },
+  monthLabel: { fontSize: 27, fontWeight: "800", letterSpacing: -0.5, marginBottom: 12 },
+  weekendBlock: { marginBottom: 12 },
   dateLine: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 8 },
   dateText: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, lineHeight: 25 },
   tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
