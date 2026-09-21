@@ -83,6 +83,10 @@ export function nextPeriodForPerson(periods: readonly DutyPeriod[], personId: st
   );
 }
 
+export function periodsForPerson(periods: readonly DutyPeriod[], personId: string | null): DutyPeriod[] {
+  return personId ? periods.filter((period) => period.personId === personId) : [...periods];
+}
+
 export function periodsByMonth(periods: readonly DutyPeriod[]): Array<{ month: string; periods: DutyPeriod[] }> {
   const groups = new Map<string, DutyPeriod[]>();
   for (const period of [...periods].sort((a, b) => a.sundayOn.localeCompare(b.sundayOn))) {
