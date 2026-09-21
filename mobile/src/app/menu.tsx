@@ -5,6 +5,7 @@ import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import Constants from "expo-constants";
 import { useFocusEffect, useRouter } from "expo-router";
 
 import { type AppearancePreference, useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -18,8 +19,8 @@ import { isBackendConfigured } from "@/lib/supabase";
 import { type TextSizePreference, useTextSize } from "@/features/accessibility/TextSizeProvider";
 
 const accountCopy = {
-  en: { account: "Account", linkedMember: "View member profile", signOut: "Sign out", signingOut: "Signing out…", signOutError: "Unable to sign out. Please try again.", advanced: "Advanced", advancedDetail: "Permanent account actions", delete: "Delete account", textSize: "Text size", small: "Small", standard: "Standard", large: "Large", about: "About", done: "Done", licenses: "Open-source licenses", iconLicense: "Ionicons — MIT License", iconCopyright: "© 2015–present Ionic · © 2015 Joel Arvidsson" },
-  uk: { account: "Обліковий запис", linkedMember: "Переглянути профіль учасника", signOut: "Вийти", signingOut: "Вихід…", signOutError: "Не вдалося вийти. Спробуйте ще раз.", advanced: "Додатково", advancedDetail: "Незворотні дії з обліковим записом", delete: "Видалити обліковий запис", textSize: "Розмір тексту", small: "Малий", standard: "Стандартний", large: "Великий", about: "Про застосунок", done: "Готово", licenses: "Ліцензії відкритого коду", iconLicense: "Ionicons — ліцензія MIT", iconCopyright: "© 2015–дотепер Ionic · © 2015 Joel Arvidsson" },
+  en: { account: "Account", linkedMember: "View member profile", signOut: "Sign out", signingOut: "Signing out…", signOutError: "Unable to sign out. Please try again.", advanced: "Advanced", advancedDetail: "Permanent account actions", delete: "Delete account", textSize: "Text size", small: "Small", standard: "Standard", large: "Large", about: "About", done: "Done", version: "Version", unavailable: "Unavailable", licenses: "Open-source licenses", iconLicense: "Ionicons — MIT License", iconCopyright: "© 2015–present Ionic · © 2015 Joel Arvidsson" },
+  uk: { account: "Обліковий запис", linkedMember: "Переглянути профіль учасника", signOut: "Вийти", signingOut: "Вихід…", signOutError: "Не вдалося вийти. Спробуйте ще раз.", advanced: "Додатково", advancedDetail: "Незворотні дії з обліковим записом", delete: "Видалити обліковий запис", textSize: "Розмір тексту", small: "Малий", standard: "Стандартний", large: "Великий", about: "Про застосунок", done: "Готово", version: "Версія", unavailable: "Недоступна", licenses: "Ліцензії відкритого коду", iconLicense: "Ionicons — ліцензія MIT", iconCopyright: "© 2015–дотепер Ionic · © 2015 Joel Arvidsson" },
 } as const;
 
 export default function MenuRoute() {
@@ -137,6 +138,7 @@ export default function MenuRoute() {
             </Pressable>
           </View>
           <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.aboutContent}>
+            <Text selectable style={[styles.versionText, { color: palette.secondaryText }]}>{labels.version} {Constants.expoConfig?.version ?? labels.unavailable}</Text>
             <Text accessibilityRole="header" style={[styles.licensesTitle, { color: palette.text }]}>{labels.licenses}</Text>
             <View style={[styles.licensePanel, { backgroundColor: palette.surface }]}>
               <Text selectable style={[styles.licenseTitle, { color: palette.text }]}>{labels.iconLicense}</Text>
@@ -176,6 +178,7 @@ const styles = StyleSheet.create({
   doneButton: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
   doneText: { fontSize: 17, fontWeight: "600" },
   aboutContent: { gap: 18, padding: 20 },
+  versionText: { fontSize: 15, lineHeight: 21 },
   licensesTitle: { fontSize: 22, fontWeight: "700" },
   licensePanel: { borderRadius: 16, padding: 18 },
   licenseTitle: { fontSize: 17, fontWeight: "700" },

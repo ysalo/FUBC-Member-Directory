@@ -7,9 +7,23 @@ import { assertUsableOAuthRedirect, isNumericIpRedirect } from '../src/features/
 import { formatPhoneNumber, phoneDigits } from '../src/lib/phone.ts';
 import { contactShareMessage, emailUrl, mapUrls } from '../src/features/members/contact-links.ts';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 
 const actor = (role = 'member', leadershipMinistry = null, status = 'active') => ({ id: 'viewer', role, leadershipMinistry, status });
 const visit = { plannerId: 'pastor', status: 'open', archivedAt: null, recipients: [{ accountId: 'deacon' }, { accountId: 'pastor-participant' }] };
+test('Expo config derives the app version from package metadata', async () => {
+  const [appJson, packageMetadata] = await Promise.all([
+    readFile(new URL('../app.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
+  ]);
+  const resolveConfig = require('../app.config.js');
+  const resolvedConfig = resolveConfig({ config: appJson.expo });
+  assert.equal(Object.hasOwn(appJson.expo, 'version'), false);
+  assert.equal(resolvedConfig.version, packageMetadata.version);
+  assert.equal(resolvedConfig.name, appJson.expo.name);
+});
 test('phone numbers use a numeric ten-digit value and consistent US formatting', () => {
   assert.equal(formatPhoneNumber('2533942429'), '(253) 394-2429');
   assert.equal(formatPhoneNumber('+1 (253) 394-2429'), '(253) 394-2429');

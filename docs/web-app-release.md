@@ -39,6 +39,12 @@ The production preview is served at `http://localhost:4173`. `pnpm web` starts E
 
 No Vercel deployment or live Supabase configuration change was performed in this implementation session.
 
+## Application version
+
+The semantic application version has one source: `mobile/package.json`. The initial release is `1.0.0`. For later releases, update that package version only; `mobile/app.config.js` supplies it to Expo builds and runtime config, and the About sheet displays the resolved value.
+
+The application version is separate from the `expo-directory-v3` Supabase compatibility contract. Change that contract only when coordinating a database/client contract revision, not during a routine application version bump.
+
 ## Verification
 
 - Full `pnpm verify` passed after integration: TypeScript, authorization/database tests, existing domain suites, and new web-auth/platform/build tests.
