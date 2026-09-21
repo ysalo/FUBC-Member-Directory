@@ -12,6 +12,7 @@ import {
   sortCandidatesByLastName,
   sundaysInYear,
   surnameKey,
+  weekendLabel,
 } from '../src/features/duty/duty-domain.ts';
 
 test('sundaysInYear enumerates every Sunday in chronological weekly order', () => {
@@ -30,6 +31,11 @@ test('fridayBeforeSunday is always two calendar days earlier, across month and y
   assert.equal(fridayBeforeSunday('2026-09-20'), '2026-09-18');
   assert.equal(fridayBeforeSunday('2026-03-01'), '2026-02-27');
   assert.equal(fridayBeforeSunday('2027-01-03'), '2027-01-01');
+});
+
+test('weekendLabel capitalizes Ukrainian month names', () => {
+  assert.match(weekendLabel('2026-09-18', '2026-09-20', 'uk'), /Вер\./);
+  assert.match(weekendLabel('2026-09-30', '2026-10-02', 'uk'), /Вер\..*Жовт\./);
 });
 
 test('surnameKey and sortCandidatesByLastName order deacons alphabetically by surname', () => {
@@ -140,8 +146,11 @@ test('schedule deacons use the shared Manage-style member card', async () => {
   assert.match(deaconRow, /card: \{ borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet\.hairlineWidth, gap: 11, minHeight: 70, padding: 12 \}/);
   assert.match(deaconRow, /name: \{ fontSize: 16, fontWeight: "700" \}/);
   assert.match(deaconRow, /detail: \{ fontSize: 13, lineHeight: 18, marginTop: 2 \}/);
-  assert.match(deaconRow, /emphasizedDetail: \{ fontSize: 20, fontWeight: "800", lineHeight: 26, marginTop: 4 \}/);
-  assert.match(schedule, /detail=\{weekendLabel\(fridayBeforeSunday\(viewerNext\.sundayOn\), viewerNext\.sundayOn, locale\)\}\s+emphasizeDetail/);
+  assert.doesNotMatch(deaconRow, /emphasizeDetail|emphasizedDetail/);
+  assert.match(schedule, /yourNext: "My next duty"/);
+  assert.match(schedule, /styles\.alertDate[\s\S]*weekendLabel\(fridayBeforeSunday\(viewerNext\.sundayOn\), viewerNext\.sundayOn, locale\)/);
+  assert.doesNotMatch(schedule, /avatar=\{viewerMember|name=\{viewerMember|personId=\{viewerPersonId\}/);
+  assert.match(schedule, /alertDate: \{ fontSize: 24, fontWeight: "800", lineHeight: 30 \}/);
   assert.doesNotMatch(deaconRow, /Link asChild|Platform\.OS === "web"/);
   assert.match(deaconRow, /accessibilityRole="button"\s+onPress=\{onPress\}/);
   assert.match(schedule, /monthIndex > 0 \? <View style=\{\[styles\.monthSeparator/);
