@@ -61,6 +61,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
     const [query, setQuery] = useState("");
     const [filters, setFilters] = useState<GroupMemberFilter[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
+    const [birthdaysExpanded, setBirthdaysExpanded] = useState(true);
 
     const assignedDeacon = Boolean(
         group &&
@@ -387,7 +388,15 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
                     </View>
                     {assignedDeacon ? (
                         <View style={desktop && styles.relatedColumn}>
-                            <Section title={copy.birthdays}>
+                            <Section
+                                expanded={birthdaysExpanded}
+                                onToggle={() =>
+                                    setBirthdaysExpanded(
+                                        (expanded) => !expanded,
+                                    )
+                                }
+                                title={copy.birthdays}
+                            >
                                 {birthdayNotificationsSupported ? (
                                     <View
                                         style={[
@@ -693,32 +702,61 @@ function formatBirthday(month: number, day: number, locale: "en" | "uk") {
 
 function Section({
     children,
+    expanded,
+    onToggle,
     title,
 }: {
     children: React.ReactNode;
+    expanded?: boolean;
+    onToggle?: () => void;
     title: string;
 }) {
     const { palette } = useAppearance();
+    const heading = (
+        <Text
+            accessibilityRole="header"
+            selectable={!onToggle}
+            style={[styles.sectionTitle, { color: palette.text }]}
+        >
+            {title}
+        </Text>
+    );
     return (
         <View style={styles.section}>
-            <Text
-                accessibilityRole="header"
-                selectable
-                style={[styles.sectionTitle, { color: palette.text }]}
-            >
-                {title}
-            </Text>
-            <View
-                style={[
-                    styles.sectionCard,
-                    {
-                        backgroundColor: palette.surface,
-                        borderColor: palette.line,
-                    },
-                ]}
-            >
-                {children}
-            </View>
+            {onToggle ? (
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded }}
+                    onPress={onToggle}
+                    style={({ pressed }) => [
+                        styles.sectionToggle,
+                        pressed && styles.pressed,
+                    ]}
+                >
+                    {heading}
+                    <Ionicons
+                        accessibilityElementsHidden
+                        color={palette.secondaryText}
+                        name={expanded ? "chevron-up" : "chevron-down"}
+                        size={18}
+                    />
+                </Pressable>
+            ) : (
+                heading
+            )}
+            {expanded !== false ? (
+                <View
+                    style={[
+                        styles.sectionCard,
+                        {
+                            backgroundColor: palette.surface,
+                            borderColor: palette.line,
+                        },
+                    ]}
+                >
+                    {children}
+                </View>
+            ) : null}
         </View>
     );
 }
@@ -835,6 +873,12 @@ const styles = StyleSheet.create({
     myGroupText: { fontSize: 13, fontWeight: "800" },
     section: { gap: 8 },
     sectionTitle: { fontSize: 18, fontWeight: "700" },
+    sectionToggle: {
+        alignItems: "center",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        minHeight: 44,
+    },
     sectionCard: {
         borderCurve: "continuous",
         borderRadius: 16,

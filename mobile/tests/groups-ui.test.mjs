@@ -184,6 +184,27 @@ test("group member search offers the same care and leadership filters as the dir
     assert.match(source, /setFilters\(\[\]\)/);
 });
 
+test("birthday members use the shared row inside an accessible disclosure", async () => {
+    const source = await readFile(
+        new URL(
+            "../src/features/groups/GroupDetailScreen.tsx",
+            import.meta.url,
+        ),
+        "utf8",
+    );
+    assert.match(source, /const \[birthdaysExpanded, setBirthdaysExpanded\] = useState\(true\)/);
+    assert.match(
+        source,
+        /<Section[\s\S]*?expanded=\{birthdaysExpanded\}[\s\S]*?title=\{copy\.birthdays\}/,
+    );
+    assert.match(source, /accessibilityState=\{\{ expanded \}\}/);
+    assert.match(
+        source,
+        /setBirthdaysExpanded\([\s\S]*?\(expanded\) => !expanded/,
+    );
+    assert.match(source, /birthdaysExpanded[\s\S]*?upcoming\.map\(\(member\) => \([\s\S]*?<PersonRow/);
+});
+
 test("profile avatars fall back to initials when an image fails", async () => {
     const [avatar, directory, profile] = await Promise.all([
         readFile(
