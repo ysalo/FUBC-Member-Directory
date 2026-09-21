@@ -10,6 +10,7 @@ type DeaconRowProps = {
   personId: string;
   name: string;
   avatar?: ImageSourcePropType | null;
+  card?: boolean;
   detail?: string;
   locale: "en" | "uk";
   size?: number;
@@ -18,7 +19,7 @@ type DeaconRowProps = {
 };
 
 /** Every deacon mention behaves like a Directory member row: tap the name/avatar to open their profile. */
-export function DeaconRow({ personId, name, avatar, detail, locale, size = 44, tag, tagTone = "today" }: DeaconRowProps) {
+export function DeaconRow({ personId, name, avatar, card = false, detail, locale, size = 44, tag, tagTone = "today" }: DeaconRowProps) {
   const router = useRouter();
   const { palette } = useAppearance();
   const onPress = () => router.push(`/members/${personId}` as never);
@@ -27,7 +28,12 @@ export function DeaconRow({ personId, name, avatar, detail, locale, size = 44, t
       accessibilityHint={locale === "uk" ? `Відкрити профіль: ${name}` : `Opens ${name}’s member profile`}
       accessibilityRole={Platform.OS === "web" ? "link" : "button"}
       onPress={Platform.OS === "web" ? undefined : onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        card && styles.card,
+        card && { backgroundColor: palette.surface, borderColor: palette.line },
+        pressed && styles.pressed,
+      ]}
     >
       <ProfileAvatar name={name} size={size} source={avatar} />
       <View style={styles.copy}>
@@ -55,11 +61,12 @@ export function DeaconRow({ personId, name, avatar, detail, locale, size = 44, t
 
 const styles = StyleSheet.create({
   row: { alignItems: "center", flexDirection: "row", gap: 10, paddingVertical: 6 },
+  card: { borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 11, minHeight: 70, padding: 12 },
   pressed: { opacity: 0.68 },
   copy: { flex: 1, minWidth: 0 },
   nameLine: { alignItems: "center", flexDirection: "row", gap: 6 },
-  name: { fontSize: 15, fontWeight: "700" },
-  detail: { fontSize: 12, marginTop: 1 },
+  name: { fontSize: 16, fontWeight: "700" },
+  detail: { fontSize: 13, lineHeight: 18, marginTop: 2 },
   tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
 });
