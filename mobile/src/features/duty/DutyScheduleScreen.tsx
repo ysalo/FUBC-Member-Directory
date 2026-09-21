@@ -78,7 +78,6 @@ function WeekendRow({
   locale,
   tag,
   tagTone = "today",
-  last,
 }: {
   personId: string;
   name: string;
@@ -87,39 +86,40 @@ function WeekendRow({
   locale: "en" | "uk";
   tag?: string;
   tagTone?: "today" | "you";
-  last: boolean;
 }) {
   const router = useRouter();
   const { palette } = useAppearance();
   const onPress = () => router.push(`/members/${personId}` as never);
-  const row = (
+  const card = (
     <Pressable
       accessibilityHint={locale === "uk" ? `Відкрити профіль: ${name}` : `Opens ${name}’s member profile`}
       accessibilityRole={Platform.OS === "web" ? "link" : "button"}
       onPress={Platform.OS === "web" ? undefined : onPress}
-      style={({ pressed }) => [styles.weekendRow, !last && { borderBottomColor: palette.line, borderBottomWidth: StyleSheet.hairlineWidth }, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.personCard, { backgroundColor: palette.surface, borderColor: palette.line }, pressed && styles.pressed]}
     >
-      <ProfileAvatar name={name} size={46} source={avatar} />
-      <View style={styles.weekendCopy}>
-        <View style={styles.dateLine}>
-          <Text style={[styles.dateText, { color: palette.text }]}>{dateText}</Text>
-          {tag ? (
-            <View style={[styles.tag, { backgroundColor: tagTone === "you" ? palette.text : palette.accent }]}>
-              <Text style={[styles.tagText, { color: palette.surface }]}>{tag}</Text>
-            </View>
-          ) : null}
-        </View>
-        <Text numberOfLines={1} style={[styles.name, { color: palette.secondaryText }]}>{name}</Text>
-      </View>
-      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={20} />
+      <ProfileAvatar name={name} size={52} source={avatar} />
+      <Text numberOfLines={1} style={[styles.name, { color: palette.text }]}>{name}</Text>
+      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={22} />
     </Pressable>
   );
-  return Platform.OS === "web" ? (
-    <Link asChild href={`/members/${personId}`}>
-      {row}
-    </Link>
-  ) : (
-    row
+  return (
+    <View style={styles.weekendBlock}>
+      <View style={styles.dateLine}>
+        <Text style={[styles.dateText, { color: palette.text }]}>{dateText}</Text>
+        {tag ? (
+          <View style={[styles.tag, { backgroundColor: tagTone === "you" ? palette.text : palette.accent }]}>
+            <Text style={[styles.tagText, { color: palette.surface }]}>{tag}</Text>
+          </View>
+        ) : null}
+      </View>
+      {Platform.OS === "web" ? (
+        <Link asChild href={`/members/${personId}`}>
+          {card}
+        </Link>
+      ) : (
+        card
+      )}
+    </View>
   );
 }
 
@@ -300,26 +300,23 @@ export function DutyScheduleScreen() {
               months.map((group) => (
                 <View key={group.month} style={styles.monthBlock}>
                   <Text style={[styles.monthLabel, { color: palette.text }]}>{monthLabel(group.month, locale)}</Text>
-                  <View style={[styles.monthCard, { backgroundColor: palette.surface, borderColor: palette.line }]}>
-                    {group.periods.map((period, index) => {
-                      const member = memberById.get(period.personId);
-                      const isToday = active?.sundayOn === period.sundayOn;
-                      const isFocused = period.personId === focusPersonId && focused?.sundayOn === period.sundayOn;
-                      return (
-                        <WeekendRow
-                          avatar={member?.avatar}
-                          dateText={weekendLabel(fridayBeforeSunday(period.sundayOn), period.sundayOn, locale)}
-                          key={period.sundayOn}
-                          last={index === group.periods.length - 1}
-                          locale={locale}
-                          name={member?.name ?? period.personId}
-                          personId={period.personId}
-                          tag={isToday ? copy.todayTag : isFocused ? (focusPersonId === viewerPersonId ? copy.youTag : copy.selectedTag) : undefined}
-                          tagTone={isFocused && focusPersonId !== viewerPersonId ? "you" : "today"}
-                        />
-                      );
-                    })}
-                  </View>
+                  {group.periods.map((period) => {
+                    const member = memberById.get(period.personId);
+                    const isToday = active?.sundayOn === period.sundayOn;
+                    const isFocused = period.personId === focusPersonId && focused?.sundayOn === period.sundayOn;
+                    return (
+                      <WeekendRow
+                        avatar={member?.avatar}
+                        dateText={weekendLabel(fridayBeforeSunday(period.sundayOn), period.sundayOn, locale)}
+                        key={period.sundayOn}
+                        locale={locale}
+                        name={member?.name ?? period.personId}
+                        personId={period.personId}
+                        tag={isToday ? copy.todayTag : isFocused ? (focusPersonId === viewerPersonId ? copy.youTag : copy.selectedTag) : undefined}
+                        tagTone={isFocused && focusPersonId !== viewerPersonId ? "you" : "today"}
+                      />
+                    );
+                  })}
                 </View>
               ))
             )}
@@ -411,15 +408,14 @@ const styles = StyleSheet.create({
   optionText: { flex: 1, fontSize: 14, fontWeight: "600" },
   optionsDone: { alignItems: "center", borderRadius: 10, marginTop: 10, paddingVertical: 9 },
   optionsDoneText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
-  monthBlock: { marginBottom: 32 },
-  monthLabel: { fontSize: 27, fontWeight: "800", letterSpacing: -0.5, marginBottom: 14 },
-  monthCard: { borderCurve: "continuous", borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
-  weekendRow: { alignItems: "center", flexDirection: "row", gap: 14, minHeight: 84, paddingHorizontal: 16, paddingVertical: 16 },
+  monthBlock: { marginBottom: 40 },
+  monthLabel: { fontSize: 27, fontWeight: "800", letterSpacing: -0.5, marginBottom: 18 },
+  weekendBlock: { marginBottom: 22 },
   pressed: { opacity: 0.65 },
-  weekendCopy: { flex: 1, gap: 5, minWidth: 0 },
-  dateLine: { alignItems: "center", flexDirection: "row", gap: 10 },
-  dateText: { fontSize: 22, fontWeight: "800", letterSpacing: -0.3, lineHeight: 27 },
-  name: { fontSize: 14, fontWeight: "600" },
+  dateLine: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 12 },
+  dateText: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, lineHeight: 25 },
+  personCard: { alignItems: "center", borderCurve: "continuous", borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 14, minHeight: 84, paddingHorizontal: 16, paddingVertical: 16 },
+  name: { flex: 1, fontSize: 18, fontWeight: "700" },
   tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
   sheet: { flex: 1 },
