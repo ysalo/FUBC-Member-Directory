@@ -65,6 +65,9 @@ const labels = {
         opensMember: "Opens member management",
         searchMembers: "Search people",
         searchAccounts: "Search accounts",
+        filters: "Filters",
+        clear: "Clear",
+        done: "Done",
         noMatches: "No matching people",
         noMatchesDetail: "Try a different name, group, or email.",
     },
@@ -101,6 +104,9 @@ const labels = {
         opensMember: "Відкриває керування учасником",
         searchMembers: "Пошук людей",
         searchAccounts: "Пошук облікових записів",
+        filters: "Фільтри",
+        clear: "Очистити",
+        done: "Готово",
         noMatches: "Людей не знайдено",
         noMatchesDetail: "Спробуйте інше ім’я, групу або електронну адресу.",
     },
@@ -126,6 +132,7 @@ export function ManageScreen() {
     const [failure, setFailure] = useState<string | null>(null);
     const [query, setQuery] = useState("");
     const [showFormer, setShowFormer] = useState(false);
+    const [filterOpen, setFilterOpen] = useState(false);
 
     const load = useCallback(() => {
         if (!allowed) return;
@@ -267,7 +274,10 @@ export function ManageScreen() {
                                         selected: panel === value,
                                     }}
                                     key={value}
-                                    onPress={() => setPanel(value)}
+                                    onPress={() => {
+                                        setPanel(value);
+                                        setFilterOpen(false);
+                                    }}
                                     style={[
                                         styles.segment,
                                         panel === value && {
@@ -292,78 +302,179 @@ export function ManageScreen() {
                             ))}
                         </View>
 
-                        <View
-                            style={[
-                                styles.search,
-                                { backgroundColor: palette.subtle },
-                            ]}
-                        >
-                            <Ionicons
-                                accessibilityElementsHidden
-                                color={palette.secondaryText}
-                                name="search-outline"
-                                size={20}
-                            />
-                            <TextInput
-                                accessibilityLabel={
-                                    panel === "members"
-                                        ? copy.searchMembers
-                                        : copy.searchAccounts
-                                }
-                                autoCapitalize="none"
-                                clearButtonMode="while-editing"
-                                onChangeText={setQuery}
-                                placeholder={
-                                    panel === "members"
-                                        ? copy.searchMembers
-                                        : copy.searchAccounts
-                                }
-                                placeholderTextColor={palette.secondaryText}
-                                returnKeyType="search"
+                        <View style={styles.searchArea}>
+                            <View
                                 style={[
-                                    styles.searchInput,
-                                    { color: palette.text },
+                                    styles.search,
+                                    { backgroundColor: palette.subtle },
                                 ]}
-                                value={query}
-                            />
-                            {panel === "members" ? (
-                                <Pressable
-                                    accessibilityLabel={copy.formerMembers}
-                                    accessibilityRole="checkbox"
-                                    accessibilityState={{ checked: showFormer }}
-                                    onPress={() =>
-                                        setShowFormer((value) => !value)
+                            >
+                                <Ionicons
+                                    accessibilityElementsHidden
+                                    color={palette.secondaryText}
+                                    name="search-outline"
+                                    size={20}
+                                />
+                                <TextInput
+                                    accessibilityLabel={
+                                        panel === "members"
+                                            ? copy.searchMembers
+                                            : copy.searchAccounts
                                     }
+                                    autoCapitalize="none"
+                                    clearButtonMode="while-editing"
+                                    onChangeText={setQuery}
+                                    placeholder={
+                                        panel === "members"
+                                            ? copy.searchMembers
+                                            : copy.searchAccounts
+                                    }
+                                    placeholderTextColor={palette.secondaryText}
+                                    returnKeyType="search"
                                     style={[
-                                        styles.formerFilter,
-                                        showFormer && {
-                                            backgroundColor: palette.accentSoft,
+                                        styles.searchInput,
+                                        { color: palette.text },
+                                    ]}
+                                    value={query}
+                                />
+                                {panel === "members" ? (
+                                    <Pressable
+                                        accessibilityLabel={copy.filters}
+                                        accessibilityRole="button"
+                                        accessibilityState={{
+                                            expanded: filterOpen,
+                                        }}
+                                        onPress={() =>
+                                            setFilterOpen((open) => !open)
+                                        }
+                                        style={styles.filterButton}
+                                    >
+                                        <Ionicons
+                                            accessibilityElementsHidden
+                                            color={
+                                                showFormer
+                                                    ? palette.accent
+                                                    : palette.secondaryText
+                                            }
+                                            name="options-outline"
+                                            size={21}
+                                        />
+                                        {showFormer ? (
+                                            <View
+                                                style={[
+                                                    styles.filterCount,
+                                                    {
+                                                        backgroundColor:
+                                                            palette.accent,
+                                                    },
+                                                ]}
+                                            >
+                                                <Text
+                                                    style={styles.filterCountText}
+                                                >
+                                                    1
+                                                </Text>
+                                            </View>
+                                        ) : null}
+                                    </Pressable>
+                                ) : null}
+                            </View>
+                            {panel === "members" && filterOpen ? (
+                                <View
+                                    accessibilityViewIsModal
+                                    style={[
+                                        styles.filterPopover,
+                                        {
+                                            backgroundColor: palette.elevated,
+                                            borderColor: palette.line,
                                         },
                                     ]}
                                 >
-                                    <Ionicons
-                                        accessibilityElementsHidden
-                                        color={
-                                            showFormer
-                                                ? palette.accent
-                                                : palette.secondaryText
+                                    <View style={styles.filterPopoverHeader}>
+                                        <Text
+                                            accessibilityRole="header"
+                                            style={[
+                                                styles.filterPopoverTitle,
+                                                { color: palette.text },
+                                            ]}
+                                        >
+                                            {copy.filters}
+                                        </Text>
+                                        {showFormer ? (
+                                            <Pressable
+                                                accessibilityRole="button"
+                                                onPress={() =>
+                                                    setShowFormer(false)
+                                                }
+                                                style={styles.clearButton}
+                                            >
+                                                <Text
+                                                    style={[
+                                                        styles.clearText,
+                                                        {
+                                                            color: palette.accent,
+                                                        },
+                                                    ]}
+                                                >
+                                                    {copy.clear}
+                                                </Text>
+                                            </Pressable>
+                                        ) : null}
+                                    </View>
+                                    <Pressable
+                                        accessibilityRole="checkbox"
+                                        accessibilityState={{
+                                            checked: showFormer,
+                                        }}
+                                        onPress={() =>
+                                            setShowFormer((value) => !value)
                                         }
-                                        name="archive-outline"
-                                        size={19}
-                                    />
-                                    <Text
+                                        style={styles.filterOption}
+                                    >
+                                        <View
+                                            style={[
+                                                styles.checkbox,
+                                                {
+                                                    backgroundColor: showFormer
+                                                        ? palette.accent
+                                                        : "transparent",
+                                                    borderColor: showFormer
+                                                        ? palette.accent
+                                                        : palette.line,
+                                                },
+                                            ]}
+                                        >
+                                            {showFormer ? (
+                                                <Ionicons
+                                                    accessibilityElementsHidden
+                                                    color="#FFF"
+                                                    name="checkmark"
+                                                    size={15}
+                                                />
+                                            ) : null}
+                                        </View>
+                                        <Text
+                                            style={[
+                                                styles.filterOptionText,
+                                                { color: palette.text },
+                                            ]}
+                                        >
+                                            {copy.formerMembers}
+                                        </Text>
+                                    </Pressable>
+                                    <Pressable
+                                        accessibilityRole="button"
+                                        onPress={() => setFilterOpen(false)}
                                         style={[
-                                            styles.formerFilterText,
-                                            {
-                                                color: showFormer
-                                                    ? palette.accent
-                                                    : palette.secondaryText,
-                                            },
+                                            styles.doneButton,
+                                            { backgroundColor: palette.accent },
                                         ]}
                                     >
-                                        {copy.formerMembers}
-                                    </Text>
-                                </Pressable>
+                                        <Text style={styles.doneText}>
+                                            {copy.done}
+                                        </Text>
+                                    </Pressable>
+                                </View>
                             ) : null}
                         </View>
 
@@ -950,6 +1061,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
     },
     segmentText: { fontSize: 15, fontWeight: "700" },
+    searchArea: { position: "relative", zIndex: 20 },
     search: {
         alignItems: "center",
         borderRadius: 13,
@@ -960,15 +1072,78 @@ const styles = StyleSheet.create({
         paddingHorizontal: 13,
     },
     searchInput: { flex: 1, fontSize: 16, paddingVertical: 10 },
-    formerFilter: {
+    filterButton: {
         alignItems: "center",
-        borderRadius: 9,
-        flexDirection: "row",
-        gap: 6,
-        minHeight: 36,
-        paddingHorizontal: 9,
+        justifyContent: "center",
+        minHeight: 40,
+        minWidth: 40,
+        position: "relative",
     },
-    formerFilterText: { fontSize: 12, fontWeight: "700" },
+    filterCount: {
+        alignItems: "center",
+        borderRadius: 8,
+        height: 16,
+        justifyContent: "center",
+        position: "absolute",
+        right: -2,
+        top: 1,
+        width: 16,
+    },
+    filterCountText: { color: "#FFF", fontSize: 10, fontWeight: "800" },
+    filterPopover: {
+        borderCurve: "continuous",
+        borderRadius: 16,
+        borderWidth: StyleSheet.hairlineWidth,
+        elevation: 8,
+        padding: 12,
+        position: "absolute",
+        right: 0,
+        shadowColor: "#000",
+        shadowOffset: { height: 4, width: 0 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        top: 53,
+        width: 244,
+        zIndex: 20,
+    },
+    filterPopoverHeader: {
+        alignItems: "center",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        minHeight: 34,
+        paddingHorizontal: 4,
+    },
+    filterPopoverTitle: { fontSize: 17, fontWeight: "800" },
+    clearButton: {
+        justifyContent: "center",
+        minHeight: 36,
+        paddingLeft: 12,
+    },
+    clearText: { fontSize: 14, fontWeight: "700" },
+    filterOption: {
+        alignItems: "center",
+        flexDirection: "row",
+        gap: 11,
+        minHeight: 44,
+        paddingHorizontal: 4,
+    },
+    checkbox: {
+        alignItems: "center",
+        borderRadius: 6,
+        borderWidth: 1.5,
+        height: 23,
+        justifyContent: "center",
+        width: 23,
+    },
+    filterOptionText: { flex: 1, fontSize: 15, fontWeight: "600" },
+    doneButton: {
+        alignItems: "center",
+        borderRadius: 11,
+        justifyContent: "center",
+        marginTop: 7,
+        minHeight: 42,
+    },
+    doneText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
     shortcuts: { gap: 8, marginTop: 4 },
     shortcut: {
         alignItems: "center",

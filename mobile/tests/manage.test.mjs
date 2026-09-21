@@ -61,6 +61,10 @@ test("membership departure removes group assignments and stays available to mana
     assert.match(repository, /membership_group_id: null,[\s\S]*?archived: !active/);
     assert.match(manage, /formerMembers: "Former members"/);
     assert.match(manage, /archived === showFormer/);
+    assert.match(manage, /name="options-outline"/);
+    assert.match(manage, /accessibilityViewIsModal/);
+    assert.match(manage, /accessibilityState=\{\{[\s\S]*?checked: showFormer/);
+    assert.doesNotMatch(manage, /styles\.formerFilter/);
 });
 
 test("the group management editor creates groups and searches and saves multiple existing members", async () => {
