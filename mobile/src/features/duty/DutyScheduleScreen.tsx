@@ -39,6 +39,8 @@ const labels = {
     yourNext: "Your next duty",
     nextDutyFor: (name: string) => `${name}’s next duty`,
     noUpcoming: (name: string) => `${name} has no upcoming duty this year.`,
+    options: "Options",
+    showPastMonths: "Show previous months",
   },
   uk: {
     title: "Розклад",
@@ -60,6 +62,8 @@ const labels = {
     yourNext: "Ваше наступне чергування",
     nextDutyFor: (name: string) => `Наступне чергування: ${name}`,
     noUpcoming: (name: string) => `У ${name} немає майбутнього чергування цього року.`,
+    options: "Параметри",
+    showPastMonths: "Показати минулі місяці",
   },
 } as const;
 
@@ -95,21 +99,19 @@ function WeekendRow({
       onPress={Platform.OS === "web" ? undefined : onPress}
       style={({ pressed }) => [styles.weekendRow, !last && { borderBottomColor: palette.line, borderBottomWidth: StyleSheet.hairlineWidth }, pressed && styles.pressed]}
     >
+      <ProfileAvatar name={name} size={46} source={avatar} />
       <View style={styles.weekendCopy}>
         <View style={styles.dateLine}>
-          <Text style={[styles.dateText, { color: palette.accent }]}>{dateText}</Text>
+          <Text style={[styles.dateText, { color: palette.text }]}>{dateText}</Text>
           {tag ? (
             <View style={[styles.tag, { backgroundColor: tagTone === "you" ? palette.text : palette.accent }]}>
               <Text style={[styles.tagText, { color: palette.surface }]}>{tag}</Text>
             </View>
           ) : null}
         </View>
-        <View style={styles.nameLine}>
-          <ProfileAvatar name={name} size={32} source={avatar} />
-          <Text numberOfLines={1} style={[styles.name, { color: palette.text }]}>{name}</Text>
-        </View>
+        <Text numberOfLines={1} style={[styles.name, { color: palette.secondaryText }]}>{name}</Text>
       </View>
-      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={18} />
+      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={20} />
     </Pressable>
   );
   return Platform.OS === "web" ? (
@@ -155,6 +157,8 @@ export function DutyScheduleScreen() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState("");
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [showPastMonths, setShowPastMonths] = useState(false);
 
   const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
   const eligibleDeacons = state.status === "ready" ? state.year!.eligibleDeacons : [];
@@ -167,7 +171,7 @@ export function DutyScheduleScreen() {
   const active = state.status === "ready" ? currentPeriod(state.year!.periods, today) : null;
   const focused = state.status === "ready" && focusPersonId ? nextPeriodForPerson(state.year!.periods, focusPersonId, today) : null;
   const focusedMember = focusPersonId ? memberById.get(focusPersonId) : undefined;
-  const months = state.status === "ready" ? periodsByMonth(state.year!.periods).filter((group) => group.month >= currentMonth) : [];
+  const months = state.status === "ready" ? periodsByMonth(state.year!.periods).filter((group) => showPastMonths || group.month >= currentMonth) : [];
 
   const selectDeacon = (deacon: DutyCandidate | null) => {
     setFocusPersonId(deacon?.personId ?? null);
@@ -212,21 +216,59 @@ export function DutyScheduleScreen() {
             {eligibleDeacons.length > 0 ? (
               <View style={styles.pickerBlock}>
                 <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>{copy.pickDeacon}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setPickerOpen(true)}
-                  style={[styles.pickerTrigger, { backgroundColor: palette.subtle }]}
-                >
-                  {focusedMember ? (
-                    <ProfileAvatar name={focusedMember.name} size={28} source={focusedMember.avatar} />
-                  ) : (
-                    <Ionicons color={palette.secondaryText} name="person-circle-outline" size={24} />
-                  )}
-                  <Text numberOfLines={1} style={[styles.pickerTriggerText, { color: focusedMember ? palette.text : palette.secondaryText }]}>
-                    {focusedMember?.name ?? copy.pickerPlaceholder}
-                  </Text>
-                  <Ionicons color={palette.secondaryText} name="chevron-down" size={18} />
-                </Pressable>
+                <View style={styles.pickerAndOptions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setPickerOpen(true)}
+                    style={[styles.pickerTrigger, { backgroundColor: palette.subtle }]}
+                  >
+                    {focusedMember ? (
+                      <ProfileAvatar name={focusedMember.name} size={28} source={focusedMember.avatar} />
+                    ) : (
+                      <Ionicons color={palette.secondaryText} name="person-circle-outline" size={24} />
+                    )}
+                    <Text numberOfLines={1} style={[styles.pickerTriggerText, { color: focusedMember ? palette.text : palette.secondaryText }]}>
+                      {focusedMember?.name ?? copy.pickerPlaceholder}
+                    </Text>
+                    <Ionicons color={palette.secondaryText} name="chevron-down" size={18} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel={copy.options}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: optionsOpen }}
+                    onPress={() => setOptionsOpen((open) => !open)}
+                    style={[styles.optionsButton, { backgroundColor: showPastMonths ? palette.accentSoft : palette.subtle }]}
+                  >
+                    <Ionicons color={showPastMonths ? palette.accent : palette.secondaryText} name="options-outline" size={21} />
+                  </Pressable>
+                </View>
+                {optionsOpen ? (
+                  <View
+                    accessibilityViewIsModal
+                    style={[styles.optionsPopover, { backgroundColor: palette.elevated, borderColor: palette.line }]}
+                  >
+                    <Text accessibilityRole="header" style={[styles.optionsTitle, { color: palette.text }]}>{copy.options}</Text>
+                    <Pressable
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: showPastMonths }}
+                      onPress={() => setShowPastMonths((value) => !value)}
+                      style={styles.optionRow}
+                    >
+                      <View
+                        style={[
+                          styles.checkbox,
+                          { backgroundColor: showPastMonths ? palette.accent : "transparent", borderColor: showPastMonths ? palette.accent : palette.line },
+                        ]}
+                      >
+                        {showPastMonths ? <Ionicons color="#FFF" name="checkmark" size={15} /> : null}
+                      </View>
+                      <Text style={[styles.optionText, { color: palette.text }]}>{copy.showPastMonths}</Text>
+                    </Pressable>
+                    <Pressable accessibilityRole="button" onPress={() => setOptionsOpen(false)} style={[styles.optionsDone, { backgroundColor: palette.accent }]}>
+                      <Text style={styles.optionsDoneText}>{copy.done}</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
@@ -348,28 +390,36 @@ export function DutyScheduleScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { paddingBottom: 100, paddingHorizontal: 20, paddingTop: 12 },
-  title: { fontSize: 34, fontWeight: "800", letterSpacing: -1, marginBottom: 14 },
+  content: { paddingBottom: 100, paddingHorizontal: 20, paddingTop: 16 },
+  title: { fontSize: 34, fontWeight: "800", letterSpacing: -1, marginBottom: 20 },
   center: { alignItems: "center", gap: 10, paddingVertical: 40 },
   centerText: { fontSize: 14, textAlign: "center" },
   retryButton: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
   retryText: { color: "#FFF", fontWeight: "700" },
-  card: { borderRadius: 16, borderWidth: 1, marginBottom: 14, padding: 14 },
+  card: { borderRadius: 16, borderWidth: 1, marginBottom: 20, padding: 16 },
   todayCard: { borderWidth: 1.5 },
-  eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, marginBottom: 8, textTransform: "uppercase" },
-  pickerBlock: { marginBottom: 14 },
-  pickerTrigger: { alignItems: "center", borderRadius: 14, flexDirection: "row", gap: 10, minHeight: 52, paddingHorizontal: 14 },
+  eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, marginBottom: 10, textTransform: "uppercase" },
+  pickerBlock: { marginBottom: 24, position: "relative", zIndex: 5 },
+  pickerAndOptions: { flexDirection: "row", gap: 10 },
+  pickerTrigger: { alignItems: "center", borderRadius: 14, flex: 1, flexDirection: "row", gap: 10, minHeight: 52, paddingHorizontal: 14 },
   pickerTriggerText: { flex: 1, fontSize: 15, fontWeight: "700" },
-  monthBlock: { marginBottom: 20 },
-  monthLabel: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginBottom: 10 },
-  monthCard: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
-  weekendRow: { alignItems: "center", flexDirection: "row", gap: 10, minHeight: 72, paddingHorizontal: 14, paddingVertical: 10 },
+  optionsButton: { alignItems: "center", borderRadius: 14, height: 52, justifyContent: "center", width: 52 },
+  optionsPopover: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, elevation: 8, marginTop: 8, padding: 14, position: "absolute", right: 0, shadowColor: "#000", shadowOffset: { height: 4, width: 0 }, shadowOpacity: 0.18, shadowRadius: 12, top: "100%", width: 260, zIndex: 20 },
+  optionsTitle: { fontSize: 15, fontWeight: "800", marginBottom: 8 },
+  optionRow: { alignItems: "center", flexDirection: "row", gap: 11, minHeight: 44, paddingVertical: 4 },
+  checkbox: { alignItems: "center", borderRadius: 6, borderWidth: 2, height: 22, justifyContent: "center", width: 22 },
+  optionText: { flex: 1, fontSize: 14, fontWeight: "600" },
+  optionsDone: { alignItems: "center", borderRadius: 10, marginTop: 10, paddingVertical: 9 },
+  optionsDoneText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  monthBlock: { marginBottom: 32 },
+  monthLabel: { fontSize: 27, fontWeight: "800", letterSpacing: -0.5, marginBottom: 14 },
+  monthCard: { borderCurve: "continuous", borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
+  weekendRow: { alignItems: "center", flexDirection: "row", gap: 14, minHeight: 84, paddingHorizontal: 16, paddingVertical: 16 },
   pressed: { opacity: 0.65 },
-  weekendCopy: { flex: 1, gap: 6, minWidth: 0 },
-  dateLine: { alignItems: "center", flexDirection: "row", gap: 8 },
-  dateText: { fontSize: 19, fontWeight: "800", letterSpacing: -0.3 },
-  nameLine: { alignItems: "center", flexDirection: "row", gap: 8 },
-  name: { flex: 1, fontSize: 14, fontWeight: "600" },
+  weekendCopy: { flex: 1, gap: 5, minWidth: 0 },
+  dateLine: { alignItems: "center", flexDirection: "row", gap: 10 },
+  dateText: { fontSize: 22, fontWeight: "800", letterSpacing: -0.3, lineHeight: 27 },
+  name: { fontSize: 14, fontWeight: "600" },
   tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
   sheet: { flex: 1 },
