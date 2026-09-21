@@ -35,8 +35,8 @@ const labels = {
     pickerClear: "Everyone",
     pickerNoMatches: "No deacons match your search.",
     done: "Done",
-    yourNext: "Your next duty",
-    noUpcoming: (name: string) => `${name} has no upcoming duty this year.`,
+    yourNext: "My next duty",
+    noUpcoming: "You have no upcoming duty this year.",
     options: "Options",
     showPastMonths: "Show previous months",
   },
@@ -55,15 +55,17 @@ const labels = {
     pickerClear: "Усі",
     pickerNoMatches: "Дияконів не знайдено.",
     done: "Готово",
-    yourNext: "Ваше наступне чергування",
-    noUpcoming: (name: string) => `У ${name} немає майбутнього чергування цього року.`,
+    yourNext: "Моє наступне чергування",
+    noUpcoming: "Цього року у вас немає майбутніх чергувань.",
     options: "Параметри",
     showPastMonths: "Показати минулі місяці",
   },
 } as const;
 
-const monthLabel = (month: string, locale: "en" | "uk") =>
-  new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { month: "long", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
+const monthLabel = (month: string, locale: "en" | "uk") => {
+  const label = new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { month: "long", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
+  return locale === "uk" ? `${label.charAt(0).toLocaleUpperCase("uk-UA")}${label.slice(1)}` : label;
+};
 
 function WeekendRow({
   personId,
@@ -135,7 +137,6 @@ export function DutyScheduleScreen() {
 
   const active = state.status === "ready" ? currentPeriod(state.year!.periods, today) : null;
   const viewerNext = state.status === "ready" && viewerIsDeacon && viewerPersonId ? nextPeriodForPerson(state.year!.periods, viewerPersonId, today) : null;
-  const viewerMember = viewerPersonId ? memberById.get(viewerPersonId) : undefined;
   const filteredPeriods = state.status === "ready" ? periodsForPerson(state.year!.periods, filterPersonId) : [];
   const months = periodsByMonth(filteredPeriods).filter((group) => showPastMonths || group.month >= currentMonth);
   const filteredMember = filterPersonId ? memberById.get(filterPersonId) : undefined;
@@ -241,19 +242,11 @@ export function DutyScheduleScreen() {
               <View style={[styles.card, { backgroundColor: palette.accentSoft, borderColor: palette.accent, borderStyle: "dashed" }]}>
                 <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>{copy.yourNext}</Text>
                 {viewerNext ? (
-                  <DeaconRow
-                    avatar={viewerMember?.avatar}
-                    detail={weekendLabel(fridayBeforeSunday(viewerNext.sundayOn), viewerNext.sundayOn, locale)}
-                    emphasizeDetail
-                    locale={locale}
-                    name={viewerMember?.name ?? viewerPersonId}
-                    personId={viewerPersonId}
-                    size={48}
-                    tag={copy.youTag}
-                    tagTone="you"
-                  />
+                  <Text style={[styles.alertDate, { color: palette.text }]}>
+                    {weekendLabel(fridayBeforeSunday(viewerNext.sundayOn), viewerNext.sundayOn, locale)}
+                  </Text>
                 ) : (
-                  <Text style={{ color: palette.secondaryText }}>{copy.noUpcoming(viewerMember?.name ?? "")}</Text>
+                  <Text style={{ color: palette.secondaryText }}>{copy.noUpcoming}</Text>
                 )}
               </View>
             ) : null}
@@ -316,6 +309,7 @@ const styles = StyleSheet.create({
   retryText: { color: "#FFF", fontWeight: "700" },
   card: { borderRadius: 16, borderWidth: 1, marginBottom: 16, padding: 16 },
   todayCard: { borderWidth: 1.5 },
+  alertDate: { fontSize: 24, fontWeight: "800", lineHeight: 30 },
   eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, marginBottom: 10, textTransform: "uppercase" },
   pickerBlock: { marginBottom: 16, position: "relative", zIndex: 5 },
   pickerAndOptions: { flexDirection: "row", gap: 10 },

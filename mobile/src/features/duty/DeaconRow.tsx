@@ -12,7 +12,6 @@ type DeaconRowProps = {
   avatar?: ImageSourcePropType | null;
   card?: boolean;
   detail?: string;
-  emphasizeDetail?: boolean;
   locale: "en" | "uk";
   size?: number;
   tag?: string;
@@ -20,7 +19,7 @@ type DeaconRowProps = {
 };
 
 /** Every deacon mention behaves like a Directory member row: tap the name/avatar to open their profile. */
-export function DeaconRow({ personId, name, avatar, card = false, detail, emphasizeDetail = false, locale, size = 44, tag, tagTone = "today" }: DeaconRowProps) {
+export function DeaconRow({ personId, name, avatar, card = false, detail, locale, size = 44, tag, tagTone = "today" }: DeaconRowProps) {
   const router = useRouter();
   const { palette } = useAppearance();
   const onPress = () => router.push(`/members/${personId}` as never);
@@ -46,7 +45,7 @@ export function DeaconRow({ personId, name, avatar, card = false, detail, emphas
             </View>
           ) : null}
         </View>
-        {detail ? <Text style={[styles.detail, emphasizeDetail && styles.emphasizedDetail, { color: emphasizeDetail ? palette.text : palette.secondaryText }]}>{detail}</Text> : null}
+        {detail ? <Text style={[styles.detail, { color: palette.secondaryText }]}>{detail}</Text> : null}
       </View>
       <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={18} />
     </Pressable>
@@ -61,7 +60,6 @@ const styles = StyleSheet.create({
   nameLine: { alignItems: "center", flexDirection: "row", gap: 6 },
   name: { fontSize: 16, fontWeight: "700" },
   detail: { fontSize: 13, lineHeight: 18, marginTop: 2 },
-  emphasizedDetail: { fontSize: 20, fontWeight: "800", lineHeight: 26, marginTop: 4 },
   tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
 });
