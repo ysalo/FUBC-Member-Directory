@@ -140,6 +140,8 @@ test('schedule deacons use the shared Manage-style member card', async () => {
   assert.match(deaconRow, /card: \{ borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet\.hairlineWidth, gap: 11, minHeight: 70, padding: 12 \}/);
   assert.match(deaconRow, /name: \{ fontSize: 16, fontWeight: "700" \}/);
   assert.match(deaconRow, /detail: \{ fontSize: 13, lineHeight: 18, marginTop: 2 \}/);
+  assert.match(deaconRow, /emphasizedDetail: \{ fontSize: 20, fontWeight: "800", lineHeight: 26, marginTop: 4 \}/);
+  assert.match(schedule, /detail=\{weekendLabel\(fridayBeforeSunday\(viewerNext\.sundayOn\), viewerNext\.sundayOn, locale\)\}\s+emphasizeDetail/);
   assert.doesNotMatch(deaconRow, /Link asChild|Platform\.OS === "web"/);
   assert.match(deaconRow, /accessibilityRole="button"\s+onPress=\{onPress\}/);
   assert.match(schedule, /monthIndex > 0 \? <View style=\{\[styles\.monthSeparator/);
