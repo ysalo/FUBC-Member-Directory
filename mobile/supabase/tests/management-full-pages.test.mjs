@@ -39,6 +39,7 @@ before(async () => {
     "20260918103000_person_based_group_deacons.sql", "20260918153000_preserve_deacon_assignments_on_member_edit.sql",
     "20260918170000_delete_members.sql", "20260918190000_delete_groups_with_assignments.sql",
     "20260920000000_optional_visit_participants.sql", "20260920010000_person_based_visit_participants.sql",
+    "20260921000000_deacon_duty_schedule.sql", "20260921040000_member_deletion_duty_cleanup.sql",
   ]) await db.exec(await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
   await db.query("insert into auth.users(id,email) values($1,'admin@example.com'),($2,'editor@example.com'),($3,'member@example.com')", [ids.admin, ids.editor, ids.member]);
   await db.exec(`update public.profiles set status='active',role='admin' where id='${ids.admin}';
@@ -227,6 +228,37 @@ test("only administrators can hard-delete an unlinked member and all person-owne
   const audit = (await db.query("select metadata from public.audit_events where action='member.deleted' and entity_id=$1", [person.id])).rows[0];
   assert.equal(audit.metadata.deleted_visit_count, 1);
   assert.equal(JSON.stringify(audit.metadata).includes("Delete Test Member"), false);
+});
+
+test("member deletion clears duty assignments that would otherwise restrict the member row", async () => {
+  const person = (await db.query("insert into public.people(name) values('Scheduled Delete Target') returning id")).rows[0];
+  await db.query("insert into public.deacon_duty_periods(sunday_on,person_id) values('2027-01-03',$1)", [person.id]);
+
+  await as("admin", "select * from public.delete_member_record($1,null)", [person.id]);
+
+  assert.equal((await db.query("select 1 from public.people where id=$1", [person.id])).rows.length, 0);
+  assert.equal((await db.query("select 1 from public.deacon_duty_periods where person_id=$1", [person.id])).rows.length, 0);
+});
+
+test("schedule generation replaces the same year on every invocation", async () => {
+  const firstAccount = "10000000-0000-4000-8000-000000000030";
+  const secondAccount = "10000000-0000-4000-8000-000000000031";
+  const firstPerson = (await db.query("insert into public.people(name) values('First Rotation Deacon') returning id")).rows[0].id;
+  const secondPerson = (await db.query("insert into public.people(name) values('Second Rotation Deacon') returning id")).rows[0].id;
+  await db.query("insert into auth.users(id,email) values($1,'first-rotation@example.com'),($2,'second-rotation@example.com')", [firstAccount, secondAccount]);
+  await db.query("insert into public.person_ministries(person_id,ministry_id) select person_id,id from unnest($1::uuid[]) person_id cross join public.ministries where system_key='deacon'", [[firstPerson, secondPerson]]);
+  await db.query("update public.profiles set status='active',person_id=$2 where id=$1", [firstAccount, firstPerson]);
+  await db.query("update public.profiles set status='active',person_id=$2 where id=$1", [secondAccount, secondPerson]);
+
+  await as("editor", "select * from public.generate_duty_schedule(2028,$1)", [[firstPerson]]);
+  const firstRun = (await db.query("select person_id from public.deacon_duty_periods where extract(year from sunday_on)=2028")).rows;
+  await as("editor", "select * from public.generate_duty_schedule(2028,$1)", [[secondPerson]]);
+  const secondRun = (await db.query("select person_id from public.deacon_duty_periods where extract(year from sunday_on)=2028")).rows;
+
+  assert.ok(firstRun.length === 52 || firstRun.length === 53);
+  assert.ok(firstRun.every((row) => row.person_id === firstPerson));
+  assert.equal(secondRun.length, firstRun.length);
+  assert.ok(secondRun.every((row) => row.person_id === secondPerson));
 });
 
 test("member deletion refuses linked accounts and the signed-in administrator's own member", async () => {
