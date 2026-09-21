@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   languagePicker: { backgroundColor: "#E1DED7", borderRadius: 10, flexDirection: "row", padding: 2 },
   languageOption: { alignItems: "center", borderRadius: 8, justifyContent: "center", minHeight: 44, width: 48 },
   languageText: { color: "#686B6E", fontSize: 14, fontWeight: "600" },
-  languageTextActive: { color: "#765B3B" },
+  languageTextActive: { color: "#EF5A24" },
   aboutCard: { borderRadius: 16, marginTop: 16, overflow: "hidden" },
   aboutRow: { alignItems: "center", flexDirection: "row", minHeight: 60, paddingHorizontal: 16 },
   aboutSheet: { flex: 1 },

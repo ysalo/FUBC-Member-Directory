@@ -71,5 +71,5 @@ const styles = StyleSheet.create({
   iconContainer: { alignItems: "center", height: 28, justifyContent: "center", overflow: "visible", position: "relative", width: 32 },
   tab: { alignItems: "center", flex: 1, gap: px(5), justifyContent: "center", minWidth: px(52) },
   tabLabel: { color: "#6F7073", fontSize: px(13), fontWeight: "600" },
-  activeLabel: { color: "#765B3B" },
+  activeLabel: { color: "#EF5A24" },
 });
