@@ -1014,7 +1014,7 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
     retry: {
-        backgroundColor: "#EF5A24",
+        backgroundColor: "#8A6418",
         borderRadius: px(11),
         marginTop: px(13),
         paddingHorizontal: px(16),

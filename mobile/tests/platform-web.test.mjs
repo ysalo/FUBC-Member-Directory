@@ -229,7 +229,7 @@ test("visitation navigation shows active counts and cards show every invite resp
     ]);
 
     assert.match(layout, /NativeTabs\.Trigger\.Badge/);
-    assert.match(layout, /badgeBackgroundColor="#EF5A24B8"/);
+    assert.match(layout, /badgeBackgroundColor=\{palette\.accent\}/);
     assert.match(tabBar, /activeVisitationCount/);
     assert.match(tabBar, /opacity: 0\.78/);
     assert.match(tabBar, /right: -9, top: -7/);
