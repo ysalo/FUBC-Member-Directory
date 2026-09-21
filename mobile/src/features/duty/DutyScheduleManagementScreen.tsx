@@ -11,7 +11,7 @@ import { useSession } from "@/features/session/SessionProvider";
 import { errorMessage } from "@/lib/async-state";
 import { DeaconRow } from "./DeaconRow";
 import { todayFixedPdt } from "./DutySummary";
-import { fridayBeforeSunday } from "./duty-domain";
+import { fridayBeforeSunday, weekendLabel } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
 
 const labels = {
@@ -154,7 +154,7 @@ export function DutyScheduleManagementScreen() {
               state.year!.periods.map((period) => (
                 <View key={period.sundayOn} style={[styles.periodRow, { borderBottomColor: palette.line }]}>
                   <Text style={[styles.periodDates, { color: palette.secondaryText }]}>
-                    {fridayBeforeSunday(period.sundayOn)} – {period.sundayOn}
+                    {weekendLabel(fridayBeforeSunday(period.sundayOn), period.sundayOn, locale)}
                   </Text>
                   <DeaconRow locale={locale} name={state.year!.eligibleDeacons.find((d) => d.personId === period.personId)?.name ?? period.personId} personId={period.personId} />
                 </View>

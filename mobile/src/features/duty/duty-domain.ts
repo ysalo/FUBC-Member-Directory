@@ -83,3 +83,13 @@ export function periodsByMonth(periods: readonly DutyPeriod[]): Array<{ month: s
   }
   return [...groups.entries()].map(([month, monthPeriods]) => ({ month, periods: monthPeriods }));
 }
+
+const monthDayLabel = (date: string, locale: "en" | "uk") =>
+  new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
+
+/** Friday–Sunday, e.g. "Sep 18 – 20" or, crossing a month boundary, "Sep 28 – Oct 2". */
+export function weekendLabel(fridayOn: string, sundayOn: string, locale: "en" | "uk"): string {
+  return fridayOn.slice(0, 7) === sundayOn.slice(0, 7)
+    ? `${monthDayLabel(fridayOn, locale)} – ${sundayOn.slice(8, 10).replace(/^0/, "")}`
+    : `${monthDayLabel(fridayOn, locale)} – ${monthDayLabel(sundayOn, locale)}`;
+}

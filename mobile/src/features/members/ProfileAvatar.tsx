@@ -14,10 +14,15 @@ type ProfileAvatarProps = {
   textColor?: string;
 };
 
+/** Directory/profile repositories default to an empty object when a person has no photo path. */
+export function hasImageSource(source?: ImageSourcePropType | null): boolean {
+  return Boolean(source && (typeof source !== "object" || Array.isArray(source) || Object.keys(source).length > 0));
+}
+
 export function ProfileAvatar({ name, source, size = 40 }: ProfileAvatarProps) {
   const [failed, setFailed] = useState(false);
   useEffect(() => { setFailed(false); }, [source]);
-  const hasSource = Boolean(source && (typeof source !== "object" || Array.isArray(source) || Object.keys(source).length > 0));
+  const hasSource = hasImageSource(source);
   const initials = avatarInitials(name);
   const tone = avatarTone(name);
 

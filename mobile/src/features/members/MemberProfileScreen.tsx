@@ -29,7 +29,7 @@ import {
 } from "./member-repository";
 import { CareStatusBadges } from "./care-status-badges";
 import { LeadershipBadge } from "./leadership-badge";
-import { ProfileAvatar } from "./ProfileAvatar";
+import { ProfileAvatar, hasImageSource } from "./ProfileAvatar";
 import { canCreateVisit } from "@/lib/permissions";
 import { contactShareMessage, emailUrl, mapUrls } from "./contact-links";
 
@@ -123,7 +123,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
         session.status === "ready" && canCreateVisit(session.account);
     const canEdit =
         session.status === "ready" && session.account.role === "admin";
-    const hasHeroPhoto = Boolean(profile.photo) && !photoFailed;
+    const hasHeroPhoto = hasImageSource(profile.photo) && !photoFailed;
     const shareContact = async () => {
         const message = contactShareMessage(
             {

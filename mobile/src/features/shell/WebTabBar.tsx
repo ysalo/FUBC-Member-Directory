@@ -13,6 +13,7 @@ const tabs = [
   { labelKey: "directory", path: "/", href: "/(directory)", icon: "list", outlineIcon: "list-outline" },
   { labelKey: "groups", path: "/groups", icon: "people-circle", outlineIcon: "people-circle-outline" },
   { labelKey: "visitation", path: "/visitation", icon: "home", outlineIcon: "home-outline" },
+  { labelKey: "duty", path: "/duty", icon: "calendar", outlineIcon: "calendar-outline" },
   { labelKey: "manage", path: "/manage", icon: "settings", outlineIcon: "settings-outline" },
   { labelKey: "menu", path: "/menu", icon: "menu", outlineIcon: "menu-outline" },
 ] as const;
