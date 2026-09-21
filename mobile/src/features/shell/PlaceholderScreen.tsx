@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   safe: { backgroundColor: "#F1F0EB", flex: 1 },
   content: { flex: 1, paddingHorizontal: 24, paddingTop: 34 },
   title: { color: "#262A2E", fontSize: 44, fontWeight: "800", letterSpacing: -1.2 },
-  rule: { backgroundColor: "#8A6418", height: 4, marginTop: 16, width: 44 },
+  rule: { backgroundColor: "#765B3B", height: 4, marginTop: 16, width: 44 },
   detail: { color: "#5D6064", fontSize: 18, lineHeight: 26, marginTop: 28, maxWidth: 440 },
   action: { alignSelf: "flex-start", backgroundColor: "#3D4248", borderRadius: 13, marginTop: 30, paddingHorizontal: 18, paddingVertical: 13 },
   actionLabel: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
