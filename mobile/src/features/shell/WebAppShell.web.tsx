@@ -12,7 +12,7 @@ import { canManageDirectory } from "@/lib/permissions";
 const destinations = [
   { key: "directory", href: "/", icon: "list-outline" },
   { key: "groups", href: "/groups", icon: "people-circle-outline" },
-  { key: "visitation", href: "/visitation", icon: "calendar-outline" },
+  { key: "visitation", href: "/visitation", icon: "home-outline" },
   { key: "manage", href: "/manage", icon: "settings-outline" },
   { key: "menu", href: "/menu", icon: "menu-outline" },
 ] as const;
