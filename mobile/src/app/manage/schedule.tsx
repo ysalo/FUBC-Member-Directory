@@ -1,5 +1,5 @@
 import { DutyScheduleManagementScreen } from "@/features/duty/DutyScheduleManagementScreen";
 
-export default function ManageDutyRoute() {
+export default function ManageScheduleRoute() {
   return <DutyScheduleManagementScreen />;
 }

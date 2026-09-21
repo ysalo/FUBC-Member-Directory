@@ -89,3 +89,19 @@ test('Visitation uses a house icon on native and web, never a heart', async () =
   assert.match(webShell, /key: "visitation", href: "\/visitation", icon: "home-outline"/);
   for (const source of [nativeLayout, webTabBar, webShell]) assert.doesNotMatch(source, /heart/i);
 });
+
+test('the schedule tab is registered as /schedule everywhere, not /duty', async () => {
+  const [nativeLayout, webTabBar, webShell, localization] = await Promise.all([
+    readFile(new URL('../src/app/_layout.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/features/shell/WebTabBar.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/features/shell/WebAppShell.web.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/features/localization/LocalizationProvider.tsx', import.meta.url), 'utf8'),
+  ]);
+  assert.match(nativeLayout, /name="schedule">/);
+  assert.match(webTabBar, /labelKey: "schedule", path: "\/schedule"/);
+  assert.match(webShell, /key: "schedule", href: "\/schedule"/);
+  assert.match(localization, /schedule: "Schedule"/);
+  assert.match(localization, /schedule: "Розклад"/);
+  for (const source of [nativeLayout, webTabBar, webShell]) assert.doesNotMatch(source, /"\/duty"|name="duty"|labelKey: "duty"/);
+});
+

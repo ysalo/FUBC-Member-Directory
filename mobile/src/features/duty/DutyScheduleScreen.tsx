@@ -1,8 +1,8 @@
-import { Text } from "@/features/accessibility/app-text";
+import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { useFocusEffect } from "expo-router";
+import { Link, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -15,30 +15,34 @@ import { errorMessage } from "@/lib/async-state";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DeaconRow } from "./DeaconRow";
 import { todayFixedPdt } from "./DutySummary";
-import { currentPeriod, fridayBeforeSunday, nextPeriodForPerson, periodsByMonth, weekendLabel } from "./duty-domain";
+import { currentPeriod, fridayBeforeSunday, nextPeriodForPerson, periodsByMonth, weekendLabel, type DutyCandidate } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
 
 const labels = {
   en: {
-    title: "Duty schedule",
+    title: "Schedule",
     today: "Today",
-    onDuty: "On duty",
-    loading: "Loading the duty schedule…",
-    error: "Couldn’t load the duty schedule",
+    loading: "Loading the schedule…",
+    error: "Couldn’t load the schedule",
     retry: "Try again",
     empty: "No schedule has been generated for this year yet.",
     todayTag: "Today",
     youTag: "You",
     selectedTag: "Selected",
     pickDeacon: "View a deacon’s schedule",
+    pickerPlaceholder: "Choose a deacon",
+    pickerTitle: "Select a deacon",
+    pickerSearch: "Search deacons",
+    pickerClear: "Everyone",
+    pickerNoMatches: "No deacons match your search.",
+    done: "Done",
     yourNext: "Your next duty",
     nextDutyFor: (name: string) => `${name}’s next duty`,
     noUpcoming: (name: string) => `${name} has no upcoming duty this year.`,
   },
   uk: {
-    title: "Розклад чергування",
+    title: "Розклад",
     today: "Сьогодні",
-    onDuty: "На чергуванні",
     loading: "Завантаження розкладу…",
     error: "Не вдалося завантажити розклад",
     retry: "Спробувати ще раз",
@@ -47,6 +51,12 @@ const labels = {
     youTag: "Ви",
     selectedTag: "Обрано",
     pickDeacon: "Переглянути розклад диякона",
+    pickerPlaceholder: "Оберіть диякона",
+    pickerTitle: "Обрати диякона",
+    pickerSearch: "Пошук дияконів",
+    pickerClear: "Усі",
+    pickerNoMatches: "Дияконів не знайдено.",
+    done: "Готово",
     yourNext: "Ваше наступне чергування",
     nextDutyFor: (name: string) => `Наступне чергування: ${name}`,
     noUpcoming: (name: string) => `У ${name} немає майбутнього чергування цього року.`,
@@ -56,13 +66,69 @@ const labels = {
 const monthLabel = (month: string, locale: "en" | "uk") =>
   new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { month: "long", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
 
+function WeekendRow({
+  personId,
+  name,
+  avatar,
+  dateText,
+  locale,
+  tag,
+  tagTone = "today",
+  last,
+}: {
+  personId: string;
+  name: string;
+  avatar?: Member["avatar"];
+  dateText: string;
+  locale: "en" | "uk";
+  tag?: string;
+  tagTone?: "today" | "you";
+  last: boolean;
+}) {
+  const router = useRouter();
+  const { palette } = useAppearance();
+  const onPress = () => router.push(`/members/${personId}` as never);
+  const row = (
+    <Pressable
+      accessibilityHint={locale === "uk" ? `Відкрити профіль: ${name}` : `Opens ${name}’s member profile`}
+      accessibilityRole={Platform.OS === "web" ? "link" : "button"}
+      onPress={Platform.OS === "web" ? undefined : onPress}
+      style={({ pressed }) => [styles.weekendRow, !last && { borderBottomColor: palette.line, borderBottomWidth: StyleSheet.hairlineWidth }, pressed && styles.pressed]}
+    >
+      <View style={styles.weekendCopy}>
+        <View style={styles.dateLine}>
+          <Text style={[styles.dateText, { color: palette.accent }]}>{dateText}</Text>
+          {tag ? (
+            <View style={[styles.tag, { backgroundColor: tagTone === "you" ? palette.text : palette.accent }]}>
+              <Text style={[styles.tagText, { color: palette.surface }]}>{tag}</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.nameLine}>
+          <ProfileAvatar name={name} size={32} source={avatar} />
+          <Text numberOfLines={1} style={[styles.name, { color: palette.text }]}>{name}</Text>
+        </View>
+      </View>
+      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={18} />
+    </Pressable>
+  );
+  return Platform.OS === "web" ? (
+    <Link asChild href={`/members/${personId}`}>
+      {row}
+    </Link>
+  ) : (
+    row
+  );
+}
+
 export function DutyScheduleScreen() {
   const { palette } = useAppearance();
   const { locale } = useLocalization();
   const session = useSession();
   const copy = labels[locale];
   const today = todayFixedPdt();
-  const [year, setYear] = useState(() => Number(today.slice(0, 4)));
+  const year = Number(today.slice(0, 4));
+  const currentMonth = today.slice(0, 7);
   const [state, setState] = useState<{ status: "loading" | "error" | "ready"; year?: DutyYear; message?: string }>({ status: "loading" });
 
   const load = useCallback(() => {
@@ -87,28 +153,32 @@ export function DutyScheduleScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewerIsDeacon, viewerPersonId]));
 
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState("");
+
   const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
   const eligibleDeacons = state.status === "ready" ? state.year!.eligibleDeacons : [];
+  const filteredDeacons = useMemo(() => {
+    const needle = pickerQuery.trim().toLocaleLowerCase(locale);
+    if (!needle) return eligibleDeacons;
+    return eligibleDeacons.filter((deacon) => deacon.name.toLocaleLowerCase(locale).includes(needle));
+  }, [eligibleDeacons, pickerQuery, locale]);
+
   const active = state.status === "ready" ? currentPeriod(state.year!.periods, today) : null;
   const focused = state.status === "ready" && focusPersonId ? nextPeriodForPerson(state.year!.periods, focusPersonId, today) : null;
   const focusedMember = focusPersonId ? memberById.get(focusPersonId) : undefined;
-  const months = state.status === "ready" ? periodsByMonth(state.year!.periods) : [];
+  const months = state.status === "ready" ? periodsByMonth(state.year!.periods).filter((group) => group.month >= currentMonth) : [];
+
+  const selectDeacon = (deacon: DutyCandidate | null) => {
+    setFocusPersonId(deacon?.personId ?? null);
+    setPickerOpen(false);
+    setPickerQuery("");
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.headerRow}>
-          <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
-        </View>
-        <View style={styles.yearRow}>
-          <Pressable accessibilityLabel="Previous year" onPress={() => setYear((y) => y - 1)} style={[styles.yearButton, { backgroundColor: palette.subtle }]}>
-            <Ionicons color={palette.text} name="chevron-back" size={16} />
-          </Pressable>
-          <Text style={[styles.year, { color: palette.text }]}>{year}</Text>
-          <Pressable accessibilityLabel="Next year" onPress={() => setYear((y) => y + 1)} style={[styles.yearButton, { backgroundColor: palette.subtle }]}>
-            <Ionicons color={palette.text} name="chevron-forward" size={16} />
-          </Pressable>
-        </View>
+        <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
 
         {state.status === "loading" ? (
           <View style={styles.center}>
@@ -142,23 +212,21 @@ export function DutyScheduleScreen() {
             {eligibleDeacons.length > 0 ? (
               <View style={styles.pickerBlock}>
                 <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>{copy.pickDeacon}</Text>
-                <ScrollView horizontal contentContainerStyle={styles.pickerRow} showsHorizontalScrollIndicator={false}>
-                  {eligibleDeacons.map((deacon) => {
-                    const selected = deacon.personId === focusPersonId;
-                    return (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        key={deacon.personId}
-                        onPress={() => setFocusPersonId(selected ? null : deacon.personId)}
-                        style={[styles.pickerChip, { backgroundColor: selected ? palette.accentSoft : palette.surface, borderColor: selected ? palette.accent : palette.line }]}
-                      >
-                        <ProfileAvatar name={deacon.name} size={28} source={memberById.get(deacon.personId)?.avatar} />
-                        <Text numberOfLines={1} style={[styles.pickerChipText, { color: selected ? palette.accent : palette.text }]}>{deacon.name}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setPickerOpen(true)}
+                  style={[styles.pickerTrigger, { backgroundColor: palette.subtle }]}
+                >
+                  {focusedMember ? (
+                    <ProfileAvatar name={focusedMember.name} size={28} source={focusedMember.avatar} />
+                  ) : (
+                    <Ionicons color={palette.secondaryText} name="person-circle-outline" size={24} />
+                  )}
+                  <Text numberOfLines={1} style={[styles.pickerTriggerText, { color: focusedMember ? palette.text : palette.secondaryText }]}>
+                    {focusedMember?.name ?? copy.pickerPlaceholder}
+                  </Text>
+                  <Ionicons color={palette.secondaryText} name="chevron-down" size={18} />
+                </Pressable>
               </View>
             ) : null}
 
@@ -188,26 +256,28 @@ export function DutyScheduleScreen() {
               <Text style={[styles.centerText, { color: palette.secondaryText }]}>{copy.empty}</Text>
             ) : (
               months.map((group) => (
-                <View key={group.month}>
-                  <Text style={[styles.monthLabel, { color: palette.secondaryText }]}>{monthLabel(group.month, locale)}</Text>
-                  {group.periods.map((period) => {
-                    const member = memberById.get(period.personId);
-                    const isToday = active?.sundayOn === period.sundayOn;
-                    const isFocused = period.personId === focusPersonId && focused?.sundayOn === period.sundayOn;
-                    return (
-                      <View key={period.sundayOn} style={[styles.agendaRow, { borderBottomColor: palette.line }]}>
-                        <DeaconRow
+                <View key={group.month} style={styles.monthBlock}>
+                  <Text style={[styles.monthLabel, { color: palette.text }]}>{monthLabel(group.month, locale)}</Text>
+                  <View style={[styles.monthCard, { backgroundColor: palette.surface, borderColor: palette.line }]}>
+                    {group.periods.map((period, index) => {
+                      const member = memberById.get(period.personId);
+                      const isToday = active?.sundayOn === period.sundayOn;
+                      const isFocused = period.personId === focusPersonId && focused?.sundayOn === period.sundayOn;
+                      return (
+                        <WeekendRow
                           avatar={member?.avatar}
-                          detail={weekendLabel(fridayBeforeSunday(period.sundayOn), period.sundayOn, locale)}
+                          dateText={weekendLabel(fridayBeforeSunday(period.sundayOn), period.sundayOn, locale)}
+                          key={period.sundayOn}
+                          last={index === group.periods.length - 1}
                           locale={locale}
                           name={member?.name ?? period.personId}
                           personId={period.personId}
                           tag={isToday ? copy.todayTag : isFocused ? (focusPersonId === viewerPersonId ? copy.youTag : copy.selectedTag) : undefined}
                           tagTone={isFocused && focusPersonId !== viewerPersonId ? "you" : "today"}
                         />
-                      </View>
-                    );
-                  })}
+                      );
+                    })}
+                  </View>
                 </View>
               ))
             )}
@@ -215,6 +285,63 @@ export function DutyScheduleScreen() {
         )}
       </ScrollView>
       <WebTabBar />
+
+      <Modal animationType="slide" onRequestClose={() => setPickerOpen(false)} presentationStyle="pageSheet" visible={pickerOpen}>
+        <View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: palette.background }]}>
+          <View style={[styles.sheetHeader, { borderBottomColor: palette.line }]}>
+            <Text accessibilityRole="header" style={[styles.sheetTitle, { color: palette.text }]}>{copy.pickerTitle}</Text>
+            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setPickerOpen(false)} style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}>
+              <Text style={[styles.doneText, { color: palette.accent }]}>{copy.done}</Text>
+            </Pressable>
+          </View>
+          <View style={[styles.searchField, { backgroundColor: palette.subtle, margin: 20 }]}>
+            <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="search-outline" size={20} />
+            <TextInput
+              accessibilityLabel={copy.pickerSearch}
+              autoCapitalize="none"
+              autoFocus
+              clearButtonMode="while-editing"
+              onChangeText={setPickerQuery}
+              placeholder={copy.pickerSearch}
+              placeholderTextColor={palette.secondaryText}
+              style={[styles.searchInput, { color: palette.text }]}
+              value={pickerQuery}
+            />
+          </View>
+          <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled">
+            {!pickerQuery ? (
+              <Pressable accessibilityRole="button" onPress={() => selectDeacon(null)} style={({ pressed }) => [styles.pickerRow, pressed && styles.pressed]}>
+                <View style={[styles.everyoneIcon, { backgroundColor: palette.subtle }]}>
+                  <Ionicons color={palette.accent} name="people-outline" size={20} />
+                </View>
+                <Text style={[styles.pickerRowName, { color: palette.text, flex: 1 }]}>{copy.pickerClear}</Text>
+                {focusPersonId === null ? <Ionicons color={palette.accent} name="checkmark" size={20} /> : null}
+              </Pressable>
+            ) : null}
+            {filteredDeacons.length === 0 ? (
+              <Text style={[styles.centerText, { color: palette.secondaryText, marginTop: 20 }]}>{copy.pickerNoMatches}</Text>
+            ) : (
+              filteredDeacons.map((deacon) => {
+                const member = memberById.get(deacon.personId);
+                const selected = deacon.personId === focusPersonId;
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    key={deacon.personId}
+                    onPress={() => selectDeacon(deacon)}
+                    style={({ pressed }) => [styles.pickerRow, pressed && styles.pressed]}
+                  >
+                    <ProfileAvatar name={deacon.name} size={42} source={member?.avatar} />
+                    <Text numberOfLines={1} style={[styles.pickerRowName, { color: palette.text, flex: 1 }]}>{deacon.name}</Text>
+                    {selected ? <Ionicons color={palette.accent} name="checkmark" size={20} /> : null}
+                  </Pressable>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -222,23 +349,40 @@ export function DutyScheduleScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { paddingBottom: 100, paddingHorizontal: 20, paddingTop: 12 },
-  headerRow: { marginBottom: 4 },
-  title: { fontSize: 28, fontWeight: "700" },
-  yearRow: { alignItems: "center", flexDirection: "row", gap: 12, justifyContent: "center", marginVertical: 10 },
-  year: { fontSize: 17, fontWeight: "800" },
-  yearButton: { alignItems: "center", borderRadius: 8, height: 30, justifyContent: "center", width: 30 },
+  title: { fontSize: 34, fontWeight: "800", letterSpacing: -1, marginBottom: 14 },
   center: { alignItems: "center", gap: 10, paddingVertical: 40 },
   centerText: { fontSize: 14, textAlign: "center" },
   retryButton: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
   retryText: { color: "#FFF", fontWeight: "700" },
-  card: { borderRadius: 16, borderWidth: 1, marginBottom: 12, padding: 14 },
+  card: { borderRadius: 16, borderWidth: 1, marginBottom: 14, padding: 14 },
   todayCard: { borderWidth: 1.5 },
-  eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, marginBottom: 6, textTransform: "uppercase" },
-  monthLabel: { fontSize: 12, fontWeight: "800", letterSpacing: 0.4, marginBottom: 4, marginTop: 16, textTransform: "uppercase" },
-  agendaRow: { borderBottomWidth: StyleSheet.hairlineWidth },
-  pickerBlock: { marginBottom: 12 },
-  pickerRow: { gap: 8, paddingVertical: 2 },
-  pickerChip: { alignItems: "center", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 6, paddingHorizontal: 10, paddingVertical: 6 },
-  pickerChipText: { fontSize: 13, fontWeight: "700", maxWidth: 120 },
+  eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, marginBottom: 8, textTransform: "uppercase" },
+  pickerBlock: { marginBottom: 14 },
+  pickerTrigger: { alignItems: "center", borderRadius: 14, flexDirection: "row", gap: 10, minHeight: 52, paddingHorizontal: 14 },
+  pickerTriggerText: { flex: 1, fontSize: 15, fontWeight: "700" },
+  monthBlock: { marginBottom: 20 },
+  monthLabel: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginBottom: 10 },
+  monthCard: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
+  weekendRow: { alignItems: "center", flexDirection: "row", gap: 10, minHeight: 72, paddingHorizontal: 14, paddingVertical: 10 },
+  pressed: { opacity: 0.65 },
+  weekendCopy: { flex: 1, gap: 6, minWidth: 0 },
+  dateLine: { alignItems: "center", flexDirection: "row", gap: 8 },
+  dateText: { fontSize: 19, fontWeight: "800", letterSpacing: -0.3 },
+  nameLine: { alignItems: "center", flexDirection: "row", gap: 8 },
+  name: { flex: 1, fontSize: 14, fontWeight: "600" },
+  tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
+  sheet: { flex: 1 },
+  sheetHeader: { alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 58, paddingHorizontal: 20 },
+  sheetTitle: { flex: 1, fontSize: 20, fontWeight: "700" },
+  doneButton: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
+  doneText: { fontSize: 17, fontWeight: "600" },
+  sheetContent: { paddingBottom: 40, paddingHorizontal: 20 },
+  searchField: { alignItems: "center", borderRadius: 14, flexDirection: "row", gap: 10, minHeight: 46, paddingHorizontal: 14 },
+  searchInput: { flex: 1, fontSize: 16, paddingVertical: 11 },
+  pickerRow: { alignItems: "center", flexDirection: "row", gap: 11, minHeight: 62, paddingVertical: 9 },
+  pickerRowName: { fontSize: 16, fontWeight: "700" },
+  everyoneIcon: { alignItems: "center", borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
 });
+
 

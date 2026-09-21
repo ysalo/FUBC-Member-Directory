@@ -46,10 +46,10 @@ export function DutySummary({ locale, directoryMembers }: { locale: "en" | "uk";
   return (
     <View style={[styles.card, { backgroundColor: palette.accentSoft, borderColor: palette.line }]}>
       <Text style={[styles.label, { color: palette.accent }]}>
-        {locale === "uk" ? "На дежурстві цими вихідними" : "On duty this weekend"}
+        {locale === "uk" ? "У розкладі на ці вихідні" : "On the schedule this weekend"}
       </Text>
       <DeaconRow avatar={deacon.avatar} detail={dateRange} locale={locale} name={deacon.name} personId={deacon.id} />
-      <Pressable accessibilityRole="button" onPress={() => router.push("/duty" as never)} style={styles.link}>
+      <Pressable accessibilityRole="button" onPress={() => router.push("/schedule" as never)} style={styles.link}>
         <Text style={[styles.linkText, { color: palette.text }]}>
           {locale === "uk" ? "Переглянути розклад" : "View schedule"}
         </Text>

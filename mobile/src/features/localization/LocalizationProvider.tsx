@@ -4,7 +4,7 @@ export type AppLocale = "en" | "uk";
 
 const translations = {
   en: {
-    tabs: { directory: "Directory", groups: "Groups", visitation: "Visitation", duty: "Duty", manage: "Manage", menu: "Menu" },
+    tabs: { directory: "Directory", groups: "Groups", visitation: "Visitation", schedule: "Schedule", manage: "Manage", menu: "Menu" },
     directory: {
       addMember: "Add member",
       careUpdates: "Care updates",
@@ -35,7 +35,7 @@ const translations = {
     },
   },
   uk: {
-    tabs: { directory: "Довідник", groups: "Групи", visitation: "Відвідування", duty: "Чергування", manage: "Керування", menu: "Меню" },
+    tabs: { directory: "Довідник", groups: "Групи", visitation: "Відвідування", schedule: "Розклад", manage: "Керування", menu: "Меню" },
     directory: {
       addMember: "Додати учасника",
       careUpdates: "Турбота й супровід",

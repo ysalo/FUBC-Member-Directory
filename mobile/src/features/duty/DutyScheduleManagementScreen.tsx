@@ -16,14 +16,14 @@ import { dutyRepository, type DutyYear } from "./duty-repository";
 
 const labels = {
   en: {
-    title: "Duty schedule",
+    title: "Schedule",
     subtitle: "Generate the year, then reassign individual weekends as needed.",
     year: "Year",
     generate: "Generate {year} schedule",
     replaceWarning: "This replaces every weekend already generated for {year}.",
-    noAccess: "You don’t have permission to manage the duty schedule.",
+    noAccess: "You don’t have permission to manage the schedule.",
     loading: "Loading…",
-    error: "Couldn’t load the duty schedule",
+    error: "Couldn’t load the schedule",
     retry: "Try again",
     noDeacons: "No active deacons are available to schedule yet.",
     rotationOrder: "Rotation order (alphabetical by last name)",
@@ -32,12 +32,12 @@ const labels = {
     reassign: "Tap a weekend, then choose a different deacon.",
   },
   uk: {
-    title: "Розклад чергування",
+    title: "Розклад",
     subtitle: "Створіть рік, потім за потреби змініть окремі вихідні.",
     year: "Рік",
     generate: "Створити розклад на {year}",
     replaceWarning: "Це замінить усі вже створені вихідні на {year}.",
-    noAccess: "У вас немає дозволу керувати розкладом чергування.",
+    noAccess: "У вас немає дозволу керувати розкладом.",
     loading: "Завантаження…",
     error: "Не вдалося завантажити розклад",
     retry: "Спробувати ще раз",

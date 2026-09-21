@@ -48,9 +48,9 @@ function IosTabs() {
         <NativeTabs.Trigger.Label>{copy.tabs.visitation}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Badge hidden={activeVisitationCount === 0}>{String(activeVisitationCount)}</NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="duty">
+      <NativeTabs.Trigger name="schedule">
         <NativeTabs.Trigger.Icon sf={{ default: "calendar", selected: "calendar" }} />
-        <NativeTabs.Trigger.Label>{copy.tabs.duty}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{copy.tabs.schedule}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       {showManage ? <NativeTabs.Trigger name="manage">
         <NativeTabs.Trigger.Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
