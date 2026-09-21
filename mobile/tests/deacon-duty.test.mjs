@@ -5,6 +5,7 @@ import {
   buildRotation,
   currentPeriod,
   fridayBeforeSunday,
+  moveCandidate,
   nextPeriodForPerson,
   periodsByMonth,
   sortCandidatesByLastName,
@@ -38,6 +39,18 @@ test('surnameKey and sortCandidatesByLastName order deacons alphabetically by su
     { personId: 'c', name: 'Володимир Борсук' },
   ], 'uk');
   assert.deepEqual(sorted.map((c) => c.personId), ['b', 'c', 'a']);
+});
+
+test('moveCandidate changes the rotation order by one position and respects boundaries', () => {
+  const candidates = [
+    { personId: 'a', name: 'A' },
+    { personId: 'b', name: 'B' },
+    { personId: 'c', name: 'C' },
+  ];
+  assert.deepEqual(moveCandidate(candidates, 'b', -1).map((candidate) => candidate.personId), ['b', 'a', 'c']);
+  assert.deepEqual(moveCandidate(candidates, 'b', 1).map((candidate) => candidate.personId), ['a', 'c', 'b']);
+  assert.deepEqual(moveCandidate(candidates, 'a', -1), candidates);
+  assert.deepEqual(moveCandidate(candidates, 'c', 1), candidates);
 });
 
 test('buildRotation wraps an ordered candidate list across every Sunday of the year', () => {
@@ -115,5 +128,10 @@ test('schedule deacons use the shared Manage-style member card', async () => {
   assert.match(deaconRow, /card: \{ borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet\.hairlineWidth, gap: 11, minHeight: 70, padding: 12 \}/);
   assert.match(deaconRow, /name: \{ fontSize: 16, fontWeight: "700" \}/);
   assert.match(deaconRow, /detail: \{ fontSize: 13, lineHeight: 18, marginTop: 2 \}/);
+  assert.doesNotMatch(deaconRow, /Link asChild|Platform\.OS === "web"/);
+  assert.match(deaconRow, /accessibilityRole="button"\s+onPress=\{onPress\}/);
+  assert.match(schedule, /monthIndex > 0 \? <View style=\{\[styles\.monthSeparator/);
+  assert.match(schedule, /monthSeparator: \{ height: StyleSheet\.hairlineWidth/);
+  assert.doesNotMatch(schedule, /View a deacon’s schedule|Переглянути розклад диякона/);
 });
 

@@ -30,7 +30,6 @@ const labels = {
     todayTag: "Today",
     youTag: "You",
     selectedTag: "Selected",
-    pickDeacon: "View a deacon’s schedule",
     pickerPlaceholder: "Choose a deacon",
     pickerTitle: "Select a deacon",
     pickerSearch: "Search deacons",
@@ -53,7 +52,6 @@ const labels = {
     todayTag: "Сьогодні",
     youTag: "Ви",
     selectedTag: "Обрано",
-    pickDeacon: "Переглянути розклад диякона",
     pickerPlaceholder: "Оберіть диякона",
     pickerTitle: "Обрати диякона",
     pickerSearch: "Пошук дияконів",
@@ -189,7 +187,6 @@ export function DutyScheduleScreen() {
 
             {eligibleDeacons.length > 0 ? (
               <View style={styles.pickerBlock}>
-                <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>{copy.pickDeacon}</Text>
                 <View style={styles.pickerAndOptions}>
                   <Pressable
                     accessibilityRole="button"
@@ -271,8 +268,9 @@ export function DutyScheduleScreen() {
             {months.length === 0 ? (
               <Text style={[styles.centerText, { color: palette.secondaryText }]}>{copy.empty}</Text>
             ) : (
-              months.map((group) => (
+              months.map((group, monthIndex) => (
                 <View key={group.month} style={styles.monthBlock}>
+                  {monthIndex > 0 ? <View style={[styles.monthSeparator, { backgroundColor: palette.line }]} /> : null}
                   <Text style={[styles.monthLabel, { color: palette.text }]}>{monthLabel(group.month, locale)}</Text>
                   {group.periods.map((period) => {
                     const member = memberById.get(period.personId);
@@ -340,10 +338,11 @@ const styles = StyleSheet.create({
   optionText: { flex: 1, fontSize: 14, fontWeight: "600" },
   optionsDone: { alignItems: "center", borderRadius: 10, marginTop: 10, paddingVertical: 9 },
   optionsDoneText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
-  monthBlock: { marginBottom: 40 },
-  monthLabel: { fontSize: 27, fontWeight: "800", letterSpacing: -0.5, marginBottom: 18 },
-  weekendBlock: { marginBottom: 22 },
-  dateLine: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 12 },
+  monthBlock: { marginBottom: 24 },
+  monthSeparator: { height: StyleSheet.hairlineWidth, marginBottom: 22, marginTop: 2 },
+  monthLabel: { fontSize: 27, fontWeight: "800", letterSpacing: -0.5, marginBottom: 14 },
+  weekendBlock: { marginBottom: 14 },
+  dateLine: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 8 },
   dateText: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, lineHeight: 25 },
   tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
