@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "FUBC Directory",
+    "version": "1.0.1",
     "slug": "fubc-member-directory",
     "owner": "yarosalo",
     "orientation": "portrait",
