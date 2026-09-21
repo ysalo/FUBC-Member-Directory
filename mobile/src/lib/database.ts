@@ -25,6 +25,7 @@ export type Database = {
       device_tokens: Table<{ id: string; account_id: string; token: string; platform: "ios"; invalidated_at: string | null; updated_at: string }>;
       group_birthday_notification_preferences: Table<{ account_id: string; group_id: string; enabled: boolean; updated_at: string }>;
       audit_events: Table<{ id: string; actor_id: string | null; action: string; entity_id: string | null; created_at: string; metadata: Json }>;
+      deacon_duty_periods: Table<{ id: string; sunday_on: string; person_id: string; revision: number; created_at: string }>;
     };
     Views: {
       ministry_accounts: { Row: { id: string; display_name: string; leadership_ministry: Exclude<LeadershipMinistry, null>; person_id: string | null }; Relationships: [] };
@@ -56,6 +57,8 @@ export type Database = {
       visit_person_defaults: { Args: Record<string, never>; Returns: { person_id: string; address: string | null }[] };
       directory_active_members: { Args: Record<string, never>; Returns: { id: string; name: string; ministry: string; ministry_uk: string; phone: string | null; photo_path: string | null; leadership_ministry: LeadershipMinistry; is_orphan: boolean; is_widow: boolean }[] };
       directory_visible_visit_count: { Args: Record<string, never>; Returns: number };
+      generate_duty_schedule: { Args: { p_year: number; p_person_ids: string[] }; Returns: { id: string; sunday_on: string; person_id: string; revision: number; created_at: string }[] };
+      reassign_duty_period: { Args: { p_sunday_on: string; p_person_id: string; p_revision: number }; Returns: { id: string; sunday_on: string; person_id: string; revision: number; created_at: string } };
     };
     Enums: { app_role: AccessRole; account_status: AccountStatus; ministry_designation: "none" | "pastor" | "deacon" };
     CompositeTypes: Record<string, never>;

@@ -1,6 +1,7 @@
 import { listDirectory } from "@/features/directory/directory-repository";
 import type { DutyPeriod } from "@/lib/domain";
-import { isBackendConfigured } from "@/lib/supabase";
+import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
+import { unwrap } from "@/lib/repository-helpers";
 import { buildRotation, sortCandidatesByLastName, type DutyCandidate } from "./duty-domain";
 
 export type DutyYear = {
@@ -44,16 +45,29 @@ class InMemoryDutyRepository implements DutyRepository {
   }
 }
 
-/** Supabase-backed reads/writes ship with the deacon_duty_periods migration; until then, surface a clear error instead of guessing. */
+/** Supabase-backed reads/writes against the deacon_duty_periods migration. */
 class SupabaseDutyRepository implements DutyRepository {
-  async loadYear(): Promise<DutyYear> {
-    throw new Error("The duty schedule isn’t connected to the server yet.");
+  async loadYear(year: number): Promise<DutyYear> {
+    const client = requireSupabase();
+    const result = await client
+      .from("deacon_duty_periods")
+      .select("sunday_on,person_id,revision")
+      .gte("sunday_on", `${year}-01-01`)
+      .lte("sunday_on", `${year}-12-31`)
+      .order("sunday_on");
+    const rows = unwrap(result);
+    const periods: DutyPeriod[] = rows.map((row) => ({ sundayOn: row.sunday_on, personId: row.person_id, revision: row.revision }));
+    return { year, periods, eligibleDeacons: await eligibleDeacons() };
   }
-  async saveRotation(): Promise<DutyYear> {
-    throw new Error("The duty schedule isn’t connected to the server yet.");
+  async saveRotation(year: number, orderedPersonIds: readonly string[]): Promise<DutyYear> {
+    const client = requireSupabase();
+    unwrap(await client.rpc("generate_duty_schedule", { p_year: year, p_person_ids: [...orderedPersonIds] }));
+    return this.loadYear(year);
   }
-  async reassignPeriod(): Promise<DutyYear> {
-    throw new Error("The duty schedule isn’t connected to the server yet.");
+  async reassignPeriod(year: number, sundayOn: string, personId: string, expectedRevision: number): Promise<DutyYear> {
+    const client = requireSupabase();
+    unwrap(await client.rpc("reassign_duty_period", { p_sunday_on: sundayOn, p_person_id: personId, p_revision: expectedRevision }));
+    return this.loadYear(year);
   }
 }
 
