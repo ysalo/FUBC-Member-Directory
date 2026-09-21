@@ -105,3 +105,15 @@ test('the schedule tab is registered as /schedule everywhere, not /duty', async 
   for (const source of [nativeLayout, webTabBar, webShell]) assert.doesNotMatch(source, /"\/duty"|name="duty"|labelKey: "duty"/);
 });
 
+test('schedule deacons use the shared Manage-style member card', async () => {
+  const [schedule, deaconRow] = await Promise.all([
+    readFile(new URL('../src/features/duty/DutyScheduleScreen.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/features/duty/DeaconRow.tsx', import.meta.url), 'utf8'),
+  ]);
+  assert.match(schedule, /<DeaconRow avatar=\{avatar\} card locale=\{locale\}/);
+  assert.doesNotMatch(schedule, /personCard:/);
+  assert.match(deaconRow, /card: \{ borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet\.hairlineWidth, gap: 11, minHeight: 70, padding: 12 \}/);
+  assert.match(deaconRow, /name: \{ fontSize: 16, fontWeight: "700" \}/);
+  assert.match(deaconRow, /detail: \{ fontSize: 13, lineHeight: 18, marginTop: 2 \}/);
+});
+

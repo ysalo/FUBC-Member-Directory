@@ -1,8 +1,8 @@
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { Link, useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -88,21 +88,7 @@ function WeekendRow({
   tag?: string;
   tagTone?: "today" | "you";
 }) {
-  const router = useRouter();
   const { palette } = useAppearance();
-  const onPress = () => router.push(`/members/${personId}` as never);
-  const card = (
-    <Pressable
-      accessibilityHint={locale === "uk" ? `Відкрити профіль: ${name}` : `Opens ${name}’s member profile`}
-      accessibilityRole={Platform.OS === "web" ? "link" : "button"}
-      onPress={Platform.OS === "web" ? undefined : onPress}
-      style={({ pressed }) => [styles.personCard, { backgroundColor: palette.surface, borderColor: palette.line }, pressed && styles.pressed]}
-    >
-      <ProfileAvatar name={name} size={40} source={avatar} />
-      <Text numberOfLines={1} style={[styles.name, { color: palette.text, flex: 1 }]}>{name}</Text>
-      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={19} />
-    </Pressable>
-  );
   return (
     <View style={styles.weekendBlock}>
       <View style={styles.dateLine}>
@@ -113,13 +99,7 @@ function WeekendRow({
           </View>
         ) : null}
       </View>
-      {Platform.OS === "web" ? (
-        <Link asChild href={`/members/${personId}`}>
-          {card}
-        </Link>
-      ) : (
-        card
-      )}
+      <DeaconRow avatar={avatar} card locale={locale} name={name} personId={personId} size={48} />
     </View>
   );
 }
@@ -363,11 +343,8 @@ const styles = StyleSheet.create({
   monthBlock: { marginBottom: 40 },
   monthLabel: { fontSize: 27, fontWeight: "800", letterSpacing: -0.5, marginBottom: 18 },
   weekendBlock: { marginBottom: 22 },
-  pressed: { opacity: 0.65 },
   dateLine: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 12 },
   dateText: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, lineHeight: 25 },
-  personCard: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 11, minHeight: 70, padding: 12 },
-  name: { flex: 1, fontSize: 16, fontWeight: "700" },
   tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
 });
