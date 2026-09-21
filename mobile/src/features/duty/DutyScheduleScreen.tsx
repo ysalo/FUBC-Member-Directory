@@ -16,7 +16,7 @@ import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DeaconRow } from "./DeaconRow";
 import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
-import { currentPeriod, fridayBeforeSunday, nextPeriodForPerson, periodsByMonth, periodsForPerson, weekendLabel, type DutyCandidate } from "./duty-domain";
+import { currentPeriod, fridayBeforeSunday, nextPeriodForPerson, periodsByMonth, periodsForPerson, visibleSchedulePeriods, weekendLabel, type DutyCandidate } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
 
 const labels = {
@@ -38,7 +38,7 @@ const labels = {
     yourNext: "My next duty",
     noUpcoming: "You have no upcoming duty this year.",
     options: "Options",
-    showPastMonths: "Show previous months",
+    showPastDates: "Show past dates",
   },
   uk: {
     title: "Розклад",
@@ -58,7 +58,7 @@ const labels = {
     yourNext: "Моє наступне чергування",
     noUpcoming: "Цього року у вас немає майбутніх чергувань.",
     options: "Параметри",
-    showPastMonths: "Показати минулі місяці",
+    showPastDates: "Показати минулі дати",
   },
 } as const;
 
@@ -107,7 +107,6 @@ export function DutyScheduleScreen() {
   const copy = labels[locale];
   const today = todayFixedPdt();
   const year = Number(today.slice(0, 4));
-  const currentMonth = today.slice(0, 7);
   const [state, setState] = useState<{ status: "loading" | "error" | "ready"; year?: DutyYear; message?: string }>({ status: "loading" });
 
   const load = useCallback(() => {
@@ -130,7 +129,7 @@ export function DutyScheduleScreen() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [showPastMonths, setShowPastMonths] = useState(false);
+  const [showPastDates, setShowPastDates] = useState(false);
 
   const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
   const eligibleDeacons = state.status === "ready" ? state.year!.eligibleDeacons : [];
@@ -138,7 +137,7 @@ export function DutyScheduleScreen() {
   const active = state.status === "ready" ? currentPeriod(state.year!.periods, today) : null;
   const viewerNext = state.status === "ready" && viewerIsDeacon && viewerPersonId ? nextPeriodForPerson(state.year!.periods, viewerPersonId, today) : null;
   const filteredPeriods = state.status === "ready" ? periodsForPerson(state.year!.periods, filterPersonId) : [];
-  const months = periodsByMonth(filteredPeriods).filter((group) => showPastMonths || group.month >= currentMonth);
+  const months = periodsByMonth(visibleSchedulePeriods(filteredPeriods, today, showPastDates));
   const filteredMember = filterPersonId ? memberById.get(filterPersonId) : undefined;
 
   const selectDeacon = (deacon: DutyCandidate | null) => {
@@ -203,9 +202,9 @@ export function DutyScheduleScreen() {
                     accessibilityRole="button"
                     accessibilityState={{ expanded: optionsOpen }}
                     onPress={() => setOptionsOpen((open) => !open)}
-                    style={[styles.optionsButton, { backgroundColor: showPastMonths ? palette.accentSoft : palette.subtle }]}
+                    style={[styles.optionsButton, { backgroundColor: showPastDates ? palette.accentSoft : palette.subtle }]}
                   >
-                    <Ionicons color={showPastMonths ? palette.accent : palette.secondaryText} name="options-outline" size={21} />
+                    <Ionicons color={showPastDates ? palette.accent : palette.secondaryText} name="options-outline" size={21} />
                   </Pressable>
                 </View>
                 {optionsOpen ? (
@@ -216,19 +215,19 @@ export function DutyScheduleScreen() {
                     <Text accessibilityRole="header" style={[styles.optionsTitle, { color: palette.text }]}>{copy.options}</Text>
                     <Pressable
                       accessibilityRole="checkbox"
-                      accessibilityState={{ checked: showPastMonths }}
-                      onPress={() => setShowPastMonths((value) => !value)}
+                      accessibilityState={{ checked: showPastDates }}
+                      onPress={() => setShowPastDates((value) => !value)}
                       style={styles.optionRow}
                     >
                       <View
                         style={[
                           styles.checkbox,
-                          { backgroundColor: showPastMonths ? palette.accent : "transparent", borderColor: showPastMonths ? palette.accent : palette.line },
+                          { backgroundColor: showPastDates ? palette.accent : "transparent", borderColor: showPastDates ? palette.accent : palette.line },
                         ]}
                       >
-                        {showPastMonths ? <Ionicons color="#FFF" name="checkmark" size={15} /> : null}
+                        {showPastDates ? <Ionicons color="#FFF" name="checkmark" size={15} /> : null}
                       </View>
-                      <Text style={[styles.optionText, { color: palette.text }]}>{copy.showPastMonths}</Text>
+                      <Text style={[styles.optionText, { color: palette.text }]}>{copy.showPastDates}</Text>
                     </Pressable>
                     <Pressable accessibilityRole="button" onPress={() => setOptionsOpen(false)} style={[styles.optionsDone, { backgroundColor: palette.accent }]}>
                       <Text style={styles.optionsDoneText}>{copy.done}</Text>

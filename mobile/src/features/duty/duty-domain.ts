@@ -87,6 +87,10 @@ export function periodsForPerson(periods: readonly DutyPeriod[], personId: strin
   return personId ? periods.filter((period) => period.personId === personId) : [...periods];
 }
 
+export function visibleSchedulePeriods(periods: readonly DutyPeriod[], today: string, showPastDates: boolean): DutyPeriod[] {
+  return showPastDates ? [...periods] : periods.filter((period) => period.sundayOn >= today);
+}
+
 export function periodsByMonth(periods: readonly DutyPeriod[]): Array<{ month: string; periods: DutyPeriod[] }> {
   const groups = new Map<string, DutyPeriod[]>();
   for (const period of [...periods].sort((a, b) => a.sundayOn.localeCompare(b.sundayOn))) {

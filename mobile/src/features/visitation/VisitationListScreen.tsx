@@ -137,7 +137,11 @@ export function VisitationListScreen() {
                     <Ionicons accessibilityElementsHidden color={visitColors.secondaryText} name="location-outline" size={17} />
                     <Text numberOfLines={2} selectable style={styles.metaText}>{visit.location}</Text>
                   </View>
-                  {visit.recipients.length > 0 ? <View style={styles.responseList}>
+                  <View style={styles.responseList}>
+                    <View style={styles.responseRow}>
+                      <Text numberOfLines={1} style={styles.responseName}>{visit.plannerName}</Text>
+                      <StatusPill label={c.organizer} tone="accent" />
+                    </View>
                     {visit.recipients.map((recipient) => (
                       <View key={recipient.participantPersonId} style={styles.responseRow}>
                         <Text numberOfLines={1} style={styles.responseName}>{recipient.participantName}</Text>
@@ -147,7 +151,7 @@ export function VisitationListScreen() {
                         />
                       </View>
                     ))}
-                  </View> : null}
+                  </View>
                   <Ionicons accessibilityElementsHidden color={visitColors.secondaryText} name="chevron-forward" size={21} style={styles.chevron} />
                 </Pressable>
               );

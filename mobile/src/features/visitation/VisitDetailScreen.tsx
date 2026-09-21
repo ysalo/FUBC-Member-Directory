@@ -172,7 +172,14 @@ export function VisitDetailScreen({ id }: { id: string }) {
         </View><View style={[styles.detailColumn, desktop && styles.detailColumnDesktop]}>
         <SectionCard title={c.participants}>
           <View style={styles.recipientList}>
-            {visit.recipients.length ? visit.recipients.map((candidate) => (
+            <View style={styles.recipientRow}>
+              <ProfileAvatar name={visit.plannerName} size={40} />
+              <View style={styles.flex}>
+                <Text selectable style={styles.recipientName}>{visit.plannerName}</Text>
+              </View>
+              <StatusPill icon="person-outline" label={c.organizer} tone="accent" />
+            </View>
+            {visit.recipients.map((candidate) => (
               <View key={candidate.participantPersonId} style={styles.recipientRow}>
                 <ProfileAvatar name={candidate.participantName} size={40} source={candidate.photo} />
                 <View style={styles.flex}>
@@ -186,7 +193,7 @@ export function VisitDetailScreen({ id }: { id: string }) {
                   tone={candidate.response === "accepted" ? "success" : candidate.response === "declined" ? "danger" : "neutral"}
                 /> : <StatusPill label={c.noAccount} />}
               </View>
-            )) : <Text selectable style={styles.muted}>{c.plannerOnly}</Text>}
+            ))}
           </View>
         </SectionCard>
 
@@ -230,7 +237,19 @@ export function VisitDetailScreen({ id }: { id: string }) {
 
         {plannerOwnsVisit && !visit.archivedAt ? (
           <SectionCard title={c.manage}>
-            {!terminal ? (
+            <View style={styles.manageActions}>
+            {confirming ? (
+              <View accessibilityLiveRegion="polite" accessibilityViewIsModal style={styles.confirmationPopover}>
+                <Text accessibilityRole="header" selectable style={styles.confirmationTitle}>
+                  {confirming === "complete" ? c.complete : confirming === "cancel" ? c.cancel : c.archiveVisit}
+                </Text>
+                <Text selectable style={styles.bodyText}>{confirming === "complete" ? c.confirmComplete : confirming === "cancel" ? c.confirmCancel : c.confirmArchive}</Text>
+                <View style={styles.confirmRow}>
+                  <View style={styles.flex}><ActionButton label={c.keepVisit} onPress={() => setConfirming(null)} tone="plain" /></View>
+                  <View style={styles.flex}><ActionButton label={c.confirmAction} onPress={() => void runPastorAction(confirming)} tone={confirming === "cancel" ? "danger" : "primary"} /></View>
+                </View>
+              </View>
+            ) : !terminal ? (
               <>
                 <ActionButton icon="create-outline" label={c.edit} onPress={() => router.push(`/visitation/${id}/edit` as Href)} tone="secondary" />
                 <ActionButton icon="checkmark-circle-outline" label={c.complete} onPress={() => setConfirming("complete")} tone="secondary" />
@@ -239,15 +258,6 @@ export function VisitDetailScreen({ id }: { id: string }) {
             ) : (
               <ActionButton icon="archive-outline" label={c.archiveVisit} onPress={() => setConfirming("archive")} tone="secondary" />
             )}
-          </SectionCard>
-        ) : null}
-
-        {confirming ? (
-          <SectionCard title={confirming === "complete" ? c.complete : confirming === "cancel" ? c.cancel : c.archiveVisit}>
-            <Text selectable style={styles.bodyText}>{confirming === "complete" ? c.confirmComplete : confirming === "cancel" ? c.confirmCancel : c.confirmArchive}</Text>
-            <View style={styles.confirmRow}>
-              <View style={styles.flex}><ActionButton label={c.keepVisit} onPress={() => setConfirming(null)} tone="plain" /></View>
-              <View style={styles.flex}><ActionButton label={c.confirmAction} onPress={() => void runPastorAction(confirming)} tone={confirming === "cancel" ? "danger" : "primary"} /></View>
             </View>
           </SectionCard>
         ) : null}
@@ -312,6 +322,9 @@ const styles = StyleSheet.create({
   responseLabel: { color: visitColors.text, fontSize: 15, fontWeight: "700" },
   responseLabelSelected: { color: visitColors.white },
   textArea: { backgroundColor: visitColors.background, borderColor: visitColors.line, borderCurve: "continuous", borderRadius: 13, borderWidth: 1, color: visitColors.text, fontSize: 16, minHeight: 94, padding: 13, textAlignVertical: "top" },
+  manageActions: { gap: 10 },
+  confirmationPopover: { backgroundColor: visitColors.surfaceMuted, borderCurve: "continuous", borderRadius: 14, elevation: 8, gap: 10, padding: 14, shadowColor: "#000", shadowOffset: { height: 4, width: 0 }, shadowOpacity: 0.16, shadowRadius: 12 },
+  confirmationTitle: { color: visitColors.text, fontSize: 16, fontWeight: "700", lineHeight: 22 },
   confirmRow: { flexDirection: "row", gap: 9 },
   statusMessage: { color: visitColors.secondaryText, fontSize: 14, textAlign: "center" },
   successMessage: { color: visitColors.success, fontSize: 14, fontWeight: "600", textAlign: "center" },
