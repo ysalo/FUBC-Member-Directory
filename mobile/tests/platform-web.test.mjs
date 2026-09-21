@@ -214,10 +214,24 @@ test("visit planning uses avatar rows, responsive scheduling fields, and optiona
 });
 
 test("visit details use member identities and identify the current planner", async () => {
-    const detail = await readFile(new URL("../src/features/visitation/VisitDetailScreen.tsx", import.meta.url), "utf8");
+    const [detail, copy] = await Promise.all([
+        readFile(new URL("../src/features/visitation/VisitDetailScreen.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../src/features/visitation/copy.ts", import.meta.url), "utf8"),
+    ]);
     assert.match(detail, /plannerOwnsVisit \? c\.plannedByMe/);
+    assert.match(detail, /<ProfileAvatar name=\{visit\.plannerName\}/);
+    assert.match(detail, /label=\{c\.organizer\}/);
     assert.match(detail, /key=\{candidate\.participantPersonId\}/);
     assert.match(detail, /<ProfileAvatar name=\{candidate\.participantName\}/);
+    assert.match(copy, /organizer: "Organizer"/);
+    assert.match(copy, /organizer: "Організатор"/);
+});
+
+test("visit management confirms actions in a contextual popover", async () => {
+    const detail = await readFile(new URL("../src/features/visitation/VisitDetailScreen.tsx", import.meta.url), "utf8");
+    assert.match(detail, /accessibilityViewIsModal[\s\S]*?styles\.confirmationPopover/);
+    assert.match(detail, /styles\.manageActions/);
+    assert.doesNotMatch(detail, /<SectionCard title=\{confirming ===/);
 });
 
 test("visitation navigation shows active counts and cards show every invite response", async () => {
@@ -237,6 +251,8 @@ test("visitation navigation shows active counts and cards show every invite resp
     assert.match(shell, /web-navigation-badge/);
     assert.match(shell, /className="web-navigation-icon"/);
     assert.match(shell, /web-navigation-icon[\s\S]*?web-navigation-badge[\s\S]*?web-navigation-link-label/);
+    assert.match(list, /visit\.plannerName/);
+    assert.match(list, /label=\{c\.organizer\}/);
     assert.match(list, /visit\.recipients\.map/);
     assert.match(list, /recipient\.participantName/);
     assert.match(list, /c\[recipient\.response\]/);

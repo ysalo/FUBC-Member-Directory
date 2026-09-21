@@ -12,6 +12,7 @@ import {
   sortCandidatesByLastName,
   sundaysInYear,
   surnameKey,
+  visibleSchedulePeriods,
   weekendLabel,
 } from '../src/features/duty/duty-domain.ts';
 
@@ -109,6 +110,24 @@ test('periodsForPerson filters the full schedule and preserves Everyone', () => 
   assert.deepEqual(periodsForPerson(periods, null), periods);
 });
 
+test('visibleSchedulePeriods hides elapsed weekends but keeps the current Friday through Sunday', () => {
+  const periods = [
+    { sundayOn: '2026-09-06', personId: 'a', revision: 0 },
+    { sundayOn: '2026-09-20', personId: 'b', revision: 0 },
+    { sundayOn: '2026-09-27', personId: 'a', revision: 0 },
+  ];
+  assert.deepEqual(
+    visibleSchedulePeriods(periods, '2026-09-18', false).map((period) => period.sundayOn),
+    ['2026-09-20', '2026-09-27'],
+  );
+  assert.deepEqual(
+    visibleSchedulePeriods(periods, '2026-09-20', false).map((period) => period.sundayOn),
+    ['2026-09-20', '2026-09-27'],
+  );
+  assert.deepEqual(visibleSchedulePeriods(periods, '2026-09-21', false).map((period) => period.sundayOn), ['2026-09-27']);
+  assert.deepEqual(visibleSchedulePeriods(periods, '2026-09-21', true), periods);
+});
+
 test('Visitation uses a house icon on native and web, never a heart', async () => {
   const [nativeLayout, webTabBar, webShell] = await Promise.all([
     readFile(new URL('../src/app/_layout.tsx', import.meta.url), 'utf8'),
@@ -155,6 +174,7 @@ test('schedule deacons use the shared Manage-style member card', async () => {
   assert.match(deaconRow, /accessibilityRole="button"\s+onPress=\{onPress\}/);
   assert.match(schedule, /monthIndex > 0 \? <View style=\{\[styles\.monthSeparator/);
   assert.match(schedule, /periodsForPerson\(state\.year!\.periods, filterPersonId\)/);
+  assert.match(schedule, /visibleSchedulePeriods\(filteredPeriods, today, showPastDates\)/);
   assert.match(schedule, /viewerNext = .*nextPeriodForPerson\(state\.year!\.periods, viewerPersonId, today\)/);
   assert.doesNotMatch(schedule, /nextDutyFor|selectedTag/);
   assert.match(schedule, /monthSeparator: \{ height: 2, marginBottom: 16 \}/);

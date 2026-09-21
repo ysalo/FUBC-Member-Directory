@@ -22,6 +22,7 @@ const en = {
     notes: "Visit notes",
     optional: "Optional",
     participants: "Participants",
+    organizer: "Organizer",
     chooseParticipants:
         "Optional. Invite pastors or deacons; you are already included as the planner.",
     noParticipants: "No other pastor or deacon members are available.",
@@ -118,6 +119,7 @@ const uk: Record<keyof typeof en, string> = {
     notes: "Примітки до відвідування",
     optional: "Необов’язково",
     participants: "Учасники",
+    organizer: "Організатор",
     chooseParticipants:
         "Необов’язково. Запросіть пасторів або дияконів; ви вже берете участь як організатор.",
     noParticipants: "Немає інших членів-пасторів або дияконів.",
