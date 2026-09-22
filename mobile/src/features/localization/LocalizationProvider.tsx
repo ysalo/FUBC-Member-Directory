@@ -4,6 +4,7 @@ export type AppLocale = "en" | "uk";
 
 const translations = {
   en: {
+    pendingAccounts: "Accounts awaiting approval",
     tabs: { directory: "Directory", groups: "Groups", visitation: "Visitation", schedule: "Schedule", manage: "Manage", menu: "Menu" },
     directory: {
       addMember: "Add member",
@@ -35,6 +36,7 @@ const translations = {
     },
   },
   uk: {
+    pendingAccounts: "Облікові записи, що очікують схвалення",
     tabs: { directory: "Довідник", groups: "Групи", visitation: "Відвідування", schedule: "Розклад", manage: "Керування", menu: "Меню" },
     directory: {
       addMember: "Додати учасника",

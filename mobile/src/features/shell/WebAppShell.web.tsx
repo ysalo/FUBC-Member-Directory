@@ -6,6 +6,7 @@ import { useTextSize } from "@/features/accessibility/TextSizeProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
+import { usePendingAccountCount } from "@/features/manage/use-pending-account-count";
 import { dismissAllWebAlerts } from "@/features/platform/alert.web";
 import { canManageDirectory } from "@/lib/permissions";
 
@@ -29,6 +30,7 @@ export function WebAppShell({ children }: PropsWithChildren) {
   const { scale } = useTextSize();
   const session = useSession();
   const activeVisitationCount = useActiveVisitationCount();
+  const pendingAccountCount = usePendingAccountCount();
   const accountId = session.status === "ready" ? session.account.id : null;
   const [online, setOnline] = useState(true);
   useEffect(() => {
@@ -58,6 +60,7 @@ export function WebAppShell({ children }: PropsWithChildren) {
           <span className="web-navigation-icon">
             <span aria-hidden="true"><Ionicons name={item.icon} size={24} color="currentColor" /></span>
             {item.key === "visitation" && activeVisitationCount > 0 ? <span className="web-navigation-badge" aria-label={`${activeVisitationCount} active visitations`}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</span> : null}
+            {item.key === "manage" && pendingAccountCount > 0 ? <span className="web-navigation-badge" aria-label={`${copy.pendingAccounts}: ${pendingAccountCount}`}>{pendingAccountCount > 99 ? "99+" : pendingAccountCount}</span> : null}
           </span>
           <span className="web-navigation-link-label">{label}</span>
         </NavigationAnchor></Link>;

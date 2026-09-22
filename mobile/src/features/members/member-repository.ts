@@ -1,4 +1,5 @@
 import type { ImageSourcePropType } from "react-native";
+import type { Member } from "@/features/directory/members";
 import { isBackendConfigured } from "@/lib/supabase";
 import { SupabaseMemberProfileRepository } from "./SupabaseMemberProfileRepository";
 
@@ -18,6 +19,7 @@ export type MemberProfile = {
   membershipGroup: string;
   membershipGroupUk: string;
   membershipGroupId?: string;
+  responsibleDeacons?: Member[];
   responsibilityGroup?: string;
   responsibilityGroupUk?: string;
   responsibilityGroupId?: string;
@@ -40,7 +42,14 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Local preview adapter used when the Supabase environment is unavailable. */
 export class InMemoryMemberProfileRepository implements MemberProfileRepository {
-  async getProfile(memberId: string) { return clone(profiles.find((profile) => profile.id === memberId) ?? null); }
+  async getProfile(memberId: string) {
+    const profile = profiles.find((candidate) => candidate.id === memberId);
+    if (!profile) return null;
+    const responsibleDeacons: Member[] = profiles
+      .filter((candidate) => candidate.leadershipMinistry === "deacon" && candidate.responsibilityGroup === profile.membershipGroup)
+      .map((deacon) => ({ id: deacon.id, name: deacon.name, avatar: deacon.photo, phone: deacon.phone ?? null, ministry: deacon.ministries.join(" · "), ministryUk: deacon.ministriesUk.join(" · "), leadershipMinistry: "deacon", isOrphan: false, isWidow: false }));
+    return clone({ ...profile, responsibleDeacons });
+  }
 }
 
 export const memberProfileRepository: MemberProfileRepository = isBackendConfigured ? new SupabaseMemberProfileRepository() : new InMemoryMemberProfileRepository();

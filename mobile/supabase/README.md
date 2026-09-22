@@ -12,7 +12,7 @@ The mobile client requires only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPA
 
 Visit timestamp inputs use ISO instants, with UI conversion through `fixedPdtToIso` (fixed UTC−07:00 year-round). Birthdays are SQL dates, never timestamps. The helper's non-leap-year February 29 reminder convention is February 28; confirm this presentation choice before release.
 
-Account deletion RPC immediately revokes access and clears identity-bound personal data, then records an explicit deletion request. A server-side worker still must revoke Apple tokens and delete the Auth identity; the UI must call this a request until that orchestration is deployed. Directory records remain separate, and visit/audit foreign keys preserve necessary history without retaining a deleted login FK. Retention periods remain a policy decision.
+The current account-deletion UI invokes the `delete-account` Edge Function. It authenticates and authorizes the caller, protects the final active administrator, records an audit event, and deletes the Auth identity directly; the profile follows its Auth foreign-key lifecycle while the directory person remains. Google provider-token revocation is best-effort when the self-deletion call supplies a token, and other provider-specific revocation still requires verification. Retention periods remain a policy decision.
 
 Permanent member deletion uses the `delete-member` Edge Function. It validates an active administrator, deletes any linked Auth identity and private photo, then calls `delete_member_record` to transactionally remove the member and every linked visit. The function deliberately refuses the caller's own linked member and refuses a directory deletion while a linked profile still exists.
 
