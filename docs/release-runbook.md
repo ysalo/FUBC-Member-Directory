@@ -4,6 +4,8 @@ This runbook publishes the Expo web application to Vercel production through a s
 
 Merging to `main` runs CI but does not authorize a production deployment. The release workflow runs only when a stable GitHub Release is published.
 
+Complete [production-release-setup.md](production-release-setup.md) before using this workflow for the first time or when rotating its Vercel credentials.
+
 ## Before You Start
 
 Confirm that:
