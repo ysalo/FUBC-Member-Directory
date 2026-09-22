@@ -520,3 +520,30 @@ test("the member deletion service removes identity access before directory data"
     assert.match(edge, /person\.revision !== expectedRevision/);
     assert.match(edge, /storage\.from\("member-photos"\)\.remove/);
 });
+
+test("account deletion preserves structured edge function failures", async () => {
+    const [client, edge] = await Promise.all([
+        readFile(
+            new URL(
+                "../src/features/account/account-deletion.ts",
+                import.meta.url,
+            ),
+            "utf8",
+        ),
+        readFile(
+            new URL(
+                "../supabase/functions/delete-account/index.ts",
+                import.meta.url,
+            ),
+            "utf8",
+        ),
+    ]);
+    assert.match(client, /functions\.invoke\("delete-account"/);
+    assert.match(client, /await context\.json\(\)\.catch/);
+    assert.match(client, /new AccountDeletionError\(payload\?\.code/);
+    assert.match(client, /data\?\.status !== "completed"/);
+    assert.match(edge, /if \(callerProfileError\) throw callerProfileError/);
+    assert.match(edge, /if \(targetProfileError\) throw targetProfileError/);
+    assert.match(edge, /if \(countError\) throw countError/);
+    assert.match(edge, /\.catch\(\(\) => false\)/);
+});
