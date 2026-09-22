@@ -1,0 +1,91 @@
+name: Release web production
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ !github.event.release.draft && !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_TAG_COMMIT: ${{ github.sha }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      RELEASE_URL: ${{ vars.PRODUCTION_URL }}
+    steps:
+      - name: Check out the released commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: pnpm
+          cache-dependency-path: mobile/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate release identity and notes
+        shell: bash
+        run: |
+          test -n "$VERCEL_ORG_ID" || { echo 'VERCEL_ORG_ID is not configured.' >&2; exit 1; }
+          test -n "$VERCEL_PROJECT_ID" || { echo 'VERCEL_PROJECT_ID is not configured.' >&2; exit 1; }
+          test -n "$RELEASE_URL" || { echo 'PRODUCTION_URL is not configured.' >&2; exit 1; }
+          git fetch --no-tags origin main
+          export RELEASE_TAG_COMMIT="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          export MAIN_COMMITS="$(git rev-list origin/main | node -e 'let data=""; process.stdin.on("data", chunk => data += chunk).on("end", () => process.stdout.write(JSON.stringify(data.trim().split(/\s+/).filter(Boolean))))')"
+          node scripts/validate-release.mjs
+
+      - name: Verify the released commit
+        run: pnpm verify
+
+      - name: Pull Vercel production settings
+        run: pnpm dlx vercel@41.7.2 pull --yes --environment=production --token "$VERCEL_TOKEN"
+
+      - name: Build the production deployment
+        run: pnpm dlx vercel@41.7.2 build --prod --token "$VERCEL_TOKEN"
+
+      - name: Stage the production deployment
+        id: deploy
+        shell: bash
+        run: |
+          url="$(pnpm dlx vercel@41.7.2 deploy --prebuilt --prod --skip-domain --token "$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Staged $url"
+
+      - name: Smoke-test the staged deployment
+        env:
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+        run: node scripts/smoke-web-release.mjs
+
+      - name: Promote the verified deployment
+        run: pnpm dlx vercel@41.7.2 promote "${{ steps.deploy.outputs.url }}" --yes --token "$VERCEL_TOKEN"
+
+      - name: Smoke-test production
+        run: node scripts/smoke-web-release.mjs

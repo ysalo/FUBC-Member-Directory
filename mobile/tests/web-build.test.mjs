@@ -41,3 +41,8 @@ test('Vercel does not cache the installed app shell across deployments', async (
   assert.equal(cacheControl.value, 'private, no-store, max-age=0, must-revalidate');
   assert.match(staticCacheControl.value, /immutable/);
 });
+
+test('Vercel does not deploy production from main Git pushes', async () => {
+  const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+  assert.equal(config.git.deploymentEnabled.main, false);
+});

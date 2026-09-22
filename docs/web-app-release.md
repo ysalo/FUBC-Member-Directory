@@ -45,6 +45,49 @@ The semantic application version has one source: `mobile/package.json`. The init
 
 The application version is separate from the `expo-directory-v3` Supabase compatibility contract. Change that contract only when coordinating a database/client contract revision, not during a routine application version bump.
 
+## Release workflow
+
+Production releases are performed from a published stable GitHub Release. Merging to `main` runs CI and may create a branch or preview deployment, but must not change the production domain. The Vercel project disables Git deployment for `main`; do not re-enable it without reviewing `.github/workflows/release.yml`.
+
+All release implementation changes are made on a separate branch and merged through a pull request. Do not create a production tag or publish a Release until the PR containing the release workflow has merged and a main merge has been verified not to move production.
+
+### Prepare a release
+
+1. Open a release PR that updates `mobile/package.json` to the next SemVer version. Keep the version change separate from unrelated feature PRs; one release may contain multiple merged changes.
+2. Wait for the PR and `main` CI checks to pass, then merge through the normal protected PR flow.
+3. In GitHub, create a **draft** Release from the exact `main` commit. Use the tag `v<package version>` and generate notes from previous releases, then edit the notes for users.
+4. Include the following line exactly in the release body after verifying backend readiness:
+
+	```text
+	- [x] Backend readiness verified (or no backend changes)
+	```
+
+	Also list migrations and Edge Functions applied, or state that none are needed. Confirm the client remains compatible with the currently deployed version and the documented rollback target.
+5. Publish the stable Release. Publishing is the production approval. Draft Releases, prereleases, bare tags, and ordinary pushes do not deploy production.
+
+The workflow validates the tag against `mobile/package.json`, resolves the tag to its immutable commit, verifies reachability from `main`, reruns `pnpm verify`, stages a production Vercel deployment without changing the domain, performs read-only smoke checks, and promotes only that staged deployment. A published Release is not itself proof of a successful deployment; use the workflow result and Vercel deployment record.
+
+### Repository setup
+
+The GitHub `production` environment requires:
+
+- `VERCEL_TOKEN` secret with the minimum deployment permissions needed by the linked project.
+- `VERCEL_ORG_ID` variable for the verified Vercel organization.
+- `VERCEL_PROJECT_ID` variable for the verified `fubc-member-directory` project whose root directory is `mobile`.
+- `PRODUCTION_URL` variable containing the stable HTTPS origin.
+
+Keep production public Supabase values in Vercel's production environment. Never add service-role keys, database credentials, or `.env` files to GitHub Actions. Confirm the Vercel CLI project linkage before the first production run so the legacy `web/` directory cannot be deployed accidentally.
+
+### Backend ordering
+
+Database migrations and Supabase Edge Functions remain manual release prerequisites. Follow `mobile/supabase/CONNECT_EXISTING_PROJECT.md`; do not run an unreconciled `supabase db push`, and do not apply destructive or breaking schema changes as part of this workflow. Apply and verify backend changes before publishing the client Release, and document them in its notes.
+
+### Failure and rollback
+
+Validation, tests, build, or staged smoke-test failures leave the current production deployment unchanged. Correct the source on a new branch/PR and create a new version; do not move an existing tag or reuse a published version for different code.
+
+If promotion or the final production smoke test fails, inspect the actual Vercel status before retrying because a timeout may be ambiguous. Roll back by promoting the previously recorded, retained Vercel deployment rather than rebuilding or rerunning an older GitHub Release. Verify the stable origin afterward and record the rollback in the deployment history. Backend compatibility must be checked before any client rollback.
+
 ## Verification
 
 - Full `pnpm verify` passed after integration: TypeScript, authorization/database tests, existing domain suites, and new web-auth/platform/build tests.
