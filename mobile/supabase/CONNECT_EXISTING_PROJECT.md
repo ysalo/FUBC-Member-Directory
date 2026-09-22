@@ -12,15 +12,13 @@ The deployed contract reports `expo-directory-v3`. The leadership-ministry migra
 
 `20260920010000_person_based_visit_participants.sql` was applied through the authenticated SQL Editor on 2026-09-19. It makes the directory person the durable visit-participant identity and keeps the account link optional for responses and notifications. Live catalog checks confirmed `person_id` is required, `account_id` is optional, and response authorization resolves through the linked person. Eight active Pastor/Deacon members were present; seven had no active account and are now selectable attendees.
 
-`20260920010000_person_based_visit_participants.sql` was applied through the authenticated SQL Editor on 2026-09-19. Catalog checks confirmed member-based participant identity, nullable account links, and person-based response authorization. The live directory had eight active Pastor/Deacon members; seven had no active account and are now valid selectable attendees.
-
 The dashboard execution does not create or reconcile Supabase CLI migration history. Do **not** run `supabase db push` against this project until the linked migration history has been inspected and reconciled. The retired migration chain used the timestamp `20260916010000` for different SQL than the mobile contract file with that timestamp.
 
 `20260918170000_delete_members.sql` and the `delete-member` Edge Function are additive release artifacts for the administrator member-deletion feature. Apply the SQL through the authenticated SQL Editor, then deploy the Edge Function, before merging the client route that invokes it.
 
 ## Safe next steps
 
-From `D:\church_directory\work\expo-app\mobile`, authenticate with the intended Supabase account using the CLI's browser flow. Do not paste secrets into tracked files or command arguments:
+From `D:\church_directory\mobile`, authenticate with the intended Supabase account using the CLI's browser flow. Do not paste secrets into tracked files or command arguments:
 
 ```powershell
 pnpm dlx supabase login
@@ -39,4 +37,4 @@ Compare the linked history with the three deployed local migrations. Reconcile i
 
 After approved migrations, generate database types, enable and configure desired Auth providers and callback URLs, restart Expo so it reloads the public configuration, and verify the app on a physical iPhone. Confirm RLS using real accounts representing pending/member/deacon/pastor/editor/admin access. Apple provider credentials and callback setup remain necessary before enabling the Apple sign-in button. The unlisted App Store build also requires its signed native callback registration.
 
-Notification delivery and Apple account-deletion worker deployment remain separate documented backend operations. The app must not claim a push was delivered or an Auth identity deleted merely because a queue/request row exists.
+Notification delivery remains a separate backend operation. The current `delete-account` Edge Function deletes the Auth identity directly after authorization; provider-token revocation behavior still requires provider-specific verification. The app must not claim a push was delivered merely because a queue row exists.

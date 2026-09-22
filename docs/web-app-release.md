@@ -32,7 +32,7 @@ pnpm build:web
 pnpm serve:web
 ```
 
-The production preview is served at `http://localhost:4173`. `pnpm web` starts Expo development mode. Supply the public Supabase settings in an ignored `.env.local` or the hosting environment; see `.env.example`. Never include a service-role or secret key. Production builds reject absent backend configuration and recognizable privileged keys.
+The production preview is served at `http://localhost:4173`. `pnpm web` starts Expo development mode. Supply `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in an ignored `.env.local` or the hosting environment. Never include a service-role or secret key. Production builds reject absent backend configuration and recognizable privileged keys.
 
 ## Vercel Setup
 
