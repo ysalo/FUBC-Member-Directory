@@ -11,6 +11,80 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 
+test('member profiles load active responsible deacons from their membership group in slot order', async () => {
+  const ts = require('typescript');
+  const source = await readFile(new URL('../src/features/members/SupabaseMemberProfileRepository.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const createRepository = ({ groupId = 'group', assignments = [], deacons = [], assignmentError = null } = {}) => {
+    const calls = [];
+    const people = [{ id: 'member', name: 'Member', membership_group_id: groupId, photo_path: null, archived_at: null }, ...deacons];
+    const tables = { people, deacon_groups: [{ id: 'group', name: 'Membership group' }], deacon_group_deacons: assignments, ministry_accounts: [], person_ministries: [] };
+    const client = {
+      from(table) {
+        calls.push(table);
+        let rows = tables[table];
+        const query = {
+          select() { return query; },
+          eq(column, value) { rows = rows.filter((row) => row[column] === value); return query; },
+          is(column, value) { rows = rows.filter((row) => row[column] === value); return query; },
+          in(column, values) { rows = rows.filter((row) => values.includes(row[column])); return query; },
+          order(column) { rows = [...rows].sort((first, second) => first[column] - second[column]); return query; },
+          single() { return Promise.resolve({ data: rows[0], error: null }); },
+          maybeSingle() { return Promise.resolve({ data: rows[0] ?? null, error: null }); },
+          then(resolve, reject) { return Promise.resolve({ data: rows, error: table === 'deacon_group_deacons' ? assignmentError : null }).then(resolve, reject); },
+        };
+        return query;
+      },
+      rpc() { return Promise.resolve({ data: [], error: null }); },
+    };
+    const exports = {};
+    const helpers = {
+      activeAccount() { calls.push('authorize'); },
+      unwrap(result) { if (result.error) throw new Error(result.error.message); return result.data; },
+      async privatePhotoSources(paths) { return new Map(paths.filter(Boolean).map((path) => [path, { uri: `signed:${path}` }])); },
+    };
+    new Function('require', 'exports', compiled)((id) => {
+      if (id === '@/lib/repository-helpers') return helpers;
+      if (id === '@/lib/supabase') return { requireSupabase: () => client };
+      throw new Error(`Unexpected import: ${id}`);
+    }, exports);
+    return { repository: new exports.SupabaseMemberProfileRepository(), calls };
+  };
+  const deacon = (id, extra = {}) => ({ id, name: id, phone: null, photo_path: null, archived_at: null, ...extra });
+  const assignment = (person_id, slot, group_id = 'group') => ({ person_id, slot, group_id });
+  const { repository, calls } = createRepository({
+    assignments: [assignment('second', 2), assignment('first', 1), assignment('archived', 3), assignment('missing', 4), assignment('first', 5), assignment('other', 1, 'other-group')],
+    deacons: [deacon('second'), deacon('first', { phone: '2065550100', photo_path: 'first.jpg' }), deacon('archived', { archived_at: '2026-01-01' }), deacon('other')],
+  });
+  const profile = await repository.getProfile('member');
+  assert.equal(calls[0], 'authorize');
+  assert.deepEqual(profile.responsibleDeacons.map((person) => person.id), ['first', 'second']);
+  assert.equal(profile.responsibleDeacons[0].phone, '2065550100');
+  assert.deepEqual(profile.responsibleDeacons[0].avatar, { uri: 'signed:first.jpg' });
+  assert.deepEqual(profile.responsibleDeacons[1].avatar, {});
+  assert.ok(profile.responsibleDeacons.every((person) => person.leadershipMinistry === 'deacon'));
+  assert.deepEqual((await createRepository().repository.getProfile('member')).responsibleDeacons, []);
+  const ungrouped = createRepository({ groupId: null });
+  assert.deepEqual((await ungrouped.repository.getProfile('member')).responsibleDeacons, []);
+  assert.ok(!ungrouped.calls.includes('deacon_group_deacons'));
+  assert.equal(await repository.getProfile('unavailable'), null);
+  await assert.rejects(createRepository({ assignmentError: { message: 'Lookup failed' } }).repository.getProfile('member'), /Lookup failed/);
+});
+
+test('member profiles reuse compact directory cards above Contact in both layouts only when deacons exist', async () => {
+  const profile = await readFile(new URL('../src/features/members/MemberProfileScreen.tsx', import.meta.url), 'utf8');
+  const directory = await readFile(new URL('../src/features/directory/DirectoryScreen.tsx', import.meta.url), 'utf8');
+  assert.match(profile, /import \{ MemberRow \} from "@\/features\/directory\/DirectoryScreen"/);
+  assert.match(profile, /const deaconsSection = profile\.responsibleDeacons\?\.length \?/);
+  assert.match(profile, /Responsible deacons/);
+  assert.match(profile, /Відповідальні диякони/);
+  assert.match(profile, /<MemberRow\s+compact\s+item=\{deacon\}/);
+  assert.match(profile, /router\.push\(`\/members\/\$\{deacon\.id\}`\)/);
+  assert.equal([...profile.matchAll(/\{deaconsSection\}\s*\{contactSection\}/g)].length, 2);
+  assert.match(directory, /export function MemberRow/);
+  assert.match(directory, /const desktop = useDesktopLayout\(\) && !compact/);
+});
+
 const actor = (role = 'member', leadershipMinistry = null, status = 'active') => ({ id: 'viewer', role, leadershipMinistry, status });
 const visit = { plannerId: 'pastor', status: 'open', archivedAt: null, recipients: [{ accountId: 'deacon' }, { accountId: 'pastor-participant' }] };
 test('Expo config derives the app version from package metadata', async () => {

@@ -7,6 +7,7 @@ import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
+import { usePendingAccountCount } from "@/features/manage/use-pending-account-count";
 import { canManageDirectory } from "@/lib/permissions";
 
 const tabs = [
@@ -30,6 +31,7 @@ export function WebTabBar() {
   const { palette } = useAppearance();
   const session = useSession();
   const activeVisitationCount = useActiveVisitationCount();
+  const pendingAccountCount = usePendingAccountCount();
   const visibleTabs = tabs.filter((tab) => tab.labelKey !== "manage" || (session.status === "ready" && canManageDirectory(session.account)));
   if (Platform.OS === "ios") return null;
 
@@ -50,6 +52,11 @@ export function WebTabBar() {
               {tab.labelKey === "visitation" && activeVisitationCount > 0 ? (
                 <View style={[styles.badge, { backgroundColor: palette.accent }]}>
                   <Text style={styles.badgeText}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</Text>
+                </View>
+              ) : null}
+              {tab.labelKey === "manage" && pendingAccountCount > 0 ? (
+                <View accessible accessibilityLabel={`${copy.pendingAccounts}: ${pendingAccountCount}`} style={[styles.badge, { backgroundColor: palette.accent }]}>
+                  <Text style={styles.badgeText}>{pendingAccountCount > 99 ? "99+" : pendingAccountCount}</Text>
                 </View>
               ) : null}
             </View>

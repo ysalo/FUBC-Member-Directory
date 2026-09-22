@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
+import { MemberRow } from "@/features/directory/DirectoryScreen";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { formatPhoneNumber } from "@/lib/phone";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -148,6 +149,20 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
         }
     };
 
+    const deaconsSection = profile.responsibleDeacons?.length ? (
+        <Section title={locale === "uk" ? "Відповідальні диякони" : "Responsible deacons"}>
+            {profile.responsibleDeacons.map((deacon) => (
+                <MemberRow
+                    compact
+                    item={deacon}
+                    key={deacon.id}
+                    locale={locale}
+                    ministry={locale === "uk" ? deacon.ministryUk : deacon.ministry}
+                    onPress={() => router.push(`/members/${deacon.id}`)}
+                />
+            ))}
+        </Section>
+    ) : null;
     const contactSection = (
         <Section title={copy.contact}>
             <View style={styles.actions}>
@@ -561,6 +576,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     {desktop ? (
                         <View style={styles.desktopColumns}>
                             <View style={styles.desktopContactColumn}>
+                                {deaconsSection}
                                 {contactSection}
                                 {ministriesSection}
                             </View>
@@ -570,6 +586,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                         </View>
                     ) : (
                         <>
+                            {deaconsSection}
                             {contactSection}
                             {detailsSection}
                             {ministriesSection}

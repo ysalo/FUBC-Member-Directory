@@ -80,19 +80,21 @@ function SummaryAction({
     );
 }
 
-function MemberRow({
+export function MemberRow({
+    compact = false,
     item,
     locale,
     ministry,
     onPress,
 }: {
+    compact?: boolean;
     item: Member;
     locale: "en" | "uk";
     ministry: string;
     onPress: () => void;
 }) {
     const { palette } = useAppearance();
-    const desktop = useDesktopLayout();
+    const desktop = useDesktopLayout() && !compact;
     const showsMinistry =
         Boolean(ministry) &&
         !isLeadershipMinistryLabel(ministry, item.leadershipMinistry);

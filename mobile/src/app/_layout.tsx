@@ -10,6 +10,7 @@ import { SessionProvider } from "@/features/session/SessionProvider";
 import { AppearanceProvider, useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
+import { usePendingAccountCount } from "@/features/manage/use-pending-account-count";
 import { canManageDirectory } from "@/lib/permissions";
 import { TextSizeProvider, useTextSize } from "@/features/accessibility/TextSizeProvider";
 
@@ -21,6 +22,7 @@ function IosTabs() {
   const session = useSession();
   const showManage = session.status === "ready" && canManageDirectory(session.account);
   const activeVisitationCount = useActiveVisitationCount();
+  const pendingAccountCount = usePendingAccountCount();
   const { scale } = useTextSize();
   return (
     <NativeTabs
@@ -53,6 +55,7 @@ function IosTabs() {
       {showManage ? <NativeTabs.Trigger name="manage">
         <NativeTabs.Trigger.Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <NativeTabs.Trigger.Label>{copy.tabs.manage}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Badge hidden={pendingAccountCount === 0}>{String(pendingAccountCount > 99 ? "99+" : pendingAccountCount)}</NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger> : null}
       <NativeTabs.Trigger name="menu">
         <NativeTabs.Trigger.Icon sf="line.3.horizontal" />

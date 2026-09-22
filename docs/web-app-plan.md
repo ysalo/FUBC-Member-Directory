@@ -2,6 +2,8 @@
 
 Approved September 19, 2026. This is the implementation contract; verification results and remaining deployment steps belong in `web-app-release.md`.
 
+For the current source-backed system map, data model, security boundaries, and environment flow, see [the architecture guide](architecture/README.md).
+
 ## Approach
 
 Keep one Expo project in `mobile/`, using the existing Supabase database. Share business logic, permissions, repositories, and routes; isolate genuine platform differences in `.web.tsx`/`.native.tsx` modules. Do not copy the app or restructure into a monorepo.

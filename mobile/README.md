@@ -4,6 +4,7 @@ This is the shared Expo application for iOS and web. Web uses the same Supabase 
 
 - [Approved implementation plan](../docs/web-app-plan.md)
 - [Run commands, Vercel setup, verification, and release prerequisites](../docs/web-app-release.md)
+- [Architecture, data, security, and delivery guide](../docs/architecture/README.md)
 
 From this directory, use `pnpm web` for development or `pnpm build:web` followed by `pnpm serve:web` for a production preview. Vercel's project root must be `mobile`. Run `pnpm verify` before releasing.
 
