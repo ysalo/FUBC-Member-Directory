@@ -41,3 +41,14 @@ test('Vercel does not cache the installed app shell across deployments', async (
   assert.equal(cacheControl.value, 'private, no-store, max-age=0, must-revalidate');
   assert.match(staticCacheControl.value, /immutable/);
 });
+
+test('the active Vercel project uses Git integration for dev and main', async () => {
+  const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+  assert.equal(config.git?.deploymentEnabled?.main ?? true, true);
+  assert.equal(config.git?.deploymentEnabled?.dev ?? true, true);
+});
+
+test('the legacy web project remains disabled', async () => {
+  const config = JSON.parse(await readFile(new URL('../../web/vercel.json', import.meta.url), 'utf8'));
+  assert.equal(config.git.deploymentEnabled, false);
+});

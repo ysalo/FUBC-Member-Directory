@@ -1,20 +1,27 @@
-# Web application implementation and release handoff
+# Web Application Release and Deployment
 
-Implementation date: September 19, 2026. Approved design and agent ownership: [web-app-plan.md](web-app-plan.md).
+The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
-## Implemented
+## Branch Model
 
-- One Expo SDK 57 application in `mobile/`; shared Supabase repositories, permissions, routes, and business rules.
-- Standalone home-screen manifest, branded FUBC icons, Apple touch icon, localized installation help, and Vercel SPA configuration.
-- Browser bottom navigation below 1,024px and 240px desktop sidebar above it, with desktop directory/profile, groups, visitation, and management layouts.
-- Browser redirect OAuth with safe return paths, one PKCE exchange per callback, visible failure recovery, persistent sessions, and native callback navigation.
-- Same-identity session revalidation preserves mounted forms; identity changes, revoked access, sign-out, and failures still gate content.
-- Accessible browser dialogs, automatic dialog cleanup on navigation/access loss, browser date/time controls, sharing fallback, and web text-size persistence.
-- Web notification scheduling and controls disabled without overwriting native reminder preferences. Visitation retains its workflows and calendar export.
-- No service worker, private-data offline cache, or queued offline edits. Connection status and existing retry flows remain available.
-- Agent routing recorded in `mobile/AGENTS.md`; no second web application or copied data layer.
+```text
+feature/* -> dev -> main
+			  |      |
+			  |      +-- Vercel Production
+			  +--------- Vercel Preview/staging
+```
 
-## Run locally
+- Feature branches create Vercel Preview deployments through pull requests.
+- Merging into `dev` creates the shared development/staging Preview deployment.
+- Merging a reviewed release pull request from `dev` into `main` creates the Vercel Production deployment.
+- The legacy `web/` application is not deployed. Its `web/vercel.json` disables Git deployments.
+- GitHub Releases are optional release notes and audit records. They do not trigger deployment.
+
+This model intentionally makes a merge into `main` a production release. Keep unreleased work in `dev`.
+
+## Repository CI
+
+`.github/workflows/ci.yml` runs `pnpm verify` for pull requests and pushes targeting `dev` or `main`. Protected branches must require this check. The workflow has no Vercel token, deploy command, or production secret.
 
 Use Node 24 (tested with 24.21.0) and the package's pinned pnpm 12.4.1 from `mobile/`:
 
@@ -27,25 +34,70 @@ pnpm serve:web
 
 The production preview is served at `http://localhost:4173`. `pnpm web` starts Expo development mode. Supply the public Supabase settings in an ignored `.env.local` or the hosting environment; see `.env.example`. Never include a service-role or secret key. Production builds reject absent backend configuration and recognizable privileged keys.
 
-## Vercel setup
+## Vercel Setup
 
-1. Import this repository and set **Root Directory to `mobile`**. The older `web/` directory is not the application being deployed.
-2. Use Node 24.x. `mobile/vercel.json` defines installation, build command, output `dist`, SPA fallback, and cache/security headers.
-3. Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to the existing project's public values. Legacy `EXPO_PUBLIC_SUPABASE_ANON_KEY` is supported. Set `EXPO_PUBLIC_ENABLE_APPLE_AUTH=false` unless the provider has actually been configured.
-4. In Supabase Auth, register `https://<production-domain>/auth/callback` and the exact callback for a stable preview/staging origin. Preserve native callbacks. Do not use a broad production redirect wildcard. The app derives its redirect from the current origin.
-5. Confirm Google provider configuration. For provider-side OAuth configuration, retain the existing Supabase Auth callback, rather than replacing it with the app callback.
-6. Confirm the live `expo-directory-v3` contract, account access, private photos, and required deletion Edge Functions. This implementation did not alter the database or deploy functions. Follow `mobile/supabase/CONNECT_EXISTING_PROJECT.md`; do not run an unreconciled migration push.
-7. Test the preview before promoting. Install the final stable production URL on phones. Keep the previous Vercel deployment available for rollback.
+1. Connect `ysalo/FUBC-Member-Directory` and set **Root Directory** to `mobile`.
+2. Set the Vercel **Production Branch** to `main`.
+3. Keep Git deployments enabled for `main`, `dev`, and feature branches as appropriate.
+4. Optionally assign a stable staging domain to `dev`; never assign it to the production domain.
+5. Configure Production variables for the live Supabase public URL and publishable key.
+6. Configure Preview variables separately when possible, preferably against a staging Supabase project.
+7. Remove Deploy Hooks and revoke retired external Vercel tokens or integrations.
+8. Preserve the current Production deployment before cutover for emergency rollback.
+
+The Vercel GitHub App manages deployment authentication. Do not add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, or `VERCEL_PROJECT_ID` to GitHub Actions.
 
 No Vercel deployment or live Supabase configuration change was performed in this implementation session.
 
-## Application version
+## Supabase Readiness
 
-The semantic application version has one source: `mobile/package.json`. The initial release is `1.0.0`. For later releases, update that package version only; `mobile/app.config.js` supplies it to Expo builds and runtime config, and the About sheet displays the resolved value.
+Supabase deployment remains manual and independent of Vercel:
+
+- Apply and verify required SQL before merging backend-dependent client changes into `main`.
+- Deploy and verify required Edge Functions separately.
+- Do not run `supabase db push` until migration history has been inspected and reconciled in `mobile/supabase/CONNECT_EXISTING_PROJECT.md`.
+- Keep `expo-directory-v3` separate from application SemVer.
+- Confirm the current and rollback clients are compatible with the live backend.
+
+## Release Procedure
+
+1. Create a feature branch from `dev` and open a pull request into `dev`.
+2. Wait for CI and inspect the Vercel Preview deployment.
+3. Merge into `dev` after review and verify the shared staging Preview.
+4. For a production batch, update `mobile/package.json` on `dev` using SemVer. `mobile/app.config.js` reads this value automatically.
+5. Run `pnpm verify` and `pnpm build:web`.
+6. Open a release pull request from `dev` into `main` with version, backend readiness, known issues, and rollback target.
+7. Merge after required CI and review checks pass. This immediately deploys Production through Vercel.
+8. Verify the production deployment, stable domain, authentication callback, app shell, and critical read-only flows.
+9. Optionally create a matching `vX.Y.Z` GitHub Release on the merged `main` commit. It is audit metadata, not a deployment trigger.
+
+The semantic application version has one source: `mobile/package.json`. The initial release is `1.0.0`; later releases update that package version only.
 
 The application version is separate from the `expo-directory-v3` Supabase compatibility contract. Change that contract only when coordinating a database/client contract revision, not during a routine application version bump.
 
-## Verification
+## Rollback
+
+If Production is unhealthy:
+
+1. Check backend compatibility with the previous application version.
+2. In Vercel, promote the retained previous Production deployment.
+3. Verify the stable domain, authentication callback, and critical read-only routes.
+4. Open a revert or fix pull request so `main` reflects production state.
+
+Do not rebuild an old commit as an untracked deployment. Use a new PR through `dev` and `main` for the durable fix.
+
+## Acceptance Checklist
+
+- [ ] `dev` and `main` block force pushes and deletion.
+- [ ] Both branches require the CI check before merge.
+- [ ] Feature PRs target `dev`; production PRs target `main`.
+- [ ] Vercel Root Directory is `mobile` and Production Branch is `main`.
+- [ ] A dev merge creates Preview only; a main merge creates Production.
+- [ ] No GitHub Actions Vercel token or deployment workflow exists.
+- [ ] The previous Production deployment is retained for rollback.
+- [ ] Manual Supabase readiness is complete before backend-dependent production merges.
+
+## Verification History
 
 - Full `pnpm verify` passed after integration: TypeScript, authorization/database tests, existing domain suites, and new web-auth/platform/build tests.
 - Final web production export passed after the browser-discovered Link styling correction.
