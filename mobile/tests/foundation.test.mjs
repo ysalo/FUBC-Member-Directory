@@ -71,17 +71,25 @@ test('member profiles load active responsible deacons from their membership grou
   await assert.rejects(createRepository({ assignmentError: { message: 'Lookup failed' } }).repository.getProfile('member'), /Lookup failed/);
 });
 
-test('member profiles show linked deacon avatars above Contact in both layouts only when deacons exist', async () => {
+test('member profiles show linked deacon avatars below Contact in both layouts only when deacons exist', async () => {
   const profile = await readFile(new URL('../src/features/members/MemberProfileScreen.tsx', import.meta.url), 'utf8');
+  const deaconsSection = profile.slice(profile.indexOf('const deaconsSection'), profile.indexOf('const contactSection'));
   assert.doesNotMatch(profile, /MemberRow/);
   assert.match(profile, /const deaconsSection = profile\.responsibleDeacons\?\.length \?/);
+  assert.doesNotMatch(deaconsSection, /LeadershipBadge/);
   assert.match(profile, /Responsible deacons/);
   assert.match(profile, /Відповідальні диякони/);
   assert.match(profile, /<Link href=\{`\/members\/\$\{deacon\.id\}`\} key=\{deacon\.id\} asChild>/);
   assert.match(profile, /accessibilityLabel=\{`\$\{deacon\.name\}, \$\{copy\.profile\}`\}/);
   assert.match(profile, /<ProfileAvatar name=\{deacon\.name\} size=\{64\} source=\{deacon\.avatar\}/);
   assert.match(profile, /deaconAvatars: \{ flexDirection: "row", flexWrap: "wrap"/);
-  assert.equal([...profile.matchAll(/\{deaconsSection\}\s*\{contactSection\}/g)].length, 2);
+  assert.equal([...profile.matchAll(/\{contactSection\}\s*\{deaconsSection\}/g)].length, 2);
+});
+
+test('member profile visit action uses planning language', async () => {
+  const copy = await readFile(new URL('../src/features/members/member-copy.ts', import.meta.url), 'utf8');
+  assert.match(copy, /requestVisit: "Plan visit"/);
+  assert.doesNotMatch(copy, /requestVisit: "Request visit"/);
 });
 
 const actor = (role = 'member', leadershipMinistry = null, status = 'active') => ({ id: 'viewer', role, leadershipMinistry, status });
