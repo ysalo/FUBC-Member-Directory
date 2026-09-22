@@ -150,7 +150,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
     };
 
     const deaconsSection = profile.responsibleDeacons?.length ? (
-        <Section title={locale === "uk" ? "╨Æ╤û╨┤╨┐╨╛╨▓╤û╨┤╨░╨╗╤î╨╜╤û ╨┤╨╕╤Å╨║╨╛╨╜╨╕" : "Responsible deacons"}>
+        <Section title={locale === "uk" ? "Відповідальні диякони" : "Responsible deacons"}>
             {profile.responsibleDeacons.map((deacon) => (
                 <MemberRow
                     compact

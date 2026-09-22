@@ -47,7 +47,7 @@ export class InMemoryMemberProfileRepository implements MemberProfileRepository 
     if (!profile) return null;
     const responsibleDeacons: Member[] = profiles
       .filter((candidate) => candidate.leadershipMinistry === "deacon" && candidate.responsibilityGroup === profile.membershipGroup)
-      .map((deacon) => ({ id: deacon.id, name: deacon.name, avatar: deacon.photo, phone: deacon.phone ?? null, ministry: deacon.ministries.join(" ┬╖ "), ministryUk: deacon.ministriesUk.join(" ┬╖ "), leadershipMinistry: "deacon", isOrphan: false, isWidow: false }));
+      .map((deacon) => ({ id: deacon.id, name: deacon.name, avatar: deacon.photo, phone: deacon.phone ?? null, ministry: deacon.ministries.join(" · "), ministryUk: deacon.ministriesUk.join(" · "), leadershipMinistry: "deacon", isOrphan: false, isWidow: false }));
     return clone({ ...profile, responsibleDeacons });
   }
 }

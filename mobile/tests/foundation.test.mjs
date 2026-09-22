@@ -77,6 +77,7 @@ test('member profiles reuse compact directory cards above Contact in both layout
   assert.match(profile, /import \{ MemberRow \} from "@\/features\/directory\/DirectoryScreen"/);
   assert.match(profile, /const deaconsSection = profile\.responsibleDeacons\?\.length \?/);
   assert.match(profile, /Responsible deacons/);
+  assert.match(profile, /Відповідальні диякони/);
   assert.match(profile, /<MemberRow\s+compact\s+item=\{deacon\}/);
   assert.match(profile, /router\.push\(`\/members\/\$\{deacon\.id\}`\)/);
   assert.equal([...profile.matchAll(/\{deaconsSection\}\s*\{contactSection\}/g)].length, 2);
