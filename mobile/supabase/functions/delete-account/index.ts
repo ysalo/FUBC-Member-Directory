@@ -24,10 +24,12 @@ Deno.serve(async (request: Request) => {
     const body = await request.json().catch(() => ({}));
     const targetAccountId = typeof body.targetAccountId === "string" ? body.targetAccountId : callerData.user.id;
     const selfDelete = targetAccountId === callerData.user.id;
-    const [{ data: caller }, { data: target }] = await Promise.all([
+    const [{ data: caller, error: callerProfileError }, { data: target, error: targetProfileError }] = await Promise.all([
       adminClient.from("profiles").select("id,status,role,person_id").eq("id", callerData.user.id).maybeSingle(),
       adminClient.from("profiles").select("id,status,role,person_id,display_name").eq("id", targetAccountId).maybeSingle(),
     ]);
+    if (callerProfileError) throw callerProfileError;
+    if (targetProfileError) throw targetProfileError;
     if (!caller || !target) return json({ status: "failed", message: "Account not found." }, 404);
     if (!selfDelete && (caller.status !== "active" || caller.role !== "admin")) return json({ status: "failed", message: "Not authorized." }, 403);
     if (typeof body.confirmation !== "string" || body.confirmation.trim() !== target.display_name.trim()) {
@@ -35,14 +37,16 @@ Deno.serve(async (request: Request) => {
     }
 
     if (target.status === "active" && target.role === "admin") {
-      const { count } = await adminClient.from("profiles").select("id", { count: "exact", head: true }).eq("status", "active").eq("role", "admin").neq("id", targetAccountId);
+      const { count, error: countError } = await adminClient.from("profiles").select("id", { count: "exact", head: true }).eq("status", "active").eq("role", "admin").neq("id", targetAccountId);
+      if (countError) throw countError;
       if ((count ?? 0) === 0) return json({ status: "blocked", message: "Assign another active administrator before deleting this account." });
     }
 
     let providerRevoked = false;
     if (selfDelete && callerData.user.app_metadata?.provider === "google" && typeof body.providerToken === "string" && body.providerToken.length > 0) {
-      const response = await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(body.providerToken)}`, { method: "POST" });
-      providerRevoked = response.ok;
+      providerRevoked = await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(body.providerToken)}`, { method: "POST" })
+        .then((response) => response.ok)
+        .catch(() => false);
     }
 
     const { error: auditError } = await adminClient.from("audit_events").insert({
