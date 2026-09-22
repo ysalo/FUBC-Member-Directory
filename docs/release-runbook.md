@@ -15,6 +15,15 @@ Confirm that:
 - The previous Vercel production deployment is still available for rollback.
 - Any required Supabase migrations and Edge Functions have been applied and verified manually.
 
+Before enabling this process, audit **Vercel project settings** for `fubc-member-directory`:
+
+- Remove every Deploy Hook that can create a production deployment.
+- Confirm the Git production branch is `main`; `mobile/vercel.json` disables Git-triggered deployments from that branch.
+- Confirm no external CI service or integration has a Vercel token that can deploy this project.
+- Limit project administration and production deployment access to trusted repository administrators.
+
+The repository enforces GitHub Release publication as its only automated production path. A Vercel project administrator can still deploy or promote manually in the Vercel dashboard; reserve that access for documented emergency rollback only.
+
 Do not publish a release containing backend-dependent client changes until the backend is ready. Do not run an unreconciled `supabase db push`.
 
 ## 1. Prepare the Release PR

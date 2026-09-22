@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 
 test('production build fails closed without backend settings', () => {
@@ -45,4 +45,23 @@ test('Vercel does not cache the installed app shell across deployments', async (
 test('Vercel does not deploy production from main Git pushes', async () => {
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
   assert.equal(config.git.deploymentEnabled.main, false);
+});
+
+test('the published GitHub Release workflow is the only repository production deploy path', async () => {
+  const workflowsUrl = new URL('../../.github/workflows/', import.meta.url);
+  const workflowNames = await readdir(workflowsUrl);
+  const productionWorkflows = [];
+
+  for (const workflowName of workflowNames.filter((name) => /\.ya?ml$/.test(name))) {
+    const workflow = await readFile(new URL(workflowName, workflowsUrl), 'utf8');
+    if (/--prod|vercel@[^\s]+\s+promote|environment:\s*production/.test(workflow)) productionWorkflows.push(workflowName);
+  }
+
+  assert.deepEqual(productionWorkflows, ['release.yml']);
+  const releaseWorkflow = await readFile(new URL('release.yml', workflowsUrl), 'utf8');
+  assert.match(releaseWorkflow, /release:\s*\n\s+types:\s*\[published\]/);
+  assert.doesNotMatch(releaseWorkflow, /workflow_dispatch|push:\s*\n\s+tags:/);
+
+  const legacyConfig = JSON.parse(await readFile(new URL('../../web/vercel.json', import.meta.url), 'utf8'));
+  assert.equal(legacyConfig.git.deploymentEnabled, false);
 });
