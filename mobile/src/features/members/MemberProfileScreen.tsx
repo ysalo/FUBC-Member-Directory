@@ -579,8 +579,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     {desktop ? (
                         <View style={styles.desktopColumns}>
                             <View style={styles.desktopContactColumn}>
-                                {deaconsSection}
                                 {contactSection}
+                                {deaconsSection}
                                 {ministriesSection}
                             </View>
                             <View style={styles.desktopDetailsColumn}>
@@ -589,8 +589,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                         </View>
                     ) : (
                         <>
-                            {deaconsSection}
                             {contactSection}
+                            {deaconsSection}
                             {detailsSection}
                             {ministriesSection}
                         </>
