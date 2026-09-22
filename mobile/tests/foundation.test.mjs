@@ -71,18 +71,17 @@ test('member profiles load active responsible deacons from their membership grou
   await assert.rejects(createRepository({ assignmentError: { message: 'Lookup failed' } }).repository.getProfile('member'), /Lookup failed/);
 });
 
-test('member profiles reuse compact directory cards above Contact in both layouts only when deacons exist', async () => {
+test('member profiles show linked deacon avatars above Contact in both layouts only when deacons exist', async () => {
   const profile = await readFile(new URL('../src/features/members/MemberProfileScreen.tsx', import.meta.url), 'utf8');
-  const directory = await readFile(new URL('../src/features/directory/DirectoryScreen.tsx', import.meta.url), 'utf8');
-  assert.match(profile, /import \{ MemberRow \} from "@\/features\/directory\/DirectoryScreen"/);
+  assert.doesNotMatch(profile, /MemberRow/);
   assert.match(profile, /const deaconsSection = profile\.responsibleDeacons\?\.length \?/);
   assert.match(profile, /Responsible deacons/);
   assert.match(profile, /Відповідальні диякони/);
-  assert.match(profile, /<MemberRow\s+compact\s+item=\{deacon\}/);
-  assert.match(profile, /router\.push\(`\/members\/\$\{deacon\.id\}`\)/);
+  assert.match(profile, /<Link href=\{`\/members\/\$\{deacon\.id\}`\} key=\{deacon\.id\} asChild>/);
+  assert.match(profile, /accessibilityLabel=\{`\$\{deacon\.name\}, \$\{copy\.profile\}`\}/);
+  assert.match(profile, /<ProfileAvatar name=\{deacon\.name\} size=\{64\} source=\{deacon\.avatar\}/);
+  assert.match(profile, /deaconAvatars: \{ flexDirection: "row", flexWrap: "wrap"/);
   assert.equal([...profile.matchAll(/\{deaconsSection\}\s*\{contactSection\}/g)].length, 2);
-  assert.match(directory, /export function MemberRow/);
-  assert.match(directory, /const desktop = useDesktopLayout\(\) && !compact/);
 });
 
 const actor = (role = 'member', leadershipMinistry = null, status = 'active') => ({ id: 'viewer', role, leadershipMinistry, status });

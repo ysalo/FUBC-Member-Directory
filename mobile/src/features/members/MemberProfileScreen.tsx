@@ -18,7 +18,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
-import { MemberRow } from "@/features/directory/DirectoryScreen";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { formatPhoneNumber } from "@/lib/phone";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -151,16 +150,20 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
 
     const deaconsSection = profile.responsibleDeacons?.length ? (
         <Section title={locale === "uk" ? "Відповідальні диякони" : "Responsible deacons"}>
-            {profile.responsibleDeacons.map((deacon) => (
-                <MemberRow
-                    compact
-                    item={deacon}
-                    key={deacon.id}
-                    locale={locale}
-                    ministry={locale === "uk" ? deacon.ministryUk : deacon.ministry}
-                    onPress={() => router.push(`/members/${deacon.id}`)}
-                />
-            ))}
+            <View style={styles.deaconAvatars}>
+                {profile.responsibleDeacons.map((deacon) => (
+                    <Link href={`/members/${deacon.id}`} key={deacon.id} asChild>
+                        <Pressable
+                            accessibilityLabel={`${deacon.name}, ${copy.profile}`}
+                            accessibilityRole="link"
+                            style={styles.deaconAvatarLink}
+                            {...(Platform.OS === "web" ? { title: deacon.name } : {})}
+                        >
+                            <ProfileAvatar name={deacon.name} size={64} source={deacon.avatar} />
+                        </Pressable>
+                    </Link>
+                ))}
+            </View>
         </Section>
     ) : null;
     const contactSection = (
@@ -958,6 +961,8 @@ const styles = StyleSheet.create({
     },
     visitButtonText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
     section: { gap: 8 },
+    deaconAvatars: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 12 },
+    deaconAvatarLink: { width: 64, height: 64, borderRadius: 32 },
     sectionTitle: { fontSize: 19, fontWeight: "800" },
     card: {
         borderCurve: "continuous",
