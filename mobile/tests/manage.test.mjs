@@ -377,6 +377,59 @@ test("management keeps pending approvals visible and preserves actionable load f
     assert.match(gate, /Check again/);
 });
 
+test("managed navigation exposes the pending approval count badge", async () => {
+    const [repository, hook, nativeLayout, webShell, webTabs, localization] =
+        await Promise.all([
+            readFile(
+                new URL(
+                    "../src/features/manage/management-repository.ts",
+                    import.meta.url,
+                ),
+                "utf8",
+            ),
+            readFile(
+                new URL(
+                    "../src/features/manage/use-pending-account-count.ts",
+                    import.meta.url,
+                ),
+                "utf8",
+            ),
+            readFile(new URL("../src/app/_layout.tsx", import.meta.url), "utf8"),
+            readFile(
+                new URL(
+                    "../src/features/shell/WebAppShell.web.tsx",
+                    import.meta.url,
+                ),
+                "utf8",
+            ),
+            readFile(
+                new URL("../src/features/shell/WebTabBar.tsx", import.meta.url),
+                "utf8",
+            ),
+            readFile(
+                new URL(
+                    "../src/features/localization/LocalizationProvider.tsx",
+                    import.meta.url,
+                ),
+                "utf8",
+            ),
+        ]);
+    assert.match(repository, /loadPendingAccountCount/);
+    assert.match(repository, /status === "pending"/);
+    assert.match(repository, /canManageAccounts\(activeAccount\(\)\)/);
+    assert.match(hook, /usePendingAccountCount/);
+    assert.match(hook, /subscribeAccountChanges/);
+    assert.match(hook, /visibilitychange/);
+    assert.match(nativeLayout, /Trigger\.Badge hidden=\{pendingAccountCount === 0\}/);
+    assert.match(nativeLayout, /pendingAccountCount > 99 \? "99\+"/);
+    assert.match(webShell, /item\.key === "manage" && pendingAccountCount > 0/);
+    assert.match(webShell, /copy\.pendingAccounts/);
+    assert.match(webTabs, /tab\.labelKey === "manage" && pendingAccountCount > 0/);
+    assert.match(webTabs, /pendingAccountCount > 99 \? "99\+"/);
+    assert.match(localization, /pendingAccounts: "Accounts awaiting approval"/);
+    assert.match(localization, /pendingAccounts: "Облікові записи, що очікують схвалення"/);
+});
+
 test("directory creation stays management-only and personal deletion stays collapsed", async () => {
     const [directory, menu] = await Promise.all([
         readFile(

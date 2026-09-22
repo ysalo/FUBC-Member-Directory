@@ -18,7 +18,28 @@ import type {
     ManagementState,
 } from "./model";
 
+export type AccountChangeListener = () => void;
+
 export class SupabaseManagementRepository {
+    private readonly accountChangeListeners = new Set<AccountChangeListener>();
+
+    subscribeAccountChanges(listener: AccountChangeListener) {
+        this.accountChangeListeners.add(listener);
+        return () => this.accountChangeListeners.delete(listener);
+    }
+
+    private notifyAccountChanges() {
+        for (const listener of this.accountChangeListeners) listener();
+    }
+
+    async loadPendingAccountCount(): Promise<number> {
+        if (!canManageAccounts(activeAccount())) return 0;
+        const accounts = unwrap(
+            await requireSupabase().rpc("management_accounts", {}),
+        );
+        return accounts.filter((account) => account.status === "pending").length;
+    }
+
     async load(): Promise<ManagementState> {
         const actor = activeAccount();
         if (!canManageDirectory(actor))
@@ -230,6 +251,7 @@ export class SupabaseManagementRepository {
                               : (snapshot.personId ?? null),
                 }),
             );
+            this.notifyAccountChanges();
         }
         return action.type === "toggle-member-archive"
             ? this.load()
@@ -550,6 +572,21 @@ function personData(person: PersonRow) {
 }
 class InMemoryManagementRepository {
     private state = structuredClone(initialManagementState);
+    private readonly accountChangeListeners = new Set<AccountChangeListener>();
+
+    subscribeAccountChanges(listener: AccountChangeListener) {
+        this.accountChangeListeners.add(listener);
+        return () => this.accountChangeListeners.delete(listener);
+    }
+
+    private notifyAccountChanges() {
+        for (const listener of this.accountChangeListeners) listener();
+    }
+
+    async loadPendingAccountCount() {
+        return this.state.accounts.filter((account) => account.status === "pending").length;
+    }
+
     async load() {
         return structuredClone(this.state);
     }
@@ -862,6 +899,7 @@ class InMemoryManagementRepository {
     }
     async apply(state: ManagementState, action: ManagementAction) {
         this.state = managementReducer(state, action);
+        if (action.type !== "toggle-member-archive") this.notifyAccountChanges();
         return this.load();
     }
 }
