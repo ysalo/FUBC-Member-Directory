@@ -20,6 +20,18 @@ export class MemberDeletionError extends Error {
   }
 }
 
+export async function deleteMembers(requests: readonly DeleteMemberRequest[]) {
+  const completed: DeleteMemberResult[] = [];
+  for (const request of requests) {
+    try {
+      completed.push(await deleteMember(request));
+    } catch (cause) {
+      return { completed, failedPersonId: request.personId, error: cause instanceof MemberDeletionError ? cause.code : "unexpected" };
+    }
+  }
+  return { completed, failedPersonId: null, error: null };
+}
+
 export async function deleteMember(request: DeleteMemberRequest): Promise<DeleteMemberResult> {
   const { data, error } = await requireSupabase().functions.invoke("delete-member", { body: request });
   if (error) {

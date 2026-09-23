@@ -2,6 +2,16 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Bulk Member Deletion
+
+Implemented on `feature/manage-member-bulk-delete`, based on current `dev`. The Members list supports administrator-only multi-selection, select-all-shown, clear selection, and a typed-confirmation review of every selected name. Search, filter, panel, account, and reload changes clear selection. The caller's linked member is excluded. Accounts-only deletion is not part of this feature.
+
+The client calls the existing `delete-member` Edge Function sequentially with each reviewed name and revision. Existing server authorization, self-deletion, revision, and last-administrator guards remain authoritative. Processing stops on the first failure; the dialog reports confirmed deletions separately from unprocessed or uncertain records and reloads on close. A failed member may already have lost linked sign-in access or photos. No new migrations, Edge Function deployments, notification scheduling, or persistent data storage are introduced.
+
+Verification: focused selection/confirmation/batch regressions, `pnpm verify`, and `pnpm build:web` passed. The built local app was checked with synthetic in-page backend responses at 1440x1000 and 390x844, including direct Manage load, self-selection exclusion, disabled confirmation, cancel with zero deletion requests, partial failure, and refreshed remaining rows. Desktop/mobile confirmation screenshots were inspected and no horizontal overflow was found. No real members were deleted. Physical-device, live OAuth, authenticated Vercel Preview, and live deletion checks remain unperformed.
+
+Delivery is a feature PR into `dev`; CI/review and authenticated Preview remain merge gates. A separate reviewed `dev` to `main` PR is required for production. Verify the existing deletion endpoint on disposable records before production release, and retain the previous Vercel deployment for rollback; deleted member data itself cannot be recovered by rolling back the client.
+
 ## Member Administrator Permissions
 
 Work in progress on `feature/member-administrator-permissions`, based on `dev` at `3803eeb`. Uncommitted changes were transferred from `main`, preserving the member-name and session-recovery changes already in `dev`. Neither protected branch was committed to or pushed.
