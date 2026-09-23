@@ -107,6 +107,7 @@ test('profile loading renders data before photos and ignores old member or sessi
   let cursor = 0;
   let focus;
   let scope = 'account:1';
+  let desktop = true;
   const dataRequests = [];
   const photoRequests = [];
   const jsx = (type, props) => ({ type, props });
@@ -122,7 +123,7 @@ test('profile loading renders data before photos and ignores old member or sessi
     if (id === 'expo-router') return { useRouter: () => ({}), useFocusEffect: callback => { focus = callback; } };
     if (id === 'react-native') return { StyleSheet: { create: value => value, absoluteFill: {} }, Platform: { OS: 'web' } };
     if (id === 'react-native-safe-area-context') return { useSafeAreaInsets: () => ({ top: 0 }) };
-    if (id.endsWith('use-desktop-layout')) return { useDesktopLayout: () => true };
+    if (id.endsWith('use-desktop-layout')) return { useDesktopLayout: () => desktop };
     if (id.endsWith('AppearanceProvider')) return { useAppearance: () => ({ palette: {} }) };
     if (id.endsWith('SessionProvider')) return { useSession: () => ({ status: 'ready', account: { role: 'member' } }) };
     if (id.endsWith('LocalizationProvider')) return { useLocalization: () => ({ locale: 'en' }) };
@@ -130,14 +131,15 @@ test('profile loading renders data before photos and ignores old member or sessi
     if (id === '@/lib/session-cache') return { sessionCacheScope: () => { if (!scope) throw new Error('Signed out'); return scope; }, subscribeDataChanges: () => () => {} };
     if (id === './member-repository') return { memberProfileRepository: {
       getProfile: memberId => new Promise(resolve => dataRequests.push({ memberId, resolve })),
-      hydratePhotos: (profile, variant, part) => new Promise(resolve => photoRequests.push({ profile, part, resolve })),
+      hydratePhotos: (profile, variant, part) => new Promise((resolve, reject) => photoRequests.push({ profile, part, resolve, reject })),
     } };
-    if (id === './ProfileAvatar') return { hasImageSource: photo => Boolean(photo?.uri), avatarSourceIdentity: photo => photo?.uri ?? '' };
+    if (id === './ProfileAvatar') return { ProfileAvatar: 'ProfileAvatar', hasImageSource: photo => Boolean(photo?.uri), avatarSourceIdentity: photo => photo?.uri ?? '' };
     if (id === '@/lib/permissions') return { canCreateVisit: () => false };
     return {};
   }, exports);
   const render = memberId => { cursor = 0; return exports.MemberProfileScreen({ memberId }); };
   const settle = () => new Promise(resolve => setImmediate(resolve));
+  const containsInitials = node => Array.isArray(node) ? node.some(containsInitials) : Boolean(node && typeof node === 'object' && (node.type === 'ProfileAvatar' || containsInitials(node.props?.children)));
   const profile = id => ({ id, name: id, nameUk: id, photo: {}, photoPaths: { portrait: `${id}.jpg`, deacons: {} }, ministries: [], ministriesUk: [], membershipGroup: '', leadershipMinistry: null });
   assert.equal(render('first').props.loading, true);
   let cleanup = focus();
@@ -146,6 +148,10 @@ test('profile loading renders data before photos and ignores old member or sessi
   assert.equal(slots[0].profile.name, 'first');
   assert.equal(photoRequests.length, 2);
   assert.equal(render('first').props.loading, undefined);
+  for (const layout of [true, false]) {
+    desktop = layout;
+    assert.equal(containsInitials(render('first')), false, 'Known portrait must not flash initials while signing');
+  }
   cleanup();
   render('first'); cleanup = focus();
   assert.equal(slots[0].profile.name, 'first');
@@ -158,11 +164,38 @@ test('profile loading renders data before photos and ignores old member or sessi
   await settle();
   assert.equal(slots[0].profile.id, 'second');
   assert.deepEqual(slots[0].profile.photo, {});
+  photoRequests.find(item => item.profile.id === 'second' && item.part === 'portrait').reject(new Error('Signing failed'));
+  await settle();
+  for (const layout of [true, false]) {
+    desktop = layout;
+    assert.equal(containsInitials(render('second')), true, 'Failed signing must restore initials');
+  }
   scope = null;
   assert.equal(render('second').props.loading, true);
   photoRequests.at(-1).resolve({ ...profile('second'), photo: { uri: 'private.jpg' } });
   await settle();
   assert.deepEqual(slots[0].profile.photo, {});
+  cleanup();
+  scope = 'account:2';
+  render('no-photo'); cleanup = focus();
+  dataRequests.at(-1).resolve({ ...profile('no-photo'), photoPaths: { portrait: null, deacons: {} } });
+  await settle();
+  assert.equal(containsInitials(render('no-photo')), true, 'Members without photos retain their initials');
+  cleanup();
+  render('with-photo'); cleanup = focus();
+  dataRequests.at(-1).resolve(profile('with-photo'));
+  await settle();
+  photoRequests.find(item => item.profile.id === 'with-photo' && item.part === 'deacons').resolve(profile('with-photo'));
+  await settle();
+  assert.equal(containsInitials(render('with-photo')), false, 'Deacon completion must not clear portrait loading');
+  photoRequests.find(item => item.profile.id === 'with-photo' && item.part === 'portrait').resolve({ ...profile('with-photo'), photo: { uri: 'portrait.jpg' } });
+  await settle();
+  for (const layout of [true, false]) {
+    desktop = layout;
+    assert.equal(containsInitials(render('with-photo')), false, 'Successful portrait loads without initials');
+  }
+  assert.equal(slots[0].profile.photo.uri, 'portrait.jpg');
+  assert.equal(slots[0].portraitPending, false);
   cleanup();
 });
 

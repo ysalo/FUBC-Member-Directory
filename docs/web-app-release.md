@@ -2,6 +2,12 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Profile Portrait Loading Fix
+
+Implemented on `fix/profile-avatar-flash`. Profiles with a known photo path reserve a neutral portrait area while the signed source is pending instead of briefly displaying initials. Details still render immediately, and retained portraits remain visible during same-member refreshes. Members without photos and failed signing/image requests retain the initials fallback. Portrait completion is independent of deacon-avatar loading and remains protected by the existing member/session request guards.
+
+The focused screen-state regression covers desktop/mobile pending, successful, failed, and absent portraits plus obsolete responses. Physical-device and authenticated Preview checks are not implied by these tests.
+
 ## Home-Screen Icon and Name
 
 Implemented on `feature/home-screen-icon-name`. New web installs suggest `Довідник` through both manifest names and Apple's home-screen title metadata. Standard 192/512px and Apple 180px icons use the existing church logo at 86% of tile height on white. Android has a separate maskable icon with the artwork inside the central 80%-diameter safe area. Native app names/icons and in-app language preferences are unchanged.
