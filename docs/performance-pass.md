@@ -5,8 +5,8 @@
 - Prioritize the native Expo app with fewer than 1,000 members; retain web regression checks.
 - Use existing Supabase and Vercel infrastructure only. No new cache server, API proxy, SSR app, or deployment service.
 - Deliver small `feature/*` branches from `dev`, review feature PRs into `dev`, then open one gated `dev -> main` release PR. No direct commits to either protected branch.
-This local slice combines a reproducible group-query baseline with the confirmed N+1 fix, session-scoped directory caching, and directory search work. It is on `feature/perf-baseline`, based on `origin/dev` at `3de310d`. It has not been committed, pushed, merged, or deployed. GitHub CLI was unavailable during implementation.
-- No database migration, dependency change, version bump, cache policy change, or UI redesign is included in this slice.
+- The initial pass combined the group-query fix, directory caching/search, visitation paging, loading states, and cleanup. It was merged through feature PR #30 and release PR #31 (`main` merge `08dcfa2`). This records Git delivery, not independent production smoke verification.
+- The pass changed client memory caching and removed unused direct dependencies. It did not add infrastructure or require a database migration or RPC contract change.
 - The cache is memory-only, keyed by account ID and account revision, expires after 30 seconds, deduplicates in-flight reads, and clears on session-scope changes or explicit invalidation. It never persists private data and does not replace authorization checks.
 
 ## Environment
@@ -19,7 +19,7 @@ Checks passed for cache TTL, concurrent deduplication, rejected loads, explicit 
 
 ## Slice 3: Visitation Paging and Loading States
 
-The visitation repository now exposes `listPage(mode, offset, limit)` with a default page size of 50 in both the Supabase and in-memory adapters. The existing `list()` method remains as a compatibility wrapper for callers that genuinely need the complete history. The list screen loads the first page, appends later pages with ID deduplication, and exposes localized loading-more state. Hydration now uses keyed maps for accounts, people, leadership and recipients instead of repeated nested `find`/`filter` scans. Cold directory and visitation loads use an accessible skeleton primitive; refresh behavior remains separate.
+The visitation repository now exposes `listPage(mode, offset, limit)` with a default page size of 50 in both the Supabase and in-memory adapters. The existing `list()` method remains as a compatibility wrapper for callers that genuinely need the complete history. The list screen loads the first page, appends later pages with ID deduplication, and exposes localized loading-more state. Hydration now uses keyed maps for accounts, people, leadership and recipients instead of repeated nested `find`/`filter` scans. The 1.1.3 follow-up replaces the generic skeleton with screen-specific placeholders sharing the loaded row/card styles; see `web-app-release.md` for measurements and limitations.
 
 The current screen still uses its existing scroll container for card presentation. Page-sized fetching reduces payload and hydration work, but native virtualization of visitation cards remains a follow-up item and must be implemented with a section/list container without nesting virtualized and scrolling containers.
 

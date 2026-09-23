@@ -8,7 +8,6 @@ import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } fro
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
-import { LoadingSkeleton } from "@/features/shell/LoadingSkeleton";
 import { formatFixedPdt } from "@/lib/dates";
 import { canCreateVisit } from "@/lib/permissions";
 
@@ -21,6 +20,38 @@ type ListState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; snapshot: RepositorySnapshot; visits: VisitListItem[]; nextOffset: number | null; loadingMore: boolean };
+
+function VisitSkeleton({ desktop, label }: { desktop: boolean; label: string }) {
+  return (
+    <View accessibilityLabel={label} accessibilityRole="progressbar" accessibilityState={{ busy: true }} aria-busy>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden style={[styles.listGroups, desktop && styles.desktopListGroups]}>
+        {[0, 1].map((section) => (
+          <View key={section} style={[styles.list, desktop && styles.desktopList]}>
+            <Text style={[styles.listHeading, styles.skeletonText, { width: 140 }]}>{"\u00a0"}</Text>
+            {[0, 1].map((row) => (
+              <View key={row} style={styles.visitCard}>
+                <View style={styles.visitTopline}>
+                  <View style={styles.skeletonText}><View style={{ opacity: 0 }}><StatusPill label=" " /></View></View>
+                </View>
+                <Text style={[styles.memberName, styles.skeletonText, { width: "70%" }]}>{"\u00a0"}</Text>
+                {[0, 1].map((line) => <View key={line} style={styles.metaRow}>
+                  <View style={{ width: 17 }} />
+                  <Text style={[styles.metaText, styles.skeletonText, { flex: 0, width: "65%" }]}>{"\u00a0"}</Text>
+                </View>)}
+                <View style={styles.responseList}>
+                  {[0, 1].map((person) => <View key={person} style={styles.responseRow}>
+                    <Text style={[styles.responseName, styles.skeletonText, { flex: 0, width: "55%" }]}>{"\u00a0"}</Text>
+                    <View style={[styles.skeletonText, { width: 80 }]}><View style={{ opacity: 0 }}><StatusPill label=" " /></View></View>
+                  </View>)}
+                </View>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export function VisitationListScreen() {
   const { locale } = useLocalization();
@@ -73,7 +104,7 @@ export function VisitationListScreen() {
   };
 
   const content = (() => {
-    if (state.status === "loading") return <View accessibilityLiveRegion="polite"><LoadingSkeleton rows={4} /><ScreenState icon="calendar-outline" loading title={c.loading} /></View>;
+    if (state.status === "loading") return <VisitSkeleton desktop={desktop} label={c.loading} />;
     if (state.status === "error") return <ScreenState actionLabel={c.retry} detail={state.message} icon="cloud-offline-outline" onAction={() => void load()} title={c.loadFailed} />;
     return (
       <>
@@ -97,24 +128,6 @@ export function VisitationListScreen() {
               })}
             </View>
           </SectionCard>
-        ) : null}
-
-        <View accessibilityRole="tablist" style={styles.segment}>
-          {(["current", "archive"] as const).map((value) => (
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityState={{ selected: mode === value }}
-              key={value}
-              onPress={() => setMode(value)}
-              style={[styles.segmentButton, mode === value && styles.segmentButtonActive]}
-            >
-              <Text style={[styles.segmentLabel, mode === value && styles.segmentLabelActive]}>{value === "current" ? c.current : c.archive}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {canCreateVisit(state.snapshot.actor) && mode === "current" ? (
-          <ActionButton icon="add" label={c.planVisit} onPress={() => router.push("/visitation/new" as Href)} />
         ) : null}
 
         {state.visits.length === 0 ? (
@@ -186,6 +199,7 @@ export function VisitationListScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView
+        testID="visitation-scroll"
         contentContainerStyle={[styles.content, desktop && styles.desktopContent]}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={visitColors.accent} onRefresh={() => { setRefreshing(true); void load(true); }} />}
@@ -196,6 +210,23 @@ export function VisitationListScreen() {
             <Ionicons accessibilityElementsHidden color={visitColors.text} name="refresh" size={22} />
           </Pressable>
         </View>
+        <View accessibilityRole="tablist" style={styles.segment}>
+          {(["current", "archive"] as const).map((value) => (
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mode === value, disabled: state.status === "loading" }}
+              disabled={state.status === "loading"}
+              key={value}
+              onPress={() => setMode(value)}
+              style={[styles.segmentButton, mode === value && styles.segmentButtonActive]}
+            >
+              <Text style={[styles.segmentLabel, mode === value && styles.segmentLabelActive]}>{value === "current" ? c.current : c.archive}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {canCreateVisit(state.status === "ready" ? state.snapshot.actor : account) && mode === "current" ? (
+          <ActionButton icon="add" label={c.planVisit} onPress={() => router.push("/visitation/new" as Href)} />
+        ) : null}
         {content}
       </ScrollView>
       <WebTabBar />
@@ -204,6 +235,7 @@ export function VisitationListScreen() {
 }
 
 const styles = StyleSheet.create({
+  skeletonText: { alignSelf: "flex-start", backgroundColor: visitColors.line, borderRadius: 4, color: "transparent" },
   desktopListGroups: { flexDirection: "row", alignItems: "flex-start", gap: 24 },
   desktopList: { flex: 1, minWidth: 0 },
   desktopContent: { maxWidth: 1120, paddingHorizontal: 32, paddingTop: 28 },

@@ -3,7 +3,6 @@ import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Link, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
     Platform,
     Pressable,
     ScrollView,
@@ -15,7 +14,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
-import { LoadingSkeleton } from "@/features/shell/LoadingSkeleton";
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
@@ -26,60 +24,6 @@ import { formatPhoneNumber } from "@/lib/phone";
 
 import { getDirectoryVisitCount, listDirectory } from "./directory-repository";
 import type { Member } from "./members";
-
-function SummaryAction({
-    accent,
-    label,
-    onPress,
-    ring = false,
-}: {
-    accent: string;
-    label: string;
-    onPress: () => void;
-    ring?: boolean;
-}) {
-    const { palette } = useAppearance();
-    return (
-        <Pressable
-            accessibilityRole="button"
-            onPress={onPress}
-            style={({ pressed }) => [
-                styles.summaryAction,
-                {
-                    backgroundColor: palette.elevated,
-                    borderColor: palette.line,
-                },
-                pressed && styles.pressed,
-            ]}
-        >
-            <View
-                style={[
-                    styles.statusMark,
-                    ring && styles.statusRing,
-                    {
-                        backgroundColor: ring ? "transparent" : accent,
-                        borderColor: accent,
-                        borderWidth: ring ? px(6) : 0,
-                    },
-                ]}
-            />
-            <Text
-                adjustsFontSizeToFit
-                minimumFontScale={0.88}
-                numberOfLines={ring ? 2 : 1}
-                style={[styles.summaryActionLabel, { color: palette.text }]}
-            >
-                {label}
-            </Text>
-            <Ionicons
-                accessibilityElementsHidden
-                color={palette.secondaryText}
-                name="chevron-forward"
-                size={px(21)}
-            />
-        </Pressable>
-    );
-}
 
 export function MemberRow({
     compact = false,
@@ -235,6 +179,36 @@ function isLeadershipMinistryLabel(
         ? normalized === "deacon" || normalized === "диякон"
         : leadershipMinistry === "pastor" &&
               (normalized === "pastor" || normalized === "пастор");
+}
+
+function DirectorySkeleton({ label }: { label: string }) {
+    const { palette } = useAppearance();
+    const desktop = useDesktopLayout();
+    const fill = { backgroundColor: palette.line, color: "transparent" };
+    return (
+        <View accessibilityLabel={label} accessibilityRole="progressbar" accessibilityState={{ busy: true }} aria-busy>
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden>
+                <Text style={styles.sectionLetter}>
+                    <Text style={fill}>{"\u00a0\u00a0"}</Text>
+                </Text>
+                {Array.from({ length: 8 }, (_, index) => (
+                    <View key={index} style={[styles.memberRow, desktop && styles.desktopMemberRow, { backgroundColor: palette.surface, borderBottomColor: palette.line }]}>
+                        <View style={[fill, { width: desktop ? 56 : 72, height: desktop ? 56 : 72, borderRadius: desktop ? 28 : 36 }]} />
+                        <View style={[styles.memberCopy, desktop && styles.desktopMemberCopy]}>
+                            <Text numberOfLines={1} style={[styles.memberName, styles.skeletonText, fill, { width: "70%" }]}>{"\u00a0"}</Text>
+                            {!desktop && <Text numberOfLines={1} style={[styles.memberMinistry, styles.skeletonText, fill, { width: "45%" }]}>{"\u00a0"}</Text>}
+                            {!desktop && <Text numberOfLines={1} style={[styles.memberPhone, styles.skeletonText, fill, { width: "55%" }]}>{"\u00a0"}</Text>}
+                        </View>
+                        {desktop && <>
+                            <View style={styles.desktopMinistry}><Text style={[styles.desktopMinistry, styles.skeletonText, fill, { flex: 0, width: "60%" }]}>{"\u00a0"}</Text></View>
+                            <View style={styles.desktopPhone}><Text style={[styles.desktopPhone, styles.skeletonText, fill, { width: "80%" }]}>{"\u00a0"}</Text></View>
+                        </>}
+                        <View style={{ width: px(22), height: px(22) }} />
+                    </View>
+                ))}
+            </View>
+        </View>
+    );
 }
 
 export function DirectoryScreen() {
@@ -584,20 +558,7 @@ export function DirectoryScreen() {
 
     const empty =
         loadState === "loading" ? (
-            <View style={styles.empty}>
-                <LoadingSkeleton rows={5} />
-                <ActivityIndicator color={palette.accent} />
-                <Text
-                    style={[
-                        styles.emptyDetail,
-                        { color: palette.secondaryText },
-                    ]}
-                >
-                    {locale === "uk"
-                        ? "Завантаження довідника…"
-                        : "Loading directory…"}
-                </Text>
-            </View>
+            <DirectorySkeleton label={locale === "uk" ? "Завантаження довідника…" : "Loading directory…"} />
         ) : loadState === "error" ? (
             <View style={styles.empty}>
                 <Text style={[styles.emptyTitle, { color: palette.text }]}>
@@ -677,6 +638,7 @@ export function DirectoryScreen() {
                     </View>
                 )}
                 <ScrollView
+                    testID="directory-scroll"
                     contentContainerStyle={styles.webContent}
                     keyboardShouldPersistTaps="handled"
                     style={styles.rosterScroll}
@@ -766,6 +728,7 @@ const scale = 1;
 const px = (value: number) => value * scale;
 
 const styles = StyleSheet.create({
+    skeletonText: { alignSelf: "flex-start", borderRadius: 4 },
     desktopScreen: {
         alignSelf: "center",
         maxWidth: 1200,
@@ -903,61 +866,6 @@ const styles = StyleSheet.create({
         minHeight: px(42),
     },
     doneText: { color: "#FFF", fontSize: px(15), fontWeight: "800" },
-    visitationPanel: {
-        borderRadius: px(16),
-        marginHorizontal: px(18),
-        marginTop: px(12),
-        paddingBottom: px(10),
-        paddingHorizontal: px(10),
-        paddingTop: px(14),
-    },
-    panelHeadingRow: {
-        alignItems: "center",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingBottom: px(8),
-        paddingHorizontal: px(1),
-    },
-    panelHeading: {
-        color: "#111722",
-        fontSize: px(21),
-        fontWeight: "800",
-        letterSpacing: px(-0.35),
-    },
-    viewAllAction: { alignItems: "center", flexDirection: "row" },
-    viewAll: {
-        color: "#6E7073",
-        fontSize: px(13),
-        fontWeight: "500",
-        marginRight: px(2),
-    },
-    summaryRow: { flexDirection: "row", gap: px(9) },
-    summaryAction: {
-        alignItems: "center",
-        backgroundColor: "#FFFFFF",
-        borderColor: "#DFDCD5",
-        borderRadius: px(12),
-        borderWidth: StyleSheet.hairlineWidth,
-        flex: 1,
-        flexDirection: "row",
-        minHeight: px(60),
-        paddingHorizontal: px(6),
-    },
-    statusMark: {
-        borderRadius: px(11),
-        flexShrink: 0,
-        height: px(22),
-        marginRight: px(6),
-        width: px(22),
-    },
-    statusRing: { borderRadius: px(19), height: px(38), width: px(38) },
-    summaryActionLabel: {
-        color: "#101622",
-        flex: 1,
-        fontSize: px(14),
-        fontWeight: "600",
-        lineHeight: px(18),
-    },
     sectionLetter: {
         color: "#4A4C4F",
         fontSize: px(17),
@@ -983,20 +891,6 @@ const styles = StyleSheet.create({
     },
     memberMinistry: { color: "#737477", fontSize: px(16), marginTop: px(2) },
     memberPhone: { fontSize: px(14), marginTop: px(2) },
-    filterRow: {
-        alignItems: "center",
-        flexDirection: "row",
-        gap: px(7),
-        marginHorizontal: px(20),
-        marginTop: px(10),
-    },
-    filterChip: {
-        borderRadius: px(16),
-        minHeight: px(34),
-        justifyContent: "center",
-        paddingHorizontal: px(12),
-    },
-    filterChipText: { fontSize: px(13), fontWeight: "700" },
     summaryFooter: {
         borderTopWidth: StyleSheet.hairlineWidth,
         flexDirection: "row",

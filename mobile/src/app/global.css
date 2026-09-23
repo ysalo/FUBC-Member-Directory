@@ -67,6 +67,9 @@ button, input, textarea, select { font: inherit; }
 ::-webkit-scrollbar-thumb { background: var(--app-secondaryText); border: 2px solid var(--app-background); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: var(--app-background); }
 
+[data-testid="directory-scroll"],
+[data-testid="visitation-scroll"] { scrollbar-gutter: stable; }
+
 .web-app-shell {
   display: flex;
   flex-direction: column;

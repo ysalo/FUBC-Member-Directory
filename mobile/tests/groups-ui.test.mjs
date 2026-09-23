@@ -57,7 +57,7 @@ test("icon attribution is tucked behind an accessible About sheet", async () => 
     assert.match(menu, /Constants\.expoConfig\?\.version/);
     assert.match(menu, /version: "Version"/);
     assert.match(menu, /version: "Версія"/);
-    assert.ok(menu.indexOf('styles.versionText') < menu.indexOf('labels.licenses'));
+    assert.match(menu, /styles\.versionText[\s\S]*labels\.licenses/);
     assert.doesNotMatch(menu, /1\.0\.0/);
     assert.match(menu, /Ionicons — MIT License/);
     assert.doesNotMatch(menu, /copy\.menu\.licenses/);
