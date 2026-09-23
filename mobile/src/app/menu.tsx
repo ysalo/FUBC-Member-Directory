@@ -107,7 +107,7 @@ export default function MenuRoute() {
             onPress={() => linkedMember && router.push(`/members/${linkedMember.id}` as never)}
             style={({ pressed }) => [styles.accountIdentity, pressed && styles.pressed]}
           >
-            <ProfileAvatar backgroundColor={palette.accentSoft} name={linkedMember ? (locale === "uk" ? linkedMember.nameUk : linkedMember.name) : session.account.displayName} source={linkedMember?.photo} textColor={palette.accent} size={58} />
+            <ProfileAvatar name={linkedMember ? (locale === "uk" ? linkedMember.nameUk : linkedMember.name) : session.account.displayName} source={linkedMember?.photo} size={58} />
             <View style={styles.identityCopy}>
               <Text selectable style={[styles.accountTitle, { color: palette.text }]}>{linkedMember ? (locale === "uk" ? linkedMember.nameUk : linkedMember.name) : session.account.displayName}</Text>
               {linkedMember ? <View style={styles.linkedRow}><Text style={[styles.accountName, { color: palette.accent }]}>{labels.linkedMember}</Text><Ionicons accessibilityElementsHidden color={palette.accent} name="chevron-forward" size={16} /></View> : null}

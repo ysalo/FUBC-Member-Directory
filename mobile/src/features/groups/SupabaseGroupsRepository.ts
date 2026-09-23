@@ -2,6 +2,8 @@ import { activeAccount, privatePhotoSources, unwrap } from "@/lib/repository-hel
 import { requireSupabase } from "@/lib/supabase";
 import type { AuthorizedBirthday, GroupDetail, GroupSummary, GroupsRepository, MinistryGroup } from "./groups-repository";
 
+const memberSummaryBatchSize = 100;
+
 export class SupabaseGroupsRepository implements GroupsRepository {
   async listGroups(): Promise<MinistryGroup[]> {
     activeAccount();
@@ -33,15 +35,20 @@ export class SupabaseGroupsRepository implements GroupsRepository {
   async getGroup(groupId: string): Promise<GroupDetail | null> {
     const group = (await this.listGroups()).find((candidate) => candidate.id === groupId);
     if (!group) return null;
-    const members = group.memberIds.length ? unwrap(await requireSupabase().from("people").select("id,name,photo_path").in("id", group.memberIds).is("archived_at", null).order("name")) : [];
-    const [details, leadershipRows] = await Promise.all([
-      Promise.all(members.map(async (member) => unwrap(await requireSupabase().rpc("member_profile_details", { p_person_id: member.id }))[0])),
-      members.length ? requireSupabase().from("person_leadership_ministries").select("person_id,leadership_ministry").in("person_id", members.map((member) => member.id)) : Promise.resolve({ data: [], error: null }),
-    ]);
-    const memberLeadership = unwrap(leadershipRows);
+    const client = requireSupabase();
+    const members = group.memberIds.length ? unwrap(await client.from("people").select("id,name,photo_path").eq("membership_group_id", group.id).is("archived_at", null).order("name")) : [];
+    const batches = Array.from({ length: Math.ceil(members.length / memberSummaryBatchSize) }, (_, index) =>
+      members.slice(index * memberSummaryBatchSize, (index + 1) * memberSummaryBatchSize).map((member) => member.id));
+    const summaries = (await Promise.all(batches.map(async (ids) => unwrap(await client.rpc("directory_active_members", {})
+      .select("id,leadership_ministry,is_orphan,is_widow").in("id", ids))))).flat();
+    const summaryById = new Map(summaries.map((summary) => [summary.id, summary]));
     const photos = await privatePhotoSources(members.map((person) => person.photo_path));
     const responsibleDeacons = group.responsibleDeacons ?? [];
-    return { ...group, members: members.map((member, index) => { const leadershipMinistry = memberLeadership.find((row) => row.person_id === member.id)?.leadership_ministry; return { id: member.id, name: member.name, photo: member.photo_path ? photos.get(member.photo_path) : undefined, leadershipMinistry: leadershipMinistry ?? undefined, isOrphan: details[index]?.orphan_status ?? undefined, isWidow: ["widowed", "widow", "вдова", "вдівець", "вдівець/вдова"].includes((details[index]?.marital_status ?? "").toLocaleLowerCase()) }; }), responsibleDeacons };
+    return { ...group, members: members.map((member) => {
+      const summary = summaryById.get(member.id);
+      return { id: member.id, name: member.name, photo: member.photo_path ? photos.get(member.photo_path) : undefined,
+        leadershipMinistry: summary?.leadership_ministry ?? undefined, isOrphan: summary?.is_orphan ?? undefined, isWidow: summary?.is_widow ?? false };
+    }), responsibleDeacons };
   }
   async getAuthorizedBirthdays(groupId: string): Promise<AuthorizedBirthday[]> {
     const actor = activeAccount();

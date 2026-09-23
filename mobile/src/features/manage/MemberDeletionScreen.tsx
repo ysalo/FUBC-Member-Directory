@@ -114,7 +114,7 @@ export function MemberDeletionScreen() {
     <Text selectable style={[styles.detail, { color: palette.secondaryText }]}>{copy.detail}</Text>
 
     <View style={[styles.identity, { backgroundColor: palette.surface }]}>
-      <MemberAvatar backgroundColor={palette.dangerSoft} name={member.name} source={member.photo} size={54} textColor={palette.danger} />
+      <MemberAvatar name={member.name} source={member.photo} size={54} />
       <View style={styles.flex}><Text selectable style={[styles.memberName, { color: palette.text }]}>{member.name}</Text>{member.group ? <Text numberOfLines={2} style={[styles.secondary, { color: palette.secondaryText }]}>{member.group}</Text> : null}</View>
     </View>
 

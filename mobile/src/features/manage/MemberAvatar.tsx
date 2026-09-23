@@ -9,10 +9,6 @@ type MemberAvatarProps = {
   name: string;
   source?: ImageSourcePropType;
   size?: number;
-  /** @deprecated Fallback tones are now assigned consistently from the member name. */
-  backgroundColor?: string;
-  /** @deprecated Fallback tones are now assigned consistently from the member name. */
-  textColor?: string;
 };
 
 export function MemberAvatar({ name, source, size = 112 }: MemberAvatarProps) {

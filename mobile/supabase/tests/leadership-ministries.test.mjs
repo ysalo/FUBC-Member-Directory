@@ -52,3 +52,44 @@ test("a replacement linked account derives leadership from the person ministry",
   await assert.rejects(db.query("update public.ministries set archived_at=now() where system_key='deacon'"), /protected ministries/);
   await assert.rejects(db.query("insert into public.person_ministries(person_id,ministry_id) select $1,id from public.ministries where system_key='pastor'", [ids.person]), /mutually exclusive/);
 });
+
+test("group summary batches use directory flags without exposing private columns or bypassing account approval", async () => {
+  const viewerId = "10000000-0000-4000-8000-000000000105";
+  const memberIds = [106, 107, 108, 109].map((suffix) => `10000000-0000-4000-8000-${String(suffix).padStart(12, "0")}`);
+  await db.exec("begin");
+  try {
+    await db.query("insert into auth.users(id,email) values($1,'performance-viewer@example.com')", [viewerId]);
+    for (const [index, personId] of memberIds.entries()) {
+      await db.query("insert into public.people(id,name,archived_at) values($1,$2,$3)", [personId, `Summary member ${index}`, index === 3 ? "2026-09-01" : null]);
+    }
+    await db.query("insert into public.people_private(person_id,orphan_status,marital_status,address,private_notes) values($1,true,null,'Private address','Private notes'),($2,false,'widowed',null,null)", memberIds.slice(0, 2));
+    await db.query("update public.profiles set person_id=$2 where id=$1", [viewerId, memberIds[0]]);
+    const projection = "select id,leadership_ministry,is_orphan,is_widow from public.directory_active_members() where id=any($1::uuid[]) order by id";
+    for (const role of ["member", "editor", "admin"]) {
+      for (const status of ["active", "pending", "denied", "revoked"]) {
+        await db.query("update public.profiles set role=$2::public.app_role,status=$3::public.account_status where id=$1", [viewerId, role, status]);
+        await db.exec("set local role authenticated");
+        await db.query("select set_config('request.jwt.claim.sub',$1,true)", [viewerId]);
+        const { rows } = await db.query(projection, [memberIds]);
+        await db.exec("reset role");
+        assert.deepEqual(rows, status === "active" ? [
+          { id: memberIds[0], leadership_ministry: null, is_orphan: true, is_widow: false },
+          { id: memberIds[1], leadership_ministry: null, is_orphan: false, is_widow: true },
+          { id: memberIds[2], leadership_ministry: null, is_orphan: false, is_widow: false },
+        ] : [], `${role}/${status}`);
+      }
+    }
+    await db.query("update public.profiles set status='active' where id=$1", [viewerId]);
+    await db.exec("set local role authenticated");
+    await db.query("select set_config('request.jwt.claim.sub',$1,true)", [viewerId]);
+    assert.equal((await db.query(projection, [[ids.person]])).rows[0].leadership_ministry, "deacon");
+    const columns = Object.keys((await db.query("select * from public.directory_active_members() where id=$1", [memberIds[0]])).rows[0]);
+    for (const privateColumn of ["birth_date", "address", "private_notes", "marital_status", "orphan_status"]) assert.ok(!columns.includes(privateColumn));
+    await db.query("select set_config('request.jwt.claim.sub','',true)");
+    assert.deepEqual((await db.query(projection, [memberIds])).rows, []);
+    await db.exec("reset role");
+    assert.equal((await db.query("select has_function_privilege('anon','public.directory_active_members()','execute') as allowed")).rows[0].allowed, false);
+  } finally {
+    await db.exec("rollback; reset role");
+  }
+});

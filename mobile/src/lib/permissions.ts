@@ -1,7 +1,7 @@
 import type { Account, Visit } from "./domain";
 
 type Actor = Pick<Account, "id" | "status" | "role" | "leadershipMinistry"> | null | undefined;
-export const isActive = (actor: Actor): boolean => actor?.status === "active";
+const isActive = (actor: Actor): boolean => actor?.status === "active";
 export const canReadDirectory = isActive;
 export const canManageDirectory = (actor: Actor): boolean => isActive(actor) && (actor?.role === "editor" || actor?.role === "admin");
 export const canManageAccounts = (actor: Actor): boolean => isActive(actor) && actor?.role === "admin";

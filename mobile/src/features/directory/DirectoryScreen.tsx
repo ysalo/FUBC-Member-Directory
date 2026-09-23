@@ -1,7 +1,7 @@
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Link, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Platform,
@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
+import { LoadingSkeleton } from "@/features/shell/LoadingSkeleton";
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
@@ -243,6 +244,7 @@ export function DirectoryScreen() {
     const { copy, locale } = useLocalization();
     const { palette } = useAppearance();
     const [query, setQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
     const [directoryMembers, setDirectoryMembers] = useState<Member[]>([]);
     const [loadState, setLoadState] = useState<"loading" | "error" | "ready">(
         "loading",
@@ -251,6 +253,15 @@ export function DirectoryScreen() {
     type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor";
     const [filters, setFilters] = useState<DirectoryFilter[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
+
+    useEffect(() => {
+        if (!query) {
+            setSearchQuery("");
+            return;
+        }
+        const timeout = setTimeout(() => setSearchQuery(query), 150);
+        return () => clearTimeout(timeout);
+    }, [query]);
 
     const loadDirectory = () => {
         setLoadState("loading");
@@ -264,47 +275,47 @@ export function DirectoryScreen() {
     };
     useFocusEffect(useCallback(loadDirectory, []));
 
-    const sections = useMemo(() => {
-        const needle = query.trim().toLocaleLowerCase();
+    const sortedDirectory = useMemo(() => {
         const surname = (name: string) =>
             name.trim().split(/\s+/).at(-1) ?? name;
-        const sorted = directoryMembers
-            .filter(
-                (member) =>
-                    filters.length === 0 ||
-                    filters.some((filter) =>
-                        filter === "orphan"
-                            ? member.isOrphan
-                            : filter === "widow"
-                              ? member.isWidow
-                              : member.leadershipMinistry === filter,
-                    ),
-            )
-            .filter(
-                (member) =>
-                    !needle ||
-                    `${member.name} ${member.ministry} ${member.ministryUk}`
-                        .toLocaleLowerCase()
-                        .includes(needle),
-            )
+        return directoryMembers
+            .map((member) => ({
+                member,
+                searchText: `${member.name} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase(),
+                surname: surname(member.name),
+            }))
             .sort(
                 (a, b) =>
-                    surname(a.name).localeCompare(surname(b.name), locale) ||
-                    a.name.localeCompare(b.name, locale),
+                    a.surname.localeCompare(b.surname, locale) ||
+                    a.member.name.localeCompare(b.member.name, locale),
             );
-        return sorted.reduce<Array<{ title: string; data: Member[] }>>(
+    }, [directoryMembers, locale]);
+
+    const sections = useMemo(() => {
+        const needle = searchQuery.trim().toLocaleLowerCase();
+        const filtered = sortedDirectory.filter(({ member, searchText }) =>
+            (filters.length === 0 ||
+                filters.some((filter) =>
+                    filter === "orphan"
+                        ? member.isOrphan
+                        : filter === "widow"
+                          ? member.isWidow
+                          : member.leadershipMinistry === filter,
+                )) && (!needle || searchText.includes(needle)),
+        );
+        return filtered.reduce<Array<{ title: string; data: Member[] }>>(
             (groups, member) => {
                 const title =
-                    surname(member.name).charAt(0).toLocaleUpperCase(locale) ||
+                    member.surname.charAt(0).toLocaleUpperCase(locale) ||
                     "#";
                 const existing = groups.at(-1);
-                if (existing?.title === title) existing.data.push(member);
-                else groups.push({ title, data: [member] });
+                if (existing?.title === title) existing.data.push(member.member);
+                else groups.push({ title, data: [member.member] });
                 return groups;
             },
             [],
         );
-    }, [directoryMembers, filters, locale, query]);
+    }, [filters, locale, searchQuery, sortedDirectory]);
 
     const filterOptions: Array<{ id: DirectoryFilter; label: string }> = [
         { id: "orphan", label: locale === "uk" ? "Сироти" : "Orphans" },
@@ -432,7 +443,10 @@ export function DirectoryScreen() {
                     accessibilityLabel={copy.directory.searchLabel}
                     autoCapitalize="none"
                     clearButtonMode="while-editing"
-                    onChangeText={setQuery}
+                    onChangeText={(nextQuery) => {
+                        setQuery(nextQuery);
+                        if (!nextQuery) setSearchQuery("");
+                    }}
                     placeholder={copy.directory.search}
                     placeholderTextColor={palette.secondaryText}
                     returnKeyType="search"
@@ -571,6 +585,7 @@ export function DirectoryScreen() {
     const empty =
         loadState === "loading" ? (
             <View style={styles.empty}>
+                <LoadingSkeleton rows={5} />
                 <ActivityIndicator color={palette.accent} />
                 <Text
                     style={[

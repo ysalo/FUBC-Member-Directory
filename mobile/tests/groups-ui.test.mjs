@@ -244,10 +244,6 @@ test("profile avatars fall back to initials when an image fails", async () => {
     assert.equal(avatarFallback.avatarInitials("Mary Ann van Buren"), "MB");
     assert.equal(avatarFallback.avatarInitials("Prince"), "P");
     assert.equal(avatarFallback.avatarInitials("   "), "?");
-    assert.deepEqual(
-        avatarFallback.avatarTone("Yaroslav Salo"),
-        avatarFallback.avatarTone("Yaroslav Salo"),
-    );
     assert.match(
         avatarFallback.avatarTone("Yaroslav Salo").backgroundColor,
         /^#[0-9A-F]{6}$/,

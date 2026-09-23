@@ -414,12 +414,7 @@ export function MemberFormScreen() {
                         <Text style={[styles.section, { color: palette.text }]}>
                             {labels.photo}
                         </Text>
-                        <MemberAvatar
-                            backgroundColor={palette.accentSoft}
-                            name={fullName}
-                            source={photoSource}
-                            textColor={palette.accent}
-                        />
+                        <MemberAvatar name={fullName} source={photoSource} />
                         <View style={styles.photoActions}>
                             <Pressable
                                 accessibilityRole="button"

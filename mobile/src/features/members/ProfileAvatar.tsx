@@ -8,10 +8,6 @@ type ProfileAvatarProps = {
   name: string;
   source?: ImageSourcePropType | null;
   size?: number;
-  /** @deprecated Fallback tones are now assigned consistently from the member name. */
-  backgroundColor?: string;
-  /** @deprecated Fallback tones are now assigned consistently from the member name. */
-  textColor?: string;
 };
 
 /** Directory/profile repositories default to an empty object when a person has no photo path. */

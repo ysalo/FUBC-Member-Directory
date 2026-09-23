@@ -789,12 +789,7 @@ function PersonRow({
                 pressed && styles.pressed,
             ]}
         >
-            <ProfileAvatar
-                backgroundColor={leader ? palette.accentSoft : palette.subtle}
-                name={member.name}
-                source={member.photo}
-                textColor={leader ? palette.accent : palette.text}
-            />
+            <ProfileAvatar name={member.name} source={member.photo} />
             <View style={styles.personCopy}>
                 <Text
                     selectable
