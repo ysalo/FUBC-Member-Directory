@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { formatPhoneNumber } from "@/lib/phone";
+import { formatMemberName } from "@/lib/member-name";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { getMemberCopy } from "./member-copy";
@@ -126,7 +127,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
             />
         );
 
-    const name = locale === "uk" ? profile.nameUk : profile.name;
+    const name = formatMemberName(locale === "uk" ? profile.nameUk : profile.name, profile.patronymic);
     const group =
         locale === "uk" ? profile.membershipGroupUk : profile.membershipGroup;
     const responsibilityGroup =

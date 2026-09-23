@@ -1,4 +1,5 @@
 import type { Session } from "@supabase/supabase-js";
+import { AppState, Platform } from "react-native";
 import type { Account } from "./domain";
 import { errorMessage } from "./async-state";
 import { getSupabase, requireSupabase } from "./supabase";
@@ -32,7 +33,8 @@ const revalidation = createSessionRevalidator<Account>({
         publish({ status: "error", account: null, error: errorMessage(cause) }),
     async load() {
         const contract = await requireSupabase().rpc("mobile_contract_version");
-        if (contract.error || contract.data !== "expo-directory-v3")
+        if (contract.error) throw contract.error;
+        if (contract.data !== "expo-directory-v3")
             throw new Error(
                 "The church connection needs an update before this app can sign in. Please contact an administrator.",
             );
@@ -71,9 +73,9 @@ export function startSession(): () => void {
     } = supabase.auth.onAuthStateChange((_event, session) => {
         authEventObserved = true;
         // Supabase auth callbacks must return before another async auth/data operation.
-        queueMicrotask(() => {
+        setTimeout(() => {
             if (mounted) void resolveAccount(session);
-        });
+        }, 0);
     });
     void supabase.auth.getSession().then(({ data, error }) => {
         if (!mounted || authEventObserved) return;
@@ -82,10 +84,24 @@ export function startSession(): () => void {
             publish({ status: "error", account: null, error: error.message });
         } else void resolveAccount(data.session);
     });
+    const recover = () => {
+        if (mounted && state.status === "error") void refreshSession().catch(() => {});
+    };
+    const visible = () => { if (document.visibilityState === "visible") recover(); };
+    const appState = AppState.addEventListener("change", (next) => { if (next === "active") recover(); });
+    if (Platform.OS === "web") {
+        window.addEventListener("online", recover);
+        document.addEventListener("visibilitychange", visible);
+    }
     return () => {
         mounted = false;
         revalidation.invalidate();
         subscription.unsubscribe();
+        appState.remove();
+        if (Platform.OS === "web") {
+            window.removeEventListener("online", recover);
+            document.removeEventListener("visibilitychange", visible);
+        }
     };
 }
 export async function refreshSession(): Promise<void> {

@@ -3,6 +3,7 @@ import type { ImageSourcePropType } from "react-native";
 export type Member = {
   id: string;
   name: string;
+  patronymic?: string | null;
   ministry: string;
   ministryUk: string;
   avatar: ImageSourcePropType;

@@ -57,6 +57,7 @@ export class SupabaseMemberProfileRepository implements MemberProfileRepository 
     const ministryNames = hasLoadedMinistries ? ordinaryMinistries.map((ministry) => ministry.name) : (person.ministry ? [person.ministry] : []);
     const ministryNamesUk = hasLoadedMinistries ? ordinaryMinistries.map((ministry) => ministry.name_uk || ministry.name) : ministryNames;
     const profile: MemberProfile = { id: person.id, name: person.name, nameUk: person.name, photo: {}, photoPaths: { portrait: person.photo_path, deacons: Object.fromEntries(deaconPeople.map((deacon) => [deacon.id, deacon.photo_path])) }, phone: person.phone ?? undefined, email: leadershipMinistry ? person.email ?? undefined : undefined, address: details?.address ?? undefined, birthDate: details?.birth_date ?? undefined, membershipJoinedAt: details?.membership_joined_at ?? undefined, maritalStatus: details?.marital_status ?? undefined, isOrphan: details?.orphan_status ?? undefined, leadershipMinistry, membershipGroup: group, membershipGroupUk: group, membershipGroupId: groupRow?.id, responsibleDeacons, responsibilityGroup: responsibilityGroup?.name, responsibilityGroupUk: responsibilityGroup?.name, responsibilityGroupId: responsibilityGroup?.id, ministries: ministryNames, ministriesUk: ministryNamesUk };
+    profile.patronymic = person.patronymic;
     return deferPhotos ? profile : this.hydratePhotos(profile, photoVariant);
   }
 }

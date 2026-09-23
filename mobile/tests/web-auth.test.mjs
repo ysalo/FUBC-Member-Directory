@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { safeReturnPath, createCallbackCompleter, recoverRootOAuthCallback } from '../src/features/session/web-oauth.ts';
-import { createSessionRevalidator } from '../src/lib/session-revalidation.ts';
+import { createSessionRevalidator, isTransientSessionError } from '../src/lib/session-revalidation.ts';
 
 function sessionHarness() {
   const pending = [];
@@ -68,6 +68,45 @@ test('same-user revalidation failures fail closed and invalidation suppresses st
   pending.shift().reject(new Error('Stale failure'));
   await stale;
   assert.equal(published.length, count);
+});
+
+test('temporary idle connection failures retry once without replacing the ready screen', async () => {
+  const published = [];
+  let attempts = 0;
+  let fail = false;
+  const resolver = createSessionRevalidator({
+    isReady: () => published.at(-1) === 'ready',
+    loading: () => published.push('loading'), signedOut: () => published.push('signed-out'),
+    ready: () => published.push('ready'), error: () => published.push('error'),
+    load: async () => { attempts++; if (fail && attempts % 2 === 0) throw { message: 'Failed to fetch' }; return {}; },
+  });
+  await resolver.resolve('user');
+  fail = true;
+  await resolver.resolve('user');
+  assert.equal(attempts, 3);
+  assert.deepEqual(published, ['loading', 'ready', 'ready']);
+});
+
+test('session retries are bounded and cannot restore access after sign-out', async () => {
+  for (const signOut of [false, true]) {
+    const published = [];
+    let attempts = 0;
+    const resolver = createSessionRevalidator({
+      isReady: () => false, loading: () => published.push('loading'),
+      signedOut: () => published.push('signed-out'), ready: () => published.push('ready'), error: () => published.push('error'),
+      load: async () => { attempts++; throw { status: 503, message: 'Unavailable' }; },
+    });
+    const pending = resolver.resolve('user');
+    await Promise.resolve();
+    if (signOut) await resolver.resolve(null);
+    await pending;
+    assert.equal(attempts, signOut ? 1 : 2);
+    assert.equal(published.at(-1), signOut ? 'signed-out' : 'error');
+  }
+  assert.equal(isTransientSessionError({ code: '42501', message: 'Permission denied' }), false);
+  assert.equal(isTransientSessionError({ status: 401, message: 'Expired JWT' }), false);
+  assert.equal(isTransientSessionError(new Error('The church connection needs an update')), false);
+  assert.equal(isTransientSessionError({ code: '', message: 'TypeError: Load failed' }), true);
 });
 
 test('native callback leaves the callback route without another token exchange', async () => {

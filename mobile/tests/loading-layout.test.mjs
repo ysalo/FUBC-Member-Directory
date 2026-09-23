@@ -6,6 +6,7 @@ import test from "node:test";
 import * as permissions from "../src/lib/permissions.ts";
 import * as dates from "../src/lib/dates.ts";
 import * as phone from "../src/lib/phone.ts";
+import * as memberName from "../src/lib/member-name.ts";
 import * as avatarFallback from "../src/features/members/avatar-fallback.ts";
 import { visitationCopy } from "../src/features/visitation/copy.ts";
 
@@ -55,6 +56,7 @@ function renderScreen({ screen = "directory", loading = true, desktop = false, s
     ["@/lib/permissions", permissions],
     ["@/lib/dates", dates],
     ["@/lib/phone", phone],
+    ["@/lib/member-name", memberName],
     ["./avatar-fallback", avatarFallback],
   ]);
   const load = (name) => {
