@@ -128,19 +128,29 @@ Do not rebuild an old commit as an untracked deployment. Use a new PR through `d
 - No repository, backend, permissions, notification, or migration changes are required. Application 1.1.1 remains backend-compatible for rollback.
 - Focused profile tests, full `pnpm verify`, and `pnpm build:web` are required before release. Browser and physical-device checks were omitted at the requester's direction.
 
-## Native Performance Pass: First Slice (Unreleased)
+## Native Performance Pass
 
-- Local branch `feature/perf-baseline` starts from `dev` at `3de310d`; no commit, push, PR, merge, version bump, or production deployment has been performed for this slice.
+- Delivered through feature PR #30 into `dev` and release PR #31 into `main` (merge `08dcfa2`). Deployment verification is separate from the merge record.
 - Group detail now reuses the existing directory-summary RPC in bounded 100-ID batches instead of one private-profile RPC per member. Fixture data requests fall from 57 to 7 for 50 members and from 1,006 to 16 for 999 members. Photo-signing counts are unchanged.
-- No new infrastructure, migration, RPC contract, permission, cache, or notification changes are required. The previous client remains backend-compatible.
+- No new infrastructure, migration, RPC contract, permission, or notification changes are required. The previous client remains backend-compatible.
 - Directory reads now use a 30-second memory-only, account/revision-scoped cache with in-flight deduplication and stale-response invalidation. Directory search keeps typing immediate while debouncing derived filtering and reuses a prepared normalized/sorted index. No private data is persisted.
 - Visitation reads now support 50-record pages with continuation and duplicate protection; hydration uses keyed maps, and cold directory/visitation screens show accessible skeletons. The existing full-list compatibility method remains for detail/domain callers. Native visitation card virtualization remains a follow-up because the current screen container has not been replaced yet.
 - Focused repository and real PostgreSQL projection/authorization tests passed, along with full `pnpm verify`, `pnpm build:web`, and iOS/Android bundle exports. Export success is not a physical-device performance check.
 - A local public Lighthouse baseline completed: performance 0.46, accessibility 0.88, best practices 1.00, SEO 0.54, LCP 15.1s, TBT 760ms, CLS 0. Authenticated preview and desktop/mobile repeated audits remain release gates.
 - Cleanup audit removed two unreachable files, four unused direct Expo dependencies, ignored avatar props, unused helper/export surfaces, and one tautological assertion. `@expo/ngrok` remains intentionally for `start:phone`; generated database types and deployment/runtime metadata were retained.
 - See [performance evidence and remaining slices](performance-pass.md) for reproducible measurements, bundle baselines, and pending cache/list/startup/Lighthouse work.
-- Before merging a feature PR into `dev`, complete CI/review, authenticated Vercel Preview checks at mobile and desktop sizes, group flags/order/photos, navigation/deep links, and native group-detail smoke checks. Live OAuth, physical-device timing, and Lighthouse were not performed in this slice. No hosted backend records were changed.
+- Authenticated Preview checks, group flags/order/photos, navigation/deep links, and native group-detail smoke checks require separate release evidence. Live OAuth and physical-device timing were not performed in this slice; the local public Lighthouse audit is recorded above. No hosted backend records were changed.
 - Release only through a separate reviewed `dev -> main` PR after the remaining performance work and release gates. Keep the retained web deployment and existing native recovery path available; the first slice needs no database rollback.
+
+## Loading Layout and Cleanup (1.1.3)
+
+- Directory placeholders reuse the real row and section styles, 72px phone/56px desktop avatars, scaled typography, separators, and desktop ministry/phone columns. The centered empty-state wrapper and extra spinner are gone. Existing rows remain visible during refresh.
+- Visitation placeholders use the actual visit-card and response-row styles. Tabs and authorized planning actions remain in place during loading; tabs are disabled until the initial request finishes. Web lists reserve scrollbar space to prevent width changes.
+- Removed the unused generic skeleton, unreachable directory summary/filter UI, four unused domain models, unused domain type exports, and the broken reset-project script. Deleted two obsolete/vacuous source-only tests and fixed three missing-element order assertions. Cache and rendered loading-state tests now run in `pnpm verify`.
+- Local full verification passed (129 main tests plus visitation/groups suites). Final web, iOS, and Android exports passed. Rendered fixture checks cover loading/loaded/error accessibility; browser measurements compare phone (390px) and desktop (1440px), standard/large text, light/dark themes, and English/Ukrainian variants. Representative row/card bounds match within 1px with no horizontal overflow.
+- Fixtures isolate repositories, navigation, and the optional duty banner. Unknown badge counts, variable invitees, wrapping data, and optional banners can still affect final content height. These checks are not authenticated Preview, live OAuth, or physical-device verification.
+- No backend changes, migration, permission changes, or new dependencies. Rollback target: retained production deployment from `08dcfa2` (application 1.1.2).
+- Release gates: feature PR into `dev`, CI/review and authenticated Preview, then separate reviewed `dev -> main` PR and production smoke checks. No production release is claimed by these local checks.
 
 ## Still required before production use
 

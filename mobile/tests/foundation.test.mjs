@@ -132,8 +132,8 @@ test('directory is the first tab on native and fallback tab bars', async () => {
     readFile(new URL('../src/app/_layout.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/features/shell/WebTabBar.tsx', import.meta.url), 'utf8'),
   ]);
-  assert.ok(nativeLayout.indexOf('<NativeTabs.Trigger name="(directory)"') < nativeLayout.indexOf('<NativeTabs.Trigger name="groups"'));
-  assert.ok(fallbackTabs.indexOf('{ labelKey: "directory"') < fallbackTabs.indexOf('{ labelKey: "groups"'));
+  assert.match(nativeLayout, /<NativeTabs.Trigger name="\(directory\)"[\s\S]*<NativeTabs.Trigger name="groups"/);
+  assert.match(fallbackTabs, /\{ labelKey: "directory"[\s\S]*\{ labelKey: "groups"/);
 });
 test('approval gates every role and leadership ministry including privileged roles', () => {
   for (const status of ['pending', 'denied', 'revoked']) for (const role of ['member', 'editor', 'admin']) for (const leadershipMinistry of [null, 'pastor', 'deacon']) {
@@ -258,7 +258,7 @@ test('visitation uses a nested stack and exposes both planning entry points to m
   ]);
   assert.match(layout, /<Stack/);
   assert.match(index, /<VisitationListScreen/);
-  assert.match(list, /canCreateVisit\(state\.snapshot\.actor\)/);
+  assert.match(list, /canCreateVisit\(state\.status === "ready" \? state\.snapshot\.actor : account\)/);
   assert.match(list, /router\.push\("\/visitation\/new"/);
   assert.match(profile, /canCreateVisit\(session\.account\)/);
   assert.match(profile, /pathname: "\/visitation\/new"/);
