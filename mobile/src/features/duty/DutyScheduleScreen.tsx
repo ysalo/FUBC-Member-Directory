@@ -1,8 +1,9 @@
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { useWarmResource } from "@/lib/use-warm-resource";
+import { ResourceRefresh } from "@/features/shell/ResourceRefresh";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -11,13 +12,12 @@ import type { Member } from "@/features/directory/members";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
-import { errorMessage } from "@/lib/async-state";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DeaconRow } from "./DeaconRow";
 import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
 import { currentPeriod, fridayBeforeSunday, nextPeriodForPerson, periodsByMonth, periodsForPerson, visibleSchedulePeriods, weekendLabel, type DutyCandidate } from "./duty-domain";
-import { dutyRepository, type DutyYear } from "./duty-repository";
+import { dutyRepository } from "./duty-repository";
 
 const labels = {
   en: {
@@ -107,21 +107,14 @@ export function DutyScheduleScreen() {
   const copy = labels[locale];
   const today = todayFixedPdt();
   const year = Number(today.slice(0, 4));
-  const [state, setState] = useState<{ status: "loading" | "error" | "ready"; year?: DutyYear; message?: string }>({ status: "loading" });
-
-  const load = useCallback(() => {
-    setState({ status: "loading" });
-    dutyRepository
-      .loadYear(year)
-      .then((loaded) => setState({ status: "ready", year: loaded }))
-      .catch((cause) => setState({ status: "error", message: errorMessage(cause) }));
+  const loader = useCallback(async (fresh: boolean) => {
+    const directoryMembers = await listDirectory({ fresh });
+    return { directoryMembers, year: await dutyRepository.loadYear(year, { fresh }) };
   }, [year]);
-  useFocusEffect(useCallback(load, [load]));
-
-  const [directoryMembers, setDirectoryMembers] = useState<Member[]>([]);
-  useFocusEffect(useCallback(() => {
-    listDirectory().then(setDirectoryMembers).catch(() => setDirectoryMembers([]));
-  }, []));
+  const resource = useWarmResource(`schedule:${year}`, loader);
+  const state = { status: resource.status, year: resource.data?.year };
+  const directoryMembers = resource.data?.directoryMembers ?? [];
+  const load = resource.refresh;
 
   const viewerPersonId = session.status === "ready" ? session.account.personId : null;
   const viewerIsDeacon = session.status === "ready" && session.account.leadershipMinistry === "deacon";
@@ -147,8 +140,9 @@ export function DutyScheduleScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={load} />}>
         <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
+        <ResourceRefresh error={resource.error && state.status === "ready"} refreshing={resource.refreshing} onRefresh={load} />
 
         {state.status === "loading" ? (
           <View style={styles.center}>

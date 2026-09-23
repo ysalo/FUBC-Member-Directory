@@ -1,4 +1,5 @@
 import type { VisitRow } from "@/lib/database";
+import { invalidateData } from "@/lib/session-cache";
 import {
     activeAccount,
     privatePhotoSources,
@@ -317,6 +318,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
         }));
     }
     private emit() {
+        invalidateData("visits");
         this.listeners.forEach((listener) => listener());
     }
     private raise(message: string): never {

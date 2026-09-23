@@ -28,12 +28,14 @@ function renderScreen({ screen = "directory", loading = true, desktop = false, s
   const actor = { id: "actor", status: "active", role: "member", leadershipMinistry: "deacon" };
   const members = Array.from({ length: 8 }, (_, index) => ({ id: String(index), name: `Member Adams`, ministry: "Choir", ministryUk: "Choir", phone: "2065550100", avatar: {}, leadershipMinistry: null }));
   const visits = ["actor", "other"].flatMap((plannerId) => [0, 1].map((index) => ({ id: `${plannerId}-${index}`, plannerId, plannerName: "Visit Organizer", memberName: "Member Adams", status: "open", scheduledAt: "2026-09-26T18:00:00Z", location: "101 Main Street", recipients: [{ accountId: plannerId === "actor" ? "other" : "actor", participantPersonId: "person", participantName: "Visit Participant", response: "pending" }] })));
-  const directoryState = ["", "", loading || error ? [] : members, error ? "error" : loading ? "loading" : "ready", 0, [], false];
+  const directoryState = ["", "", [], false];
   const visitState = ["current", error ? { status: "error", message: "Failed" } : loading ? { status: "loading" } : { status: "ready", snapshot: { actor }, visits, nextOffset: null, loadingMore: false }, false];
   let stateIndex = 0;
   const screenReact = { ...React, useState: () => [(screen === "directory" ? directoryState : visitState)[stateIndex++], () => {}] };
   const icon = ({ size, style }) => React.createElement(native.View, { style: [{ width: size, height: size }, style] });
   const modules = new Map([
+    ["@/lib/use-warm-resource", { useWarmResource: () => ({ data: loading || error ? undefined : { members, visits: 0 }, status: error ? "error" : loading ? "loading" : "ready", error, refreshing: false, refresh() {} }) }],
+    ["@/features/shell/ResourceRefresh", { ResourceRefresh: () => null }],
     ["react-native", native],
     ["react/jsx-runtime", require("react/jsx-runtime")],
     ["react-native-safe-area-context", { useSafeAreaInsets: () => ({ top: 0 }) }],

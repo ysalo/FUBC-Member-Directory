@@ -1,10 +1,13 @@
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { Link, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import { useWarmResource } from "@/lib/use-warm-resource";
+import { ResourceRefresh } from "@/features/shell/ResourceRefresh";
 import {
     Platform,
     Pressable,
+    RefreshControl,
     ScrollView,
     SectionList,
     StyleSheet,
@@ -24,6 +27,11 @@ import { formatPhoneNumber } from "@/lib/phone";
 
 import { getDirectoryVisitCount, listDirectory } from "./directory-repository";
 import type { Member } from "./members";
+
+async function loadDirectoryData(fresh: boolean) {
+    const [members, visits] = await Promise.all([listDirectory({ fresh }), getDirectoryVisitCount({ fresh })]);
+    return { members, visits };
+}
 
 export function MemberRow({
     compact = false,
@@ -219,11 +227,11 @@ export function DirectoryScreen() {
     const { palette } = useAppearance();
     const [query, setQuery] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
-    const [directoryMembers, setDirectoryMembers] = useState<Member[]>([]);
-    const [loadState, setLoadState] = useState<"loading" | "error" | "ready">(
-        "loading",
-    );
-    const [visitCount, setVisitCount] = useState(0);
+    const resource = useWarmResource("directory", loadDirectoryData);
+    const directoryMembers = resource.data?.members ?? [];
+    const loadState = resource.status;
+    const visitCount = resource.data?.visits ?? 0;
+    const loadDirectory = resource.refresh;
     type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor";
     const [filters, setFilters] = useState<DirectoryFilter[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
@@ -237,17 +245,6 @@ export function DirectoryScreen() {
         return () => clearTimeout(timeout);
     }, [query]);
 
-    const loadDirectory = () => {
-        setLoadState("loading");
-        Promise.all([listDirectory(), getDirectoryVisitCount()])
-            .then(([nextMembers, nextVisitCount]) => {
-                setDirectoryMembers(nextMembers);
-                setVisitCount(nextVisitCount);
-                setLoadState("ready");
-            })
-            .catch(() => setLoadState("error"));
-    };
-    useFocusEffect(useCallback(loadDirectory, []));
 
     const sortedDirectory = useMemo(() => {
         const surname = (name: string) =>
@@ -637,6 +634,7 @@ export function DirectoryScreen() {
                         <View style={{ width: 22 }} />
                     </View>
                 )}
+                <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
                 <ScrollView
                     testID="directory-scroll"
                     contentContainerStyle={styles.webContent}
@@ -684,8 +682,10 @@ export function DirectoryScreen() {
     return (
         <View style={[styles.safe, { backgroundColor: palette.background }]}>
             {stickyOverview}
+            <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
             <DutySummary directoryMembers={directoryMembers} locale={locale} />
             <SectionList
+                refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={loadDirectory} />}
                 contentContainerStyle={styles.content}
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"

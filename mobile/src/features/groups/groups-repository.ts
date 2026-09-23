@@ -30,7 +30,7 @@ export type GroupSummary = { total: number; orphans: number; widows: number };
 
 /** Boundary for the eventual Supabase view/RPC implementation. Never use UI filtering for authorization. */
 export interface GroupsRepository {
-  listGroups(): Promise<MinistryGroup[]>;
+  listGroups(options?: { fresh?: boolean }): Promise<MinistryGroup[]>;
   getGroup(groupId: string): Promise<GroupDetail | null>;
   getAuthorizedBirthdays(groupId: string): Promise<AuthorizedBirthday[]>;
   getBirthdayNotificationsEnabled(groupId: string): Promise<boolean>;

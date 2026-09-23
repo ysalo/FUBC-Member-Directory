@@ -6,6 +6,8 @@ import {
     unwrap,
 } from "@/lib/repository-helpers";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
+import { createSessionCache, invalidateData } from "@/lib/session-cache";
+import { thumbnailPath } from "@/lib/photo-cache";
 import { initialManagementState, managementReducer } from "./model";
 import type {
     GroupManagementState,
@@ -22,6 +24,7 @@ export type AccountChangeListener = () => void;
 
 export class SupabaseManagementRepository {
     private readonly accountChangeListeners = new Set<AccountChangeListener>();
+    private readonly pendingCountCache = createSessionCache<number>(["accounts"]);
 
     subscribeAccountChanges(listener: AccountChangeListener) {
         this.accountChangeListeners.add(listener);
@@ -29,15 +32,16 @@ export class SupabaseManagementRepository {
     }
 
     private notifyAccountChanges() {
+        invalidateData("directory", "groups", "duty", "visits", "accounts");
         for (const listener of this.accountChangeListeners) listener();
     }
 
     async loadPendingAccountCount(): Promise<number> {
         if (!canManageAccounts(activeAccount())) return 0;
-        const accounts = unwrap(
-            await requireSupabase().rpc("management_accounts", {}),
-        );
-        return accounts.filter((account) => account.status === "pending").length;
+        return this.pendingCountCache.load("pending", async () => {
+            const accounts = unwrap(await requireSupabase().rpc("management_accounts", {}));
+            return accounts.filter((account) => account.status === "pending").length;
+        });
     }
 
     async load(): Promise<ManagementState> {
@@ -164,7 +168,7 @@ export class SupabaseManagementRepository {
         const row = personResult.data;
         const groups = unwrap(groupsResult);
         const details = unwrap(detailsResult)[0];
-        const photos = await privatePhotoSources([row.photo_path]);
+        const photos = await privatePhotoSources([row.photo_path], "original");
         return {
             id: row.id,
             name: row.name,
@@ -260,13 +264,15 @@ export class SupabaseManagementRepository {
     async saveMember(id: string | null, revision: number | null, data: Json) {
         if (!canManageDirectory(activeAccount()))
             throw new Error("Not authorized.");
-        return unwrap(
+        const saved = unwrap(
             await requireSupabase().rpc("save_person", {
                 p_id: id,
                 p_revision: revision,
                 p_data: data,
             }),
         );
+        invalidateData("directory", "groups", "duty");
+        return saved;
     }
     async listMinistries(): Promise<ManagedMinistry[]> {
         if (!canManageDirectory(activeAccount()))
@@ -295,7 +301,7 @@ export class SupabaseManagementRepository {
     }) {
         if (!canManageDirectory(activeAccount()))
             throw new Error("Not authorized.");
-        return unwrap(
+        const saved = unwrap(
             await requireSupabase().rpc("save_ministry", {
                 p_id: ministry.id ?? null,
                 p_revision: ministry.revision ?? null,
@@ -304,6 +310,8 @@ export class SupabaseManagementRepository {
                 p_archived: ministry.archived ?? false,
             }),
         );
+        invalidateData("directory", "groups", "duty");
+        return saved;
     }
     async saveMemberDetails(member: {
         id?: string | null;
@@ -319,7 +327,7 @@ export class SupabaseManagementRepository {
     }) {
         if (!canManageDirectory(activeAccount()))
             throw new Error("Not authorized.");
-        return unwrap(
+        const saved = unwrap(
             await requireSupabase().rpc("save_person", {
                 p_id: member.id ?? null,
                 p_revision: member.revision ?? null,
@@ -335,6 +343,8 @@ export class SupabaseManagementRepository {
                 },
             }),
         );
+        invalidateData("directory", "groups", "duty");
+        return saved;
     }
     async setMembershipActive(member: ManagedMember, active: boolean) {
         if (!canManageDirectory(activeAccount()))
@@ -380,7 +390,9 @@ export class SupabaseManagementRepository {
     ) {
         if (!canManageAccounts(activeAccount()))
             throw new Error("Not authorized.");
-        return unwrap(await requireSupabase().rpc("update_account", args));
+        const saved = unwrap(await requireSupabase().rpc("update_account", args));
+        this.notifyAccountChanges();
+        return saved;
     }
     async listGroups() {
         if (!canManageDirectory(activeAccount()))
@@ -491,7 +503,9 @@ export class SupabaseManagementRepository {
     ) {
         if (!canManageDirectory(activeAccount()))
             throw new Error("Not authorized.");
-        return unwrap(await requireSupabase().rpc("save_group", args));
+        const saved = unwrap(await requireSupabase().rpc("save_group", args));
+        invalidateData("groups", "directory", "duty");
+        return saved;
     }
     async deleteGroup(id: string, revision: number) {
         if (!canManageDirectory(activeAccount()))
@@ -501,6 +515,7 @@ export class SupabaseManagementRepository {
             p_revision: revision,
         });
         if (error) throw new Error(error.message);
+        invalidateData("groups", "directory", "duty");
     }
     async replacePhoto(
         person: {
@@ -511,6 +526,7 @@ export class SupabaseManagementRepository {
         },
         bytes: ArrayBuffer | null,
         mimeType?: "image/jpeg" | "image/png" | "image/webp",
+        thumbnail?: ArrayBuffer,
     ) {
         if (!canManageDirectory(activeAccount()))
             throw new Error("Not authorized.");
@@ -525,6 +541,8 @@ export class SupabaseManagementRepository {
                 throw new Error(
                     "Choose a JPEG, PNG or WebP photo smaller than 5 MB.",
                 );
+            if (!thumbnail?.byteLength || thumbnail.byteLength > 5 * 1024 * 1024)
+                throw new Error("The photo thumbnail is unavailable. Choose the photo again.");
             const extension =
                 mimeType === "image/jpeg"
                     ? "jpg"
@@ -536,6 +554,14 @@ export class SupabaseManagementRepository {
                 .from("member-photos")
                 .upload(path, bytes, { contentType: mimeType, upsert: false });
             if (error) throw new Error(error.message);
+            try {
+                const upload = await client.storage.from("member-photos").upload(thumbnailPath(path), thumbnail, { contentType: "image/jpeg", upsert: false });
+                if (upload.error) throw new Error(upload.error.message);
+            } catch (cause) {
+                const cleanup = await client.storage.from("member-photos").remove([path, thumbnailPath(path)]);
+                if (cleanup.error) throw new Error("Photo upload failed and temporary files could not be removed. Contact an administrator.");
+                throw cause;
+            }
         }
         const result = await client.rpc("set_person_photo", {
             p_id: person.id,
@@ -543,15 +569,19 @@ export class SupabaseManagementRepository {
             p_path: path,
         });
         if (result.error) {
-            if (path) await client.storage.from("member-photos").remove([path]);
+            if (path) {
+                const cleanup = await client.storage.from("member-photos").remove([path, thumbnailPath(path)]);
+                if (cleanup.error) throw new Error("Photo update failed and temporary files could not be removed. Contact an administrator.");
+            }
             throw new Error(result.error.message);
         }
+        invalidateData("directory", "groups", "photos");
         const previous = person.photo_path ?? person.photoPath ?? null;
         let cleanupWarning: string | null = null;
         if (previous && previous !== path) {
             const { error } = await client.storage
                 .from("member-photos")
-                .remove([previous]);
+                .remove([previous, thumbnailPath(previous)]);
             if (error)
                 cleanupWarning =
                     "The previous photo could not be removed. Please contact an administrator.";

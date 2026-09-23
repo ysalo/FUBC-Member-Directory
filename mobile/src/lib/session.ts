@@ -92,7 +92,11 @@ export async function refreshSession(): Promise<void> {
     const revision = revalidation.revision;
     const { data, error } = await requireSupabase().auth.getSession();
     if (revision !== revalidation.revision) return;
-    if (error) throw error;
+    if (error) {
+        revalidation.invalidate();
+        publish({ status: "error", account: null, error: error.message });
+        throw error;
+    }
     await resolveAccount(data.session);
 }
 export async function signOut(): Promise<void> {
