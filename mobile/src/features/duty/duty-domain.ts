@@ -65,7 +65,7 @@ export function buildRotation(year: number, orderedCandidates: readonly DutyCand
 }
 
 /** A date falls within a period's weekend when it is the paired Friday, Saturday, or the Sunday itself. */
-export function isWithinPeriod(period: Pick<DutyPeriod, "sundayOn">, today: string): boolean {
+function isWithinPeriod(period: Pick<DutyPeriod, "sundayOn">, today: string): boolean {
   return today >= fridayBeforeSunday(period.sundayOn) && today <= period.sundayOn;
 }
 

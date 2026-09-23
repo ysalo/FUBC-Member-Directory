@@ -71,7 +71,7 @@ const groups: MinistryGroup[] = [
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Demo-only adapter. Its limited birthday output models a server-authorized projection. */
-export class InMemoryGroupsRepository implements GroupsRepository {
+class InMemoryGroupsRepository implements GroupsRepository {
   private birthdayNotifications = new Set<string>();
   async listGroups() { return clone(groups.map((group) => ({ ...group, responsibleDeacons: people.filter((person) => group.responsibleDeaconIds.includes(person.id)) }))); }
   async getGroup(groupId: string) {

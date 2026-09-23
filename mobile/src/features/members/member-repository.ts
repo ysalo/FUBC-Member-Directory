@@ -41,7 +41,7 @@ const profiles: MemberProfile[] = [
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Local preview adapter used when the Supabase environment is unavailable. */
-export class InMemoryMemberProfileRepository implements MemberProfileRepository {
+class InMemoryMemberProfileRepository implements MemberProfileRepository {
   async getProfile(memberId: string) {
     const profile = profiles.find((candidate) => candidate.id === memberId);
     if (!profile) return null;

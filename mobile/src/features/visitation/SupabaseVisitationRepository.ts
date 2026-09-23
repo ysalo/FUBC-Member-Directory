@@ -12,7 +12,9 @@ import type {
     VisitActor,
     VisitDraft,
     VisitEdit,
+    VisitListItem,
     VisitListMode,
+    VisitPage,
     VisitRecord,
     VisitResponseInput,
     VisitationRepository,
@@ -124,17 +126,31 @@ export class SupabaseVisitationRepository implements VisitationRepository {
             }),
         };
     }
-    async list(mode: VisitListMode) {
+    async listPage(mode: VisitListMode, offset = 0, limit = 50): Promise<VisitPage> {
         activeAccount();
         let query = requireSupabase()
             .from("visit_requests")
             .select("*")
-            .order("scheduled_at");
+            .order("scheduled_at")
+            .order("id")
+            .range(offset, offset + limit - 1);
         query =
             mode === "archive"
                 ? query.not("archived_at", "is", null)
                 : query.is("archived_at", null);
-        return this.hydrate(unwrap(await query));
+        const rows = unwrap(await query);
+        const items = await this.hydrate(rows);
+        return { items, nextOffset: rows.length === limit ? offset + limit : null };
+    }
+    async list(mode: VisitListMode) {
+        const items: VisitListItem[] = [];
+        let offset = 0;
+        while (true) {
+            const page = await this.listPage(mode, offset);
+            items.push(...page.items);
+            if (page.nextOffset === null) return items;
+            offset = page.nextOffset;
+        }
     }
     async getAuthorized(id: string): Promise<VisitRecord> {
         activeAccount();
@@ -253,6 +269,16 @@ export class SupabaseVisitationRepository implements VisitationRepository {
             client.from("person_leadership_ministries").select("*").in("person_id", personIds),
         ]);
         const people = unwrap(peopleResult), leadership = unwrap(leadershipResult);
+        const accountById = new Map(accounts.map((account) => [account.id, account]));
+        const accountByPersonId = new Map(accounts.filter((account) => account.person_id).map((account) => [account.person_id as string, account]));
+        const personById = new Map(people.map((person) => [person.id, person]));
+        const leadershipByPersonId = new Map(leadership.map((item) => [item.person_id, item.leadership_ministry]));
+        const recipientsByVisitId = new Map<string, typeof recipients>();
+        for (const recipient of recipients) {
+            const visitRecipients = recipientsByVisitId.get(recipient.visit_id) ?? [];
+            visitRecipients.push(recipient);
+            recipientsByVisitId.set(recipient.visit_id, visitRecipients);
+        }
         const photos = await privatePhotoSources(people.map((person) => person.photo_path)).catch(() => new Map());
         return rows.map((row) => ({
             id: row.id,
@@ -266,22 +292,17 @@ export class SupabaseVisitationRepository implements VisitationRepository {
             completedAt: row.completed_at,
             revision: row.revision,
             submissionId: row.submission_id,
-            memberName:
-                people.find((person) => person.id === row.person_id)?.name ??
-                "Unavailable member",
-            memberPhone:
-                people.find((person) => person.id === row.person_id)?.phone ??
-                null,
+            memberName: personById.get(row.person_id)?.name ?? "Unavailable member",
+            memberPhone: personById.get(row.person_id)?.phone ?? null,
             plannerName: (() => {
-                const account = accounts.find((candidate) => candidate.id === row.planner_id);
-                return people.find((person) => person.id === account?.person_id)?.name ?? account?.display_name ?? "Planner";
+                const account = row.planner_id ? accountById.get(row.planner_id) : undefined;
+                return personById.get(account?.person_id ?? "")?.name ?? account?.display_name ?? "Planner";
             })(),
             updatedFields: row.updated_fields ?? [],
-            recipients: recipients
-                .filter((recipient) => recipient.visit_id === row.id)
+            recipients: (recipientsByVisitId.get(row.id) ?? [])
                 .map((recipient) => {
-                    const person = people.find((candidate) => candidate.id === recipient.person_id);
-                    const account = accounts.find((candidate) => candidate.person_id === recipient.person_id);
+                    const person = personById.get(recipient.person_id);
+                    const account = accountByPersonId.get(recipient.person_id);
                     return {
                         accountId: account?.id ?? null,
                         response: recipient.response,
@@ -289,7 +310,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
                         participantName: person?.name ?? "Participant",
                         participantPersonId: recipient.person_id,
                         photo: person?.photo_path ? photos.get(person.photo_path) : undefined,
-                        leadershipMinistry: leadership.find((item) => item.person_id === recipient.person_id)?.leadership_ministry ?? "deacon",
+                        leadershipMinistry: leadershipByPersonId.get(recipient.person_id) ?? "deacon",
                         lastViewedRevision: recipient.last_viewed_revision ?? 0,
                     };
                 }),

@@ -2,6 +2,7 @@ import type { Account, Visit, VisitRecipient } from "@/lib/domain";
 import type { ImageSourcePropType } from "react-native";
 
 export type VisitListMode = "current" | "archive";
+export type VisitPage = { items: VisitListItem[]; nextOffset: number | null };
 
 export type VisitActor = Pick<
     Account,
@@ -26,7 +27,7 @@ export type VisitParticipant = {
     responsibilityGroupId: string | null;
 };
 
-export type VisitRecipientDetails = VisitRecipient & {
+type VisitRecipientDetails = VisitRecipient & {
     participantName: string;
     participantPersonId: string;
     photo?: ImageSourcePropType;
@@ -93,6 +94,7 @@ export interface VisitationRepository {
     bindSessionActor(actor: VisitActor | null): void;
     getSnapshot(): Promise<RepositorySnapshot>;
     setActor(accountId: string): Promise<VisitActor>;
+    listPage(mode: VisitListMode, offset?: number, limit?: number): Promise<VisitPage>;
     list(mode: VisitListMode): Promise<VisitListItem[]>;
     getAuthorized(id: string): Promise<VisitRecord>;
     create(draft: VisitDraft): Promise<VisitRecord>;
