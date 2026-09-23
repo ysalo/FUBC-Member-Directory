@@ -43,7 +43,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
     const { locale } = useLocalization();
     const copy = getMemberCopy(locale);
     const scope = (() => { try { return sessionCacheScope(); } catch { return null; } })();
-    const [loaded, setLoaded] = useState<{ scope: string | null; memberId: string; profile: MemberProfile | null }>();
+    const [loaded, setLoaded] = useState<{ scope: string | null; memberId: string; profile: MemberProfile | null; portraitPending?: boolean }>();
     const profile = loaded?.scope === scope && loaded?.memberId === memberId && scope !== null ? loaded.profile : undefined;
     const [failed, setFailed] = useState(false);
     const [failedPhoto, setFailedPhoto] = useState<string>();
@@ -71,15 +71,17 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                                 ? prior.responsibleDeacons?.find((person) => person.id === deacon.id)?.avatar ?? deacon.avatar : deacon.avatar,
                         })),
                     } : next;
-                    return { scope, memberId, profile: retained };
+                    return { scope, memberId, profile: retained, portraitPending: Boolean(next?.photoPaths?.portrait) };
                 });
                 if (next) for (const part of ["portrait", "deacons"] as const) {
                     void memberProfileRepository.hydratePhotos(next, "original", part).then((hydrated) => {
-                        if (current()) setLoaded((previous) => previous?.profile ? { ...previous, profile: {
+                        if (current()) setLoaded((previous) => previous?.profile ? { ...previous, ...(part === "portrait" ? { portraitPending: false } : {}), profile: {
                             ...previous.profile,
                             ...(part === "portrait" ? { photo: hydrated.photo } : { responsibleDeacons: hydrated.responsibleDeacons }),
                         } } : previous);
-                    }).catch(() => {});
+                    }).catch(() => {
+                        if (part === "portrait" && current()) setLoaded((previous) => previous ? { ...previous, portraitPending: false } : previous);
+                    });
                 }
             })
             .catch(() => {
@@ -162,6 +164,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
         session.status === "ready" && session.account.role === "admin";
     const photoIdentity = typeof profile.photo === "object" && "uri" in profile.photo ? profile.photo.uri : avatarSourceIdentity(profile.photo);
     const hasHeroPhoto = hasImageSource(profile.photo) && failedPhoto !== photoIdentity;
+    const portraitPending = loaded?.portraitPending && !hasImageSource(profile.photo);
     const shareContact = async () => {
         const message = contactShareMessage(
             {
@@ -449,6 +452,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                                     source={profile.photo}
                                     style={styles.desktopPhoto}
                                 />
+                            ) : portraitPending ? (
+                                <View style={[styles.desktopPhoto, { backgroundColor: palette.surface }]} />
                             ) : (
                                 <ProfileAvatar name={name} size={160} />
                             )}
@@ -507,7 +512,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                             />
                         ) : (
                             <View style={styles.heroFallback}>
-                                <ProfileAvatar name={name} size={156} />
+                                {portraitPending ? null : <ProfileAvatar name={name} size={156} />}
                             </View>
                         )}
                         {hasHeroPhoto ? (
