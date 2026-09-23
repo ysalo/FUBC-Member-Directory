@@ -8,7 +8,7 @@ import { useSession } from "@/features/session/SessionProvider";
 import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
 import { usePendingAccountCount } from "@/features/manage/use-pending-account-count";
 import { dismissAllWebAlerts } from "@/features/platform/alert.web";
-import { canManageDirectory } from "@/lib/permissions";
+import { canCreateVisit, canManageDirectory } from "@/lib/permissions";
 
 const destinations = [
   { key: "directory", href: "/", icon: "list-outline" },
@@ -44,7 +44,7 @@ export function WebAppShell({ children }: PropsWithChildren) {
   useEffect(() => () => dismissAllWebAlerts(), [pathname, accountId]);
   const account = session.status === "ready" ? session.account : null;
   const accountInitials = account?.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "FU";
-  const accountRole = account ? (locale === "uk" ? ({ admin: "Адміністратор", editor: "Редактор", member: "Учасник" } as const)[account.role] : ({ admin: "Administrator", editor: "Editor", member: "Member" } as const)[account.role]) : "";
+  const accountRole = account ? (locale === "uk" ? ({ admin: "Адміністратор", editor: "Адміністратор учасників", member: "Учасник" } as const)[account.role] : ({ admin: "Administrator", editor: "Member Administrator", member: "Member" } as const)[account.role]) : "";
 
   return <div className="web-app-shell" style={{ fontSize: `${16 * scale}px` }}>
     <a className="web-skip-link" href="#app-content">{locale === "uk" ? "До вмісту" : "Skip to content"}</a>
@@ -53,7 +53,9 @@ export function WebAppShell({ children }: PropsWithChildren) {
         <span className="web-navigation-logo" role="img" aria-label="FUBC" />
         <span className="web-navigation-brand-label">{locale === "uk" ? "Довідник членів церкви" : "Member Directory"}</span>
       </div>
-      <div className="web-navigation-links">{destinations.filter((item) => item.key !== "manage" || (session.status === "ready" && canManageDirectory(session.account))).map((item) => {
+      <div className="web-navigation-links">{destinations.filter((item) =>
+        (item.key !== "manage" || canManageDirectory(account)) &&
+        (item.key !== "visitation" || canCreateVisit(account))).map((item) => {
         const active = item.href === "/" ? pathname === "/" || pathname.startsWith("/members/") : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const label = copy.tabs[item.key];
         return <Link key={item.key} href={item.href as never} asChild><NavigationAnchor className="web-navigation-link" title={label} aria-current={active ? "page" : undefined}>

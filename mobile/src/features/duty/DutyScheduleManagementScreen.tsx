@@ -9,7 +9,7 @@ import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { listDirectory } from "@/features/directory/directory-repository";
 import type { Member } from "@/features/directory/members";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
-import { canManageDirectory } from "@/lib/permissions";
+import { canManageSettings } from "@/lib/permissions";
 import { useSession } from "@/features/session/SessionProvider";
 import { errorMessage } from "@/lib/async-state";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
@@ -77,7 +77,7 @@ export function DutyScheduleManagementScreen() {
   const session = useSession();
   const copy = labels[locale];
   const actor = session.status === "ready" ? session.account : null;
-  const allowed = canManageDirectory(actor);
+  const allowed = canManageSettings(actor);
   const today = todayFixedPdt();
   const [year, setYear] = useState(() => Number(today.slice(0, 4)));
   const [state, setState] = useState<{ status: "loading" | "error" | "ready"; year?: DutyYear; message?: string }>({ status: "loading" });

@@ -11,7 +11,7 @@ import { AppearanceProvider, useAppearance } from "@/features/appearance/Appeara
 import { useSession } from "@/features/session/SessionProvider";
 import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
 import { usePendingAccountCount } from "@/features/manage/use-pending-account-count";
-import { canManageDirectory } from "@/lib/permissions";
+import { canCreateVisit, canManageDirectory } from "@/lib/permissions";
 import { TextSizeProvider, useTextSize } from "@/features/accessibility/TextSizeProvider";
 
 import "./global.css";
@@ -21,6 +21,7 @@ function IosTabs() {
   const { palette, preference, resolved } = useAppearance();
   const session = useSession();
   const showManage = session.status === "ready" && canManageDirectory(session.account);
+  const showVisitation = session.status === "ready" && canCreateVisit(session.account);
   const activeVisitationCount = useActiveVisitationCount();
   const pendingAccountCount = usePendingAccountCount();
   const { scale } = useTextSize();
@@ -43,11 +44,11 @@ function IosTabs() {
         <NativeTabs.Trigger.Icon sf={{ default: "person.3", selected: "person.3.fill" }} />
         <NativeTabs.Trigger.Label>{copy.tabs.groups}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="visitation">
+      {showVisitation ? <NativeTabs.Trigger name="visitation">
         <NativeTabs.Trigger.Icon sf={{ default: "house", selected: "house.fill" }} />
         <NativeTabs.Trigger.Label>{copy.tabs.visitation}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Badge hidden={activeVisitationCount === 0}>{String(activeVisitationCount)}</NativeTabs.Trigger.Badge>
-      </NativeTabs.Trigger>
+      </NativeTabs.Trigger> : null}
       <NativeTabs.Trigger name="schedule">
         <NativeTabs.Trigger.Icon sf={{ default: "calendar", selected: "calendar" }} />
         <NativeTabs.Trigger.Label>{copy.tabs.schedule}</NativeTabs.Trigger.Label>

@@ -46,6 +46,7 @@ export function MemberFormScreen() {
     const { palette } = useAppearance();
     const { locale } = useLocalization();
     const session = useSession();
+    const leadershipAllowed = session.status === "ready" && canManageAccounts(session.account);
     const [member, setMember] = useState<ManagedMember | null>(null);
     const [ministries, setMinistries] = useState<ManagedMinistry[]>([]);
     const [firstName, setFirstName] = useState("");
@@ -586,12 +587,15 @@ export function MemberFormScreen() {
                                     const selected = ministryIds.includes(
                                         item.id,
                                     );
+                                    const disabled = Boolean(item.systemKey) && !leadershipAllowed;
                                     return (
                                         <Pressable
                                             accessibilityRole="checkbox"
                                             accessibilityState={{
                                                 checked: selected,
+                                                disabled,
                                             }}
+                                            disabled={disabled}
                                             key={item.id}
                                             onPress={() =>
                                                 setMinistryIds((ids) => {

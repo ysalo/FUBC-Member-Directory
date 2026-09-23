@@ -2,6 +2,18 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Member Administrator Permissions
+
+Work in progress on `feature/member-administrator-permissions`, based on `dev` at `3803eeb`. Uncommitted changes were transferred from `main`, preserving the member-name and session-recovery changes already in `dev`. Neither protected branch was committed to or pushed.
+
+Member Administrators (stored as `editor` for compatibility) manage members, groups, ministries, and duty schedules. Account management and permission-granting Pastor/Deacon assignments remain Administrator-only. Pastors and Deacons can plan visits; Administrators can manage all visits.
+
+Local integration verification: `pnpm verify` passed (154 main tests plus visitation and group suites), and `pnpm build:web` passed. Authenticated browser/Preview and physical-device checks remain outstanding. VS Code reported workspace module-resolution diagnostics despite the passing project TypeScript check; these are not claimed resolved.
+
+Review and manually apply `mobile/supabase/migrations/20260923010000_role_permissions.sql` after the member-patronymic migration, following the existing-project migration gate. It has only been tested locally, not applied live. Do not automatically push migrations. Older clients may receive authorization errors for newly restricted actions; UI rollback must not remove server restrictions.
+
+Delivery remains feature PR into `dev`, successful CI/review and Vercel Preview validation, then a separate release PR from `dev` into `main`. This feature is prepared for PR review; it is not merged or production-deployed, and no live database change has been performed.
+
 ## Member Names and Mobile Recovery
 
 Implemented on `feature/member-names-mobile-recovery`, branched from `dev`. Not deployed or merged.

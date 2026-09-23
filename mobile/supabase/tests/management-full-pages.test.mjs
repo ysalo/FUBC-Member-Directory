@@ -67,6 +67,86 @@ test("optional patronymics round-trip, preserve older writes, and enforce permis
   await assert.rejects(save(null, null, { name: "Too Long", patronymic: "x".repeat(201) }), /check constraint/);
 });
 
+test("role permissions enforce member and group administration and administrator visitation through SQL", async () => {
+  const migration = await readFile(new URL('../migrations/20260923010000_role_permissions.sql', import.meta.url), 'utf8');
+  await db.exec('begin');
+  try {
+    await db.exec(migration.replace(/^begin;|commit;$/gm, ''));
+    const deniedCalls = [
+      "select * from public.management_accounts()",
+      `select * from public.update_account('${ids.editor}',1,'active','admin',null)`,
+      "select * from public.delete_member_record(gen_random_uuid(),null)",
+      "select * from public.save_visit(null,null,gen_random_uuid(),gen_random_uuid(),now(),'Home','','{}')",
+    ];
+    const rejected = async (account, sql, params = [], pattern = /Not authorized|Only active/) => {
+      await db.exec('savepoint rejected_call');
+      await db.exec('set role authenticated');
+      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [ids[account]]);
+      try {
+        await assert.rejects(db.query(sql, params), pattern);
+      } finally {
+        await db.exec('rollback to savepoint rejected_call; reset role');
+      }
+    };
+    for (const role of ['editor', 'member']) {
+      await db.query("update public.profiles set status='active' where id=$1", [ids[role]]);
+      for (const sql of deniedCalls) await rejected(role, sql);
+    }
+    await rejected('member', "select * from public.save_group(null,null,'Forbidden','membership',false,'{}','{}')");
+    await rejected('member', "select public.delete_group(gen_random_uuid(),1)");
+    const managementCalls = [
+      "select * from public.save_ministry(null,null,'Forbidden','',false)",
+      "select * from public.generate_duty_schedule(2027,'{}')",
+      "select * from public.reassign_duty_period('2027-01-03',gen_random_uuid(),1)",
+    ];
+    for (const sql of managementCalls) await rejected('member', sql);
+    for (const name of ['save_person(uuid,integer,jsonb)', 'save_ministry(uuid,integer,text,text,boolean)', 'save_group(uuid,integer,text,text,boolean,uuid[],uuid[])', 'delete_group(uuid,integer)', 'generate_duty_schedule(integer,uuid[])', 'reassign_duty_period(date,uuid,integer)']) {
+      assert.equal((await db.query("select has_function_privilege('anon',$1,'execute') allowed", [`public.${name}`])).rows[0].allowed, false);
+    }
+    assert.equal((await db.query("select has_function_privilege('authenticated','app_private.save_person(uuid,integer,jsonb)','execute') allowed")).rows[0].allowed, false);
+    const ministry = (await as('editor', "select * from public.save_ministry(null,null,'Allowed','',false)")).rows[0];
+    const person = (await as('editor', "select * from public.save_person(null,null,$1)", [{ name: 'Managed member', ministry_ids: [ministry.id], address: 'Member address' }])).rows[0];
+    await rejected('member', "select * from public.save_person(null,null,'{\"name\":\"Denied\"}')");
+    const leadership = (await db.query("select id from public.ministries where system_key='deacon'")).rows[0].id;
+    await rejected('editor', 'select * from public.save_person($1,$2,$3)', [person.id, person.revision, { name: person.name, ministry_ids: [leadership] }], /Only administrators/);
+    await rejected('editor', 'select * from public.save_person(null,null,$1)', [{ name: 'Escalation', ministry_ids: [leadership] }], /Only administrators/);
+    const group = (await as('editor', "select * from public.save_group(null,null,'Allowed','membership',false,'{}',$1)", [[person.id]])).rows[0];
+    await as('editor', "select * from public.save_group($1,$2,'Renamed','membership',false,'{}',$3)", [group.id, group.revision, [person.id]]);
+    const revision = (await db.query('select revision from public.people where id=$1', [person.id])).rows[0].revision;
+    const archived = (await as('editor', 'select * from public.save_person($1,$2,$3)', [person.id, revision, { name: person.name, archived: true }])).rows[0];
+    assert.ok(archived.archived_at);
+    assert.equal(archived.membership_group_id, null);
+    const restored = (await as('editor', 'select * from public.save_person($1,$2,$3)', [person.id, archived.revision, { name: person.name, archived: false }])).rows[0];
+    await as('admin', 'select * from public.save_person($1,$2,$3)', [person.id, restored.revision, { name: person.name, ministry_ids: [leadership] }]);
+    await db.query('update public.profiles set person_id=$2 where id=$1', [ids.member, person.id]);
+    const created = (await as('member', "select * from public.save_visit(null,null,gen_random_uuid(),$1,now(),'Home','','{}')", [person.id])).rows[0];
+    assert.equal((await as('editor', 'select * from public.visit_requests')).rows.length, 0);
+    assert.equal((await as('admin', 'select * from public.visit_requests')).rows.length, 1);
+    assert.equal((await as('admin', 'select public.directory_visible_visit_count() count')).rows[0].count, 1);
+    const updated = (await as('admin', "select * from public.save_visit($1,$2,$3,$4,now(),'Changed','','{}')", [created.id, created.revision, created.submission_id, person.id])).rows[0];
+    assert.equal(updated.planner_id, ids.member);
+    await rejected('admin', "select * from public.respond_to_visit($1,$2,'accepted',null)", [updated.id, updated.revision]);
+    const completed = (await as('admin', "select * from public.transition_visit($1,$2,'complete')", [updated.id, updated.revision])).rows[0];
+    assert.equal(completed.status, 'completed');
+    await as('admin', "select * from public.save_visit(null,null,gen_random_uuid(),$1,now(),'Home','','{}')", [person.id]);
+    await as('editor', 'select * from public.generate_duty_schedule(2027,$1)', [[person.id]]);
+    await as('editor', "select * from public.reassign_duty_period('2027-01-03',$1,1)", [person.id]);
+    await as('editor', 'select public.delete_group($1,(select revision from public.deacon_groups where id=$1))', [group.id]);
+    for (const role of ['editor', 'admin']) {
+      for (const status of ['pending', 'denied', 'revoked']) {
+        await db.query('update public.profiles set status=$2::public.account_status where id=$1', [ids[role], status]);
+        await rejected(role, "select * from public.save_person(null,null,'{\"name\":\"Denied\"}')");
+        for (const sql of [...deniedCalls, ...managementCalls]) await rejected(role, sql);
+        await rejected(role, "select * from public.save_group(null,null,'Forbidden','membership',false,'{}','{}')");
+        await rejected(role, "select public.delete_group(gen_random_uuid(),1)");
+        assert.equal((await as(role, 'select * from public.visit_requests')).rows.length, 0);
+      }
+    }
+  } finally {
+    await db.exec('rollback; reset role');
+  }
+});
+
 test("editor manages ministry catalog and complete member details without exposing private tables", async () => {
   const ministry = (await as("editor", "select * from public.save_ministry(null,null,'Music','Музика',false)")).rows[0];
   const member = (await as("editor", `select * from public.save_person(null,null,jsonb_build_object(

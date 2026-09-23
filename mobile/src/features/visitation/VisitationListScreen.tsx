@@ -9,7 +9,7 @@ import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
 import { formatFixedPdt } from "@/lib/dates";
-import { canCreateVisit } from "@/lib/permissions";
+import { canCreateVisit, canManageAccounts } from "@/lib/permissions";
 
 import { visitationCopy } from "./copy";
 import { bindVisitationSession, visitationDemoMode, visitationRepository } from "./repository";
@@ -141,6 +141,7 @@ export function VisitationListScreen() {
             {[
               { title: c.myVisits, visits: state.visits.filter((visit) => visit.plannerId === state.snapshot.actor.id) },
               { title: c.invitations, visits: state.visits.filter((visit) => visit.recipients.some((recipient) => recipient.accountId === state.snapshot.actor.id)) },
+              { title: c.otherVisits, visits: canManageAccounts(state.snapshot.actor) ? state.visits.filter((visit) => visit.plannerId !== state.snapshot.actor.id && !visit.recipients.some((recipient) => recipient.accountId === state.snapshot.actor.id)) : [] },
             ].filter((section) => section.visits.length > 0).map((section) => <View key={section.title} style={[styles.list, desktop && styles.desktopList]}>
             <Text accessibilityRole="header" style={styles.listHeading}>{section.title}</Text>
             {section.visits.map((visit) => {

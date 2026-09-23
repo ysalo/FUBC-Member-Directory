@@ -87,7 +87,8 @@ const labels = {
         groups: "Групи",
         groupsDetail: "Призначення дияконів і склад груп",
         schedule: "Розклад",
-        scheduleDetail: "Створення та коригування чергування дияконів у п’ятницю й неділю",
+        scheduleDetail:
+            "Створення та коригування чергування дияконів у п’ятницю й неділю",
         ministries: "Служіння",
         ministriesDetail: "Назви служінь",
         addMember: "Додати учасника",
@@ -374,7 +375,9 @@ export function ManageScreen() {
                                                 ]}
                                             >
                                                 <Text
-                                                    style={styles.filterCountText}
+                                                    style={
+                                                        styles.filterCountText
+                                                    }
                                                 >
                                                     1
                                                 </Text>

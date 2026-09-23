@@ -1,5 +1,5 @@
 import type { Database, Json, PersonRow } from "@/lib/database";
-import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
+import { canManageAccounts, canManageDirectory, canManageGroups, canManageSettings } from "@/lib/permissions";
 import {
     activeAccount,
     privatePhotoSources,
@@ -300,7 +300,7 @@ export class SupabaseManagementRepository {
         nameUk?: string | null;
         archived?: boolean;
     }) {
-        if (!canManageDirectory(activeAccount()))
+        if (!canManageSettings(activeAccount()))
             throw new Error("Not authorized.");
         const saved = unwrap(
             await requireSupabase().rpc("save_ministry", {
@@ -353,35 +353,13 @@ export class SupabaseManagementRepository {
         if (!canManageDirectory(activeAccount()))
             throw new Error("Not authorized.");
         if (member.archived === !active) return member;
-        if (!active) {
-            const groups = await this.loadGroupManagement();
-            for (const group of groups.groups.filter(
-                (item) =>
-                    item.memberIds.includes(member.id) ||
-                    item.deaconIds.includes(member.id),
-            )) {
-                await this.saveGroup({
-                    p_id: group.id,
-                    p_revision: group.revision,
-                    p_name: group.name,
-                    p_kind: group.kind,
-                    p_archived: group.archived,
-                    p_deacon_ids: group.deaconIds.filter(
-                        (id) => id !== member.id,
-                    ),
-                    p_member_ids: group.memberIds.filter(
-                        (id) => id !== member.id,
-                    ),
-                });
-            }
-        }
         const currentResult = await requireSupabase()
             .from("people")
             .select("*")
             .eq("id", member.id)
             .single();
         const current = unwrap(currentResult);
-        await this.saveMember(current.id, current.revision, {
+        await this.saveMember(current.id, member.revision ?? null, {
             ...personData(current),
             membership_group_id: null,
             archived: !active,
@@ -408,7 +386,7 @@ export class SupabaseManagementRepository {
         );
     }
     async loadGroupManagement(): Promise<GroupManagementState> {
-        if (!canManageDirectory(activeAccount()))
+        if (!canManageGroups(activeAccount()))
             throw new Error("Not authorized.");
         const client = requireSupabase();
         const [
@@ -504,14 +482,14 @@ export class SupabaseManagementRepository {
     async saveGroup(
         args: Database["public"]["Functions"]["save_group"]["Args"],
     ) {
-        if (!canManageDirectory(activeAccount()))
+        if (!canManageGroups(activeAccount()))
             throw new Error("Not authorized.");
         const saved = unwrap(await requireSupabase().rpc("save_group", args));
         invalidateData("groups", "directory", "duty");
         return saved;
     }
     async deleteGroup(id: string, revision: number) {
-        if (!canManageDirectory(activeAccount()))
+        if (!canManageGroups(activeAccount()))
             throw new Error("Not authorized.");
         const { error } = await requireSupabase().rpc("delete_group", {
             p_id: id,

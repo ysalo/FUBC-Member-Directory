@@ -11,7 +11,7 @@ import { WebTabBar } from "@/features/shell/WebTabBar";
 import { NativeDateTimeField } from "@/features/forms/NativeDateTimeField";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { fixedPdtToIso, isoToFixedPdt } from "@/lib/dates";
-import { canCreateVisit } from "@/lib/permissions";
+import { canCreateVisit, canManageVisit } from "@/lib/permissions";
 
 import { visitationCopy } from "./copy";
 import { bindVisitationSession, visitationRepository } from "./repository";
@@ -97,7 +97,7 @@ export function VisitFormScreen({
                 : null;
             if (
                 !canCreateVisit(snapshot.actor) ||
-                (visit && visit.plannerId !== snapshot.actor.id)
+                (visit && !canManageVisit(snapshot.actor, visit))
             ) {
                 throw new VisitRepositoryError(
                     "forbidden",

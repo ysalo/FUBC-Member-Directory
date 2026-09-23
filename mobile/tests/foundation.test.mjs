@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canReadDirectory, canManageAccounts, canManageDirectory, canCreateVisit, canReadVisit, canRespondToVisit, canReadGroupBirthdays } from '../src/lib/permissions.ts';
+import { canReadDirectory, canManageAccounts, canManageDirectory, canManageGroups, canManageSettings, canManageVisit, canCreateVisit, canReadVisit, canRespondToVisit, canReadGroupBirthdays } from '../src/lib/permissions.ts';
 import { fixedPdtToIso, isoToFixedPdt, parseDateOnly, daysUntilBirthday } from '../src/lib/dates.ts';
 import { createSecureSessionStorage } from '../src/lib/secure-session-storage.ts';
 import { assertUsableOAuthRedirect, isNumericIpRedirect } from '../src/features/session/auth-redirect.ts';
@@ -211,6 +211,30 @@ test('profile loading renders data before photos and ignores old member or sessi
 
 const actor = (role = 'member', leadershipMinistry = null, status = 'active') => ({ id: 'viewer', role, leadershipMinistry, status });
 const visit = { plannerId: 'pastor', status: 'open', archivedAt: null, recipients: [{ accountId: 'deacon' }, { accountId: 'pastor-participant' }] };
+test('role matrix separates member administration from application administration', () => {
+  for (const role of ['member', 'editor', 'admin']) {
+    const account = actor(role);
+    assert.equal(canManageDirectory(account), role !== 'member');
+    assert.equal(canManageGroups(account), role !== 'member');
+    assert.equal(canManageAccounts(account), role === 'admin');
+    assert.equal(canManageSettings(account), role !== 'member');
+    assert.equal(canCreateVisit(account), role === 'admin');
+    assert.equal(canReadVisit(account, visit), role === 'admin');
+    assert.equal(canManageVisit(account, visit), role === 'admin');
+    for (const ministry of ['pastor', 'deacon']) {
+      assert.equal(canCreateVisit(actor(role, ministry)), true);
+      for (const status of ['pending', 'denied', 'revoked']) {
+        const inactive = actor(role, ministry, status);
+        assert.equal(canManageDirectory(inactive), false);
+        assert.equal(canManageGroups(inactive), false);
+        assert.equal(canManageSettings(inactive), false);
+        assert.equal(canCreateVisit(inactive), false);
+        assert.equal(canReadVisit(inactive, visit), false);
+        assert.equal(canManageVisit(inactive, visit), false);
+      }
+    }
+  }
+});
 test('Expo config derives the app version from package metadata', async () => {
   const [appJson, packageMetadata] = await Promise.all([
     readFile(new URL('../app.json', import.meta.url), 'utf8').then(JSON.parse),
@@ -263,14 +287,14 @@ test('approval gates every role and leadership ministry including privileged rol
     assert.equal(canReadGroupBirthdays(user, [user.id]), false);
   }
 });
-test('access roles never implicitly grant private visits or birthdays', () => {
+test('only administrators have role-based visitation access', () => {
   for (const role of ['member', 'editor', 'admin']) {
     const user = actor(role);
     assert.equal(canReadDirectory(user), true);
     assert.equal(canManageDirectory(user), role !== 'member');
     assert.equal(canManageAccounts(user), role === 'admin');
-    assert.equal(canReadVisit(user, visit), false);
-    assert.equal(canCreateVisit(user), false);
+    assert.equal(canReadVisit(user, visit), role === 'admin');
+    assert.equal(canCreateVisit(user), role === 'admin');
     assert.equal(canReadGroupBirthdays(user, [user.id]), false);
   }
 });
