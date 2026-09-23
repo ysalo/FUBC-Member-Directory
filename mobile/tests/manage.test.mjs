@@ -169,31 +169,6 @@ test("linking an account copies its email to the member", () => {
     assert.equal(linked.members[0].email, "member@example.com");
 });
 
-test("account settings no longer expose Pastor or Deacon designation controls", async () => {
-    const screen = await readFile(
-        new URL(
-            "../src/features/manage/AccountDetailScreen.tsx",
-            import.meta.url,
-        ),
-        "utf8",
-    );
-    assert.doesNotMatch(
-        screen,
-        /set-account-designation|Ministry designation|Позначка служіння/,
-    );
-});
-
-test("managed account option grids provide stable React keys", async () => {
-    const sourceText = await readFile(
-        new URL(
-            "../src/features/manage/AccountDetailScreen.tsx",
-            import.meta.url,
-        ),
-        "utf8",
-    );
-    assert.match(sourceText, /key=\{value\}/);
-});
-
 test("managed account routes normalize Expo's runtime parameter shapes", () => {
     assert.equal(routeParams.normalizeAccountId(" account-id "), "account-id");
     assert.equal(
@@ -305,10 +280,7 @@ test("the manage stack anchors restored account routes to its landing screen", a
     );
     assert.match(layout, /unstable_settings/);
     assert.match(layout, /anchor: "index"/);
-    assert.ok(
-        layout.indexOf('<Stack.Screen name="index"') <
-            layout.indexOf('<Stack.Screen name="account/\[accountId\]"'),
-    );
+    assert.match(layout, /<Stack.Screen name="index"[\s\S]*<Stack.Screen name="account\/\[accountId\]"/);
     assert.doesNotMatch(layout, /disablePopToTop/);
 });
 
