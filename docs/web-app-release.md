@@ -2,6 +2,14 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Home-Screen Icon and Name
+
+Implemented on `feature/home-screen-icon-name`. New web installs suggest `Довідник` through both manifest names and Apple's home-screen title metadata. Standard 192/512px and Apple 180px icons use the existing church logo at 86% of tile height on white. Android has a separate maskable icon with the artwork inside the central 80%-diameter safe area. Native app names/icons and in-app language preferences are unchanged.
+
+Verification: `pnpm verify` passed (146 main tests, visitation domain suite, 12 group-suite entries), and `pnpm build:web` passed. Built manifest/Apple metadata and all four icon decodes were checked in the browser. Pixel checks confirmed opaque artwork, standard logo height near 86%, and maskable ink within 38.8% of the tile width from its center. Apple and Android artwork was visually inspected. This change does not alter auth, confirmations, notifications, or backend behavior; live OAuth and physical-device installation were not exercised.
+
+Existing home-screen shortcuts may retain their cached icon or user-selected name. After deployment, remove and re-add the shortcut to see the new defaults. Physical iPhone/Android installation remains a manual release check.
+
 ## Bounded Photos and Faster Profiles (1.3.0)
 
 Local implementation on `feature/optimized-profile-photos`; not deployed. This supersedes the unchanged-original upload behavior described below.
