@@ -238,14 +238,12 @@ test("membership departure removes group assignments and stays available to mana
         editor,
         /hidden from the directory and removed from every group/,
     );
-    assert.match(
-        repository,
-        /group\.memberIds\.filter\([\s\S]*?id !== member\.id[\s\S]*?\)/,
-    );
-    assert.match(
-        repository,
-        /group\.deaconIds\.filter\([\s\S]*?id !== member\.id[\s\S]*?\)/,
-    );
+    const archival = repository.slice(repository.indexOf('async setMembershipActive'), repository.indexOf('async saveAccount'));
+    assert.doesNotMatch(archival, /saveGroup|loadGroupManagement/);
+    assert.match(archival, /this\.saveMember\(current\.id, member\.revision/);
+    const migration = await readFile(new URL('../supabase/migrations/20260923010000_role_permissions.sql', import.meta.url), 'utf8');
+    assert.match(migration, /delete from public\.deacon_group_members where person_id=result\.id/);
+    assert.match(migration, /delete from public\.deacon_group_deacons where person_id=result\.id/);
     assert.match(repository, /membership_group_id: null,[\s\S]*?archived: !active/);
     assert.match(manage, /formerMembers: "Former members"/);
     assert.match(manage, /archived === showFormer/);

@@ -2,6 +2,7 @@ import { listDirectory } from "@/features/directory/directory-repository";
 import type { DutyPeriod } from "@/lib/domain";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
 import { activeAccount, unwrap } from "@/lib/repository-helpers";
+import { canManageSettings } from "@/lib/permissions";
 import { createSessionCache, invalidateData } from "@/lib/session-cache";
 import { buildRotation, sortCandidatesByLastName, type DutyCandidate } from "./duty-domain";
 
@@ -68,12 +69,14 @@ class SupabaseDutyRepository implements DutyRepository {
   }
   async saveRotation(year: number, orderedPersonIds: readonly string[]): Promise<DutyYear> {
     const client = requireSupabase();
+    if (!canManageSettings(activeAccount())) throw new Error("Not authorized.");
     unwrap(await client.rpc("generate_duty_schedule", { p_year: year, p_person_ids: [...orderedPersonIds] }));
     invalidateData("duty");
     return this.loadYear(year);
   }
   async reassignPeriod(year: number, sundayOn: string, personId: string, expectedRevision: number): Promise<DutyYear> {
     const client = requireSupabase();
+    if (!canManageSettings(activeAccount())) throw new Error("Not authorized.");
     unwrap(await client.rpc("reassign_duty_period", { p_sunday_on: sundayOn, p_person_id: personId, p_revision: expectedRevision }));
     invalidateData("duty");
     return this.loadYear(year);
