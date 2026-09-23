@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { NativeDateTimeField } from "@/features/forms/NativeDateTimeField";
+import { acceptsDateFieldValue, localDateValue } from "@/features/forms/date-field";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { canManageAccounts } from "@/lib/permissions";
@@ -53,6 +54,7 @@ export function MemberFormScreen() {
     const [patronymic, setPatronymic] = useState("");
     const [lastName, setLastName] = useState("");
     const [birthday, setBirthday] = useState("");
+    const [membershipJoinedAt, setMembershipJoinedAt] = useState("");
     const [phone, setPhone] = useState("");
     const [email, setEmail] = useState("");
     const [address, setAddress] = useState("");
@@ -84,6 +86,7 @@ export function MemberFormScreen() {
                     setPatronymic(found.patronymic ?? "");
                     setLastName(nameParts.lastName);
                     setBirthday(found.birthday ?? "");
+                    setMembershipJoinedAt(found.membershipJoinedAt ?? "");
                     setPhone(formatPhoneNumber(found.phone));
                     setEmail(found.email ?? "");
                     setAddress(found.address ?? "");
@@ -112,6 +115,9 @@ export function MemberFormScreen() {
                       patronymic: "По батькові (необов’язково)",
                       lastName: "Прізвище",
                       birthday: "День народження",
+                      membershipDate: "Дата вступу до церкви",
+                      membershipDateKnown: "Дата вступу відома",
+                      invalidMembershipDate: "Вкажіть коректну дату вступу не пізніше сьогоднішньої.",
                       ministry: "Служіння",
                       care: "Статус опіки",
                       orphan: "Сирота",
@@ -147,6 +153,9 @@ export function MemberFormScreen() {
                       patronymic: "Patronymic (optional)",
                       lastName: "Last name",
                       birthday: "Birthday",
+                      membershipDate: "Member since",
+                      membershipDateKnown: "Membership date known",
+                      invalidMembershipDate: "Enter a valid membership date no later than today.",
                       ministry: "Ministries",
                       care: "Care status",
                       orphan: "Orphan",
@@ -231,6 +240,11 @@ export function MemberFormScreen() {
             return;
         }
         setState("saving");
+        if (membershipJoinedAt && !acceptsDateFieldValue(membershipJoinedAt, "date", localDateValue(new Date()))) {
+            setError(labels.invalidMembershipDate);
+            setState("ready");
+            return;
+        }
         setError(null);
         try {
             const saved = await managementRepository.saveMemberDetails({
@@ -239,6 +253,7 @@ export function MemberFormScreen() {
                 name: fullName,
                 patronymic: patronymic.trim() || null,
                 birthday: birthday.trim() || null,
+                membershipJoinedAt: membershipJoinedAt || null,
                 ministryIds,
                 phone: phone.trim() || null,
                 email: email.trim() || null,
@@ -517,6 +532,25 @@ export function MemberFormScreen() {
                                 textColor={palette.text}
                                 value={birthday || "2000-01-01"}
                             />
+                        </View>
+                        <View style={styles.field}>
+                            <Text style={[styles.label, { color: palette.secondaryText }]}>{labels.membershipDate}</Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44 }}>
+                                <Text style={{ color: palette.text, flex: 1 }}>{labels.membershipDateKnown}</Text>
+                                <Switch accessibilityLabel={labels.membershipDateKnown} disabled={state === "saving"} value={Boolean(membershipJoinedAt)} onValueChange={(known) => setMembershipJoinedAt(known ? localDateValue(new Date()) : "")} />
+                            </View>
+                            {membershipJoinedAt ? <NativeDateTimeField
+                                accessibilityLabel={labels.membershipDate}
+                                accentColor={palette.accent}
+                                backgroundColor={palette.surface}
+                                borderColor={palette.line}
+                                disabled={state === "saving"}
+                                maximumDate={new Date()}
+                                mode="date"
+                                onChange={setMembershipJoinedAt}
+                                textColor={palette.text}
+                                value={membershipJoinedAt}
+                            /> : null}
                         </View>
                         <Field
                             label={labels.phone}
