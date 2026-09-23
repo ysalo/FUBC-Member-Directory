@@ -43,7 +43,7 @@ export default function MenuRoute() {
     }
     let active = true;
     setLinkedMember(null);
-    void memberProfileRepository.getProfile(session.account.personId)
+    void memberProfileRepository.getProfile(session.account.personId, "avatar")
       .then((profile) => { if (active) setLinkedMember(profile); })
       .catch(() => { if (active) setLinkedMember(null); });
     return () => { active = false; };

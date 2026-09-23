@@ -403,6 +403,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                             {hasHeroPhoto ? (
                                 <Image
                                     accessibilityLabel={`${name} ${copy.profile}`}
+                                    cachePolicy="memory"
                                     contentFit="cover"
                                     onError={() => setPhotoFailed(true)}
                                     source={profile.photo}
@@ -456,6 +457,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                         {hasHeroPhoto ? (
                             <Image
                                 accessibilityLabel={`${name} ${copy.profile}`}
+                                cachePolicy="memory"
                                 contentFit="cover"
                                 onError={() => setPhotoFailed(true)}
                                 source={profile.photo}

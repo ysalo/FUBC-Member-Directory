@@ -28,7 +28,7 @@ export type MemberProfile = {
 };
 
 export interface MemberProfileRepository {
-  getProfile(memberId: string): Promise<MemberProfile | null>;
+  getProfile(memberId: string, photoVariant?: "avatar" | "original"): Promise<MemberProfile | null>;
 }
 
 const profiles: MemberProfile[] = [

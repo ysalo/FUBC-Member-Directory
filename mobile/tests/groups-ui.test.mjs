@@ -229,7 +229,7 @@ test("profile avatars fall back to initials when an image fails", async () => {
             "utf8",
         ),
     ]);
-    assert.match(avatar, /onError=\{\(\) => setFailed\(true\)\}/);
+    assert.match(avatar, /onError=\{\(\) => setFailedSource\(requestIdentity\)\}/);
     assert.match(avatar, /hasSource && !failed/);
     assert.match(
         directory,

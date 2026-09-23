@@ -1,12 +1,18 @@
 import { activeAccount, privatePhotoSources, unwrap } from "@/lib/repository-helpers";
 import { requireSupabase } from "@/lib/supabase";
+import { createSessionCache } from "@/lib/session-cache";
 import type { AuthorizedBirthday, GroupDetail, GroupSummary, GroupsRepository, MinistryGroup } from "./groups-repository";
 
 const memberSummaryBatchSize = 100;
 
 export class SupabaseGroupsRepository implements GroupsRepository {
-  async listGroups(): Promise<MinistryGroup[]> {
+  private readonly cache = createSessionCache<Awaited<ReturnType<SupabaseGroupsRepository["loadGroups"]>>>(["groups", "directory"]);
+  async listGroups(options: { fresh?: boolean } = {}): Promise<MinistryGroup[]> {
     activeAccount();
+    const { groups, people, members, deacons, deaconAccounts } = await this.cache.load("groups", () => this.loadGroups(), options.fresh);
+    return this.mapGroups(groups, people, members, deacons, deaconAccounts);
+  }
+  private async loadGroups() {
     const client = requireSupabase();
     const [groupsResult, peopleResult, membersResult, deaconsResult, deaconAccountsResult] = await Promise.all([
       client.from("deacon_groups").select("*").eq("kind", "membership").is("archived_at", null).order("name"),
@@ -16,6 +22,15 @@ export class SupabaseGroupsRepository implements GroupsRepository {
       client.from("ministry_accounts").select("id,person_id").eq("leadership_ministry", "deacon"),
     ]);
     const groups = unwrap(groupsResult), people = unwrap(peopleResult), members = unwrap(membersResult), deacons = unwrap(deaconsResult), deaconAccounts = unwrap(deaconAccountsResult);
+    return { groups, people, members, deacons, deaconAccounts };
+  }
+  private async mapGroups(
+    groups: Awaited<ReturnType<SupabaseGroupsRepository["loadGroups"]>>["groups"],
+    people: Awaited<ReturnType<SupabaseGroupsRepository["loadGroups"]>>["people"],
+    members: Awaited<ReturnType<SupabaseGroupsRepository["loadGroups"]>>["members"],
+    deacons: Awaited<ReturnType<SupabaseGroupsRepository["loadGroups"]>>["deacons"],
+    deaconAccounts: Awaited<ReturnType<SupabaseGroupsRepository["loadGroups"]>>["deaconAccounts"],
+  ): Promise<MinistryGroup[]> {
     const activeIds = new Set(people.map((person) => person.id));
     const assignedDeaconPersonIds = new Set(deacons.map((assignment) => assignment.person_id));
     const deaconPeople = people.filter((person) => assignedDeaconPersonIds.has(person.id));

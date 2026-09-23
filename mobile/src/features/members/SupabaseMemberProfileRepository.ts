@@ -3,7 +3,7 @@ import { requireSupabase } from "@/lib/supabase";
 import type { MemberProfile, MemberProfileRepository } from "./member-repository";
 
 export class SupabaseMemberProfileRepository implements MemberProfileRepository {
-  async getProfile(memberId: string): Promise<MemberProfile | null> {
+  async getProfile(memberId: string, photoVariant: "avatar" | "original" = "original"): Promise<MemberProfile | null> {
     activeAccount();
     const client = requireSupabase();
     const { data: person, error } = await client.from("people").select("*").eq("id", memberId).is("archived_at", null).maybeSingle();
@@ -21,7 +21,10 @@ export class SupabaseMemberProfileRepository implements MemberProfileRepository 
     const details = unwrap(detailResult)[0];
     const deaconIds = deaconAssignmentsResult ? unwrap(deaconAssignmentsResult).map((assignment) => assignment.person_id) : [];
     const deaconPeople = deaconIds.length ? unwrap(await client.from("people").select("id,name,phone,photo_path").in("id", deaconIds).is("archived_at", null)) : [];
-    const photos = await privatePhotoSources([person.photo_path, ...deaconPeople.map((deacon) => deacon.photo_path)]);
+    const [portraits, photos] = await Promise.all([
+      privatePhotoSources([person.photo_path], photoVariant),
+      privatePhotoSources(deaconPeople.map((deacon) => deacon.photo_path)),
+    ]);
     const responsibleDeacons = [...new Set(deaconIds)].flatMap((deaconId) => {
       const deacon = deaconPeople.find((candidate) => candidate.id === deaconId);
       return deacon ? [{ id: deacon.id, name: deacon.name, phone: deacon.phone, avatar: deacon.photo_path ? photos.get(deacon.photo_path) ?? {} : {}, ministry: "", ministryUk: "", leadershipMinistry: "deacon" as const, isOrphan: false, isWidow: false }] : [];
@@ -42,6 +45,6 @@ export class SupabaseMemberProfileRepository implements MemberProfileRepository 
     const ordinaryMinistries = loadedMinistries?.filter((ministry) => !ministry.system_key) ?? [];
     const ministryNames = hasLoadedMinistries ? ordinaryMinistries.map((ministry) => ministry.name) : (person.ministry ? [person.ministry] : []);
     const ministryNamesUk = hasLoadedMinistries ? ordinaryMinistries.map((ministry) => ministry.name_uk || ministry.name) : ministryNames;
-    return { id: person.id, name: person.name, nameUk: person.name, photo: person.photo_path ? photos.get(person.photo_path) ?? {} : {}, phone: person.phone ?? undefined, email: leadershipMinistry ? person.email ?? undefined : undefined, address: details?.address ?? undefined, birthDate: details?.birth_date ?? undefined, membershipJoinedAt: details?.membership_joined_at ?? undefined, maritalStatus: details?.marital_status ?? undefined, isOrphan: details?.orphan_status ?? undefined, leadershipMinistry, membershipGroup: group, membershipGroupUk: group, membershipGroupId: groupRow?.id, responsibleDeacons, responsibilityGroup: responsibilityGroup?.name, responsibilityGroupUk: responsibilityGroup?.name, responsibilityGroupId: responsibilityGroup?.id, ministries: ministryNames, ministriesUk: ministryNamesUk };
+    return { id: person.id, name: person.name, nameUk: person.name, photo: person.photo_path ? portraits.get(person.photo_path) ?? {} : {}, phone: person.phone ?? undefined, email: leadershipMinistry ? person.email ?? undefined : undefined, address: details?.address ?? undefined, birthDate: details?.birth_date ?? undefined, membershipJoinedAt: details?.membership_joined_at ?? undefined, maritalStatus: details?.marital_status ?? undefined, isOrphan: details?.orphan_status ?? undefined, leadershipMinistry, membershipGroup: group, membershipGroupUk: group, membershipGroupId: groupRow?.id, responsibleDeacons, responsibilityGroup: responsibilityGroup?.name, responsibilityGroupUk: responsibilityGroup?.name, responsibilityGroupId: responsibilityGroup?.id, ministries: ministryNames, ministriesUk: ministryNamesUk };
   }
 }

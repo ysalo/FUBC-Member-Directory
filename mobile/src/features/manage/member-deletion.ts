@@ -1,4 +1,5 @@
 import { requireSupabase } from "@/lib/supabase";
+import { invalidateData } from "@/lib/session-cache";
 
 export type DeleteMemberRequest = {
   personId: string;
@@ -29,6 +30,7 @@ export async function deleteMember(request: DeleteMemberRequest): Promise<Delete
   if (data?.status !== "completed" || typeof data.deletedPersonId !== "string" || typeof data.deletedVisitCount !== "number") {
     throw new MemberDeletionError(data?.code ?? "unexpected", data?.message ?? "The member deletion service returned an invalid response.");
   }
+  invalidateData("directory", "groups", "duty", "visits", "photos", "accounts");
   return {
     deletedPersonId: data.deletedPersonId,
     deletedAccountId: typeof data.deletedAccountId === "string" ? data.deletedAccountId : null,
