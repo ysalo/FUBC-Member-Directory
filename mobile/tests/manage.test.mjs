@@ -45,6 +45,16 @@ function photoRepository(failure) {
     return { repository: new exports.SupabaseManagementRepository(), calls, invalidations };
 }
 
+test("member saves send optional patronymics and preserve omission for other callers", async () => {
+    const { repository, calls } = photoRepository();
+    await repository.saveMemberDetails({ name: "Ivan Petrenko", patronymic: " Mykolayovych " });
+    assert.equal(calls.at(-1).args.p_data.patronymic, "Mykolayovych");
+    await repository.saveMemberDetails({ name: "Ivan Petrenko", patronymic: " " });
+    assert.equal(calls.at(-1).args.p_data.patronymic, null);
+    await repository.saveMemberDetails({ name: "Ivan Petrenko" });
+    assert.equal(Object.hasOwn(calls.at(-1).args.p_data, "patronymic"), false);
+});
+
 test("photo pairs publish only after both uploads and clean both replaced paths", async () => {
     const { repository, calls, invalidations } = photoRepository();
     await repository.replacePhoto({ id: "member", revision: 1, photoPath: "member/previous.jpg" }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10));
@@ -523,7 +533,8 @@ test("management keeps pending approvals visible and preserves actionable load f
         /privatePhotoSources[\s\S]*\.catch\(\(\) => new Map\(\)\)/,
     );
     assert.match(gate, /Opening your directory/);
-    assert.match(gate, /Church access/);
+    assert.match(gate, /styles\.loadingMark/);
+    assert.doesNotMatch(gate, /checkingSecure|checkingApproval/);
     assert.match(gate, /Check again/);
 });
 

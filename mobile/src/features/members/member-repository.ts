@@ -7,6 +7,7 @@ export type MemberProfile = {
   id: string;
   name: string;
   nameUk: string;
+  patronymic?: string | null;
   photo: ImageSourcePropType;
   photoPaths?: { portrait: string | null; deacons: Record<string, string | null> };
   phone?: string;

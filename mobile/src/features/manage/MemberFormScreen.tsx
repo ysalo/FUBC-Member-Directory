@@ -49,6 +49,7 @@ export function MemberFormScreen() {
     const [member, setMember] = useState<ManagedMember | null>(null);
     const [ministries, setMinistries] = useState<ManagedMinistry[]>([]);
     const [firstName, setFirstName] = useState("");
+    const [patronymic, setPatronymic] = useState("");
     const [lastName, setLastName] = useState("");
     const [birthday, setBirthday] = useState("");
     const [phone, setPhone] = useState("");
@@ -79,6 +80,7 @@ export function MemberFormScreen() {
                 if (found) {
                     const nameParts = splitMemberName(found.name);
                     setFirstName(nameParts.firstName);
+                    setPatronymic(found.patronymic ?? "");
                     setLastName(nameParts.lastName);
                     setBirthday(found.birthday ?? "");
                     setPhone(formatPhoneNumber(found.phone));
@@ -106,6 +108,7 @@ export function MemberFormScreen() {
                 ? {
                       title: editing ? "Редагувати учасника" : "Новий учасник",
                       firstName: "Ім’я",
+                      patronymic: "По батькові (необов’язково)",
                       lastName: "Прізвище",
                       birthday: "День народження",
                       ministry: "Служіння",
@@ -140,6 +143,7 @@ export function MemberFormScreen() {
                 : {
                       title: editing ? "Edit member" : "New member",
                       firstName: "First name",
+                      patronymic: "Patronymic (optional)",
                       lastName: "Last name",
                       birthday: "Birthday",
                       ministry: "Ministries",
@@ -232,6 +236,7 @@ export function MemberFormScreen() {
                 id: member?.id,
                 revision: member?.revision,
                 name: fullName,
+                patronymic: patronymic.trim() || null,
                 birthday: birthday.trim() || null,
                 ministryIds,
                 phone: phone.trim() || null,
@@ -476,6 +481,13 @@ export function MemberFormScreen() {
                             onChangeText={setFirstName}
                             palette={palette}
                             autoFocus={!editing}
+                        />
+                        <Field
+                            label={labels.patronymic}
+                            value={patronymic}
+                            onChangeText={setPatronymic}
+                            palette={palette}
+                            maxLength={200}
                         />
                         <Field
                             label={labels.lastName}
@@ -754,6 +766,7 @@ function Field({
                 {hint ? ` · ${hint}` : ""}
             </Text>
             <TextInput
+                accessibilityLabel={label}
                 {...props}
                 multiline={multiline}
                 placeholderTextColor={palette.secondaryText}

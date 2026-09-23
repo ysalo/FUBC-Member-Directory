@@ -39,11 +39,9 @@ if (Platform.OS !== "web") WebBrowser.maybeCompleteAuthSession();
 const copy = {
     en: {
         checking: "Opening your directory",
-        checkingDetail:
-            "We’re confirming your sign-in and church access. This usually takes only a moment.",
-        checkingSecure: "Secure sign-in",
-        checkingApproval: "Church access",
-        checkingDirectory: "Private directory",
+        reconnect: "Reconnect",
+        reconnectTitle: "Let’s reconnect",
+        reconnectDetail: "We couldn’t reconnect to the directory. Check your internet connection and reconnect. If this continues, contact a church administrator.",
         title: "FUBC",
         subtitle: "Member Directory",
         apple: "Continue with Apple",
@@ -67,11 +65,9 @@ const copy = {
     },
     uk: {
         checking: "Відкриваємо ваш довідник",
-        checkingDetail:
-            "Підтверджуємо ваш вхід і доступ до церкви. Зазвичай це займає лише мить.",
-        checkingSecure: "Захищений вхід",
-        checkingApproval: "Доступ до церкви",
-        checkingDirectory: "Приватний довідник",
+        reconnect: "Підключитися знову",
+        reconnectTitle: "Відновімо з’єднання",
+        reconnectDetail: "Не вдалося відновити з’єднання з довідником. Перевірте інтернет і підключіться знову. Якщо це повторюється, зверніться до адміністратора церкви.",
         title: "FUBC",
         subtitle: "Довідник членів церкви",
         apple: "Продовжити з Apple",
@@ -134,10 +130,11 @@ export function AccessGate({ children }: PropsWithChildren) {
         return () => window.removeEventListener("pageshow", reset);
     }, [locale]);
     async function retrySession() {
+        setSignOutError(null);
         try {
             await refreshSession();
-        } catch (error) {
-            setSignOutError(errorMessage(error));
+        } catch {
+            setSignOutError(labels.reconnectDetail);
         }
     }
     async function submitSignOut() {
@@ -172,14 +169,8 @@ export function AccessGate({ children }: PropsWithChildren) {
     if (session.status === "loading" || session.status === "unconfigured")
         return (
             <State
-                detail={labels.checkingDetail}
                 icon="shield-checkmark-outline"
                 loading
-                progress={[
-                    labels.checkingSecure,
-                    labels.checkingApproval,
-                    labels.checkingDirectory,
-                ]}
                 title={labels.checking}
             />
         );
@@ -187,16 +178,16 @@ export function AccessGate({ children }: PropsWithChildren) {
         return (
             <State
                 action={() => void retrySession()}
-                actionLabel={labels.retry}
+                actionLabel={labels.reconnect}
                 secondaryAction={() => void submitSignOut()}
                 secondaryActionBusy={signingOut}
                 secondaryActionError={signOutError}
                 secondaryActionLabel={
                     signingOut ? labels.signingOut : labels.signOut
                 }
-                detail={session.error}
+                detail={labels.reconnectDetail}
                 icon="cloud-offline-outline"
-                title={labels.errorTitle}
+                title={labels.reconnectTitle}
             />
         );
     if (session.status === "ready") {
@@ -443,7 +434,6 @@ export function State({
     detail,
     icon,
     loading,
-    progress,
     title,
 }: {
     action?: () => void;
@@ -458,16 +448,28 @@ export function State({
         | "cloud-offline-outline"
         | "lock-closed-outline";
     loading?: boolean;
-    progress?: readonly string[];
     title: string;
 }) {
+    if (loading) return (
+        <GateShell>
+            <View accessibilityLabel={title} accessibilityState={{ busy: true }} style={styles.state}>
+                <Image
+                    accessibilityLabel="FUBC"
+                    contentFit="contain"
+                    source={require("../../../assets/images/church-logo-light.png")}
+                    style={styles.loadingMark}
+                />
+                <ActivityIndicator accessibilityLabel={title} color={accessColors.brand} size="large" />
+            </View>
+        </GateShell>
+    );
     return (
         <GateShell>
             <View style={styles.state}>
                 <Image
                     accessibilityLabel="FUBC"
                     contentFit="contain"
-                    source={require("../../../assets/images/church-logo-gold.png")}
+                    source={require("../../../assets/images/church-logo-light.png")}
                     style={styles.stateMark}
                 />
                 <View
@@ -476,15 +478,7 @@ export function State({
                         { backgroundColor: accessColors.accentSoft },
                     ]}
                 >
-                    {loading ? (
-                        <ActivityIndicator color={accessColors.accent} />
-                    ) : (
-                        <Ionicons
-                            color={accessColors.accent}
-                            name={icon}
-                            size={28}
-                        />
-                    )}
+                    <Ionicons color={accessColors.accent} name={icon} size={28} />
                 </View>
                 <Text
                     accessibilityRole="header"
@@ -503,58 +497,6 @@ export function State({
                     >
                         {detail}
                     </Text>
-                ) : null}
-                {progress ? (
-                    <View
-                        accessibilityLabel={progress.join(", ")}
-                        style={[
-                            styles.progress,
-                            {
-                                backgroundColor: accessColors.surface,
-                                borderColor: accessColors.line,
-                            },
-                        ]}
-                    >
-                        {progress.map((label, index) => (
-                            <View key={label} style={styles.progressItem}>
-                                <View
-                                    style={[
-                                        styles.progressDot,
-                                        {
-                                            backgroundColor:
-                                                index === 0
-                                                    ? accessColors.accent
-                                                    : accessColors.line,
-                                        },
-                                    ]}
-                                />
-                                {index < progress.length - 1 ? (
-                                    <View
-                                        style={[
-                                            styles.progressLine,
-                                            {
-                                                backgroundColor:
-                                                    accessColors.line,
-                                            },
-                                        ]}
-                                    />
-                                ) : null}
-                                <Text
-                                    style={[
-                                        styles.progressLabel,
-                                        {
-                                            color:
-                                                index === 0
-                                                    ? accessColors.text
-                                                    : accessColors.secondaryText,
-                                        },
-                                    ]}
-                                >
-                                    {label}
-                                </Text>
-                            </View>
-                        ))}
-                    </View>
                 ) : null}
                 {action ? (
                     <Pressable
@@ -679,6 +621,7 @@ const styles = StyleSheet.create({
         width: "100%",
     },
     stateMark: { height: 42, marginBottom: 20, width: 45 },
+    loadingMark: { aspectRatio: 438 / 414, marginBottom: 32, maxWidth: "100%", width: 200 },
     stateIcon: {
         alignItems: "center",
         borderRadius: 28,
@@ -701,30 +644,6 @@ const styles = StyleSheet.create({
         maxWidth: 350,
         textAlign: "center",
     },
-    progress: {
-        borderCurve: "continuous",
-        borderRadius: 16,
-        borderWidth: StyleSheet.hairlineWidth,
-        marginTop: 24,
-        paddingHorizontal: 18,
-        paddingVertical: 14,
-        width: "100%",
-    },
-    progressItem: {
-        alignItems: "center",
-        flexDirection: "row",
-        minHeight: 34,
-        position: "relative",
-    },
-    progressDot: { borderRadius: 5, height: 10, marginRight: 14, width: 10 },
-    progressLine: {
-        bottom: -12,
-        height: 24,
-        left: 4.5,
-        position: "absolute",
-        width: StyleSheet.hairlineWidth,
-    },
-    progressLabel: { fontSize: 15, fontWeight: "600" },
     retry: {
         borderCurve: "continuous",
         borderRadius: 14,
