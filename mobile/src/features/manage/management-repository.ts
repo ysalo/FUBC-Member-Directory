@@ -534,22 +534,16 @@ export class SupabaseManagementRepository {
         let path: string | null = null;
         if (bytes) {
             if (
-                !mimeType ||
+                mimeType !== "image/jpeg" ||
                 bytes.byteLength === 0 ||
-                bytes.byteLength > 5 * 1024 * 1024
+                bytes.byteLength > 512 * 1024
             )
                 throw new Error(
-                    "Choose a JPEG, PNG or WebP photo smaller than 5 MB.",
+                    "The optimized JPEG photo must be 512 KB or smaller. Choose the photo again.",
                 );
-            if (!thumbnail?.byteLength || thumbnail.byteLength > 5 * 1024 * 1024)
+            if (!thumbnail?.byteLength || thumbnail.byteLength > 50 * 1024)
                 throw new Error("The photo thumbnail is unavailable. Choose the photo again.");
-            const extension =
-                mimeType === "image/jpeg"
-                    ? "jpg"
-                    : mimeType === "image/png"
-                      ? "png"
-                      : "webp";
-            path = `${person.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+                        path = `${person.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
             const { error } = await client.storage
                 .from("member-photos")
                 .upload(path, bytes, { contentType: mimeType, upsert: false });
@@ -570,6 +564,9 @@ export class SupabaseManagementRepository {
         });
         if (result.error) {
             if (path) {
+                const current = await client.from("people").select("photo_path").eq("id", person.id).maybeSingle();
+                if (current.error || !current.data || current.data.photo_path === path)
+                    throw new Error("The photo update could not be confirmed. Reload the member before retrying.");
                 const cleanup = await client.storage.from("member-photos").remove([path, thumbnailPath(path)]);
                 if (cleanup.error) throw new Error("Photo update failed and temporary files could not be removed. Contact an administrator.");
             }
@@ -579,12 +576,16 @@ export class SupabaseManagementRepository {
         const previous = person.photo_path ?? person.photoPath ?? null;
         let cleanupWarning: string | null = null;
         if (previous && previous !== path) {
-            const { error } = await client.storage
-                .from("member-photos")
-                .remove([previous, thumbnailPath(previous)]);
-            if (error)
-                cleanupWarning =
-                    "The previous photo could not be removed. Please contact an administrator.";
+            try {
+                const references = await client.from("people").select("id").eq("photo_path", previous).limit(1);
+                if (references.error) throw references.error;
+                if (!references.data?.length) {
+                    const { error } = await client.storage.from("member-photos").remove([previous, thumbnailPath(previous)]);
+                    if (error) throw error;
+                }
+            } catch {
+                cleanupWarning = "The previous photo could not be removed. Please contact an administrator.";
+            }
         }
         return { person: unwrap(result), cleanupWarning };
     }

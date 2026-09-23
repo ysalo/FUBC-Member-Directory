@@ -6,7 +6,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
-import { type ComponentProps, useCallback, useEffect, useState } from "react";
+import { type ComponentProps, useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Platform,
@@ -29,7 +29,8 @@ import {
 } from "./member-repository";
 import { CareStatusBadges } from "./care-status-badges";
 import { LeadershipBadge } from "./leadership-badge";
-import { ProfileAvatar, hasImageSource } from "./ProfileAvatar";
+import { ProfileAvatar, avatarSourceIdentity, hasImageSource } from "./ProfileAvatar";
+import { sessionCacheScope, subscribeDataChanges } from "@/lib/session-cache";
 import { canCreateVisit } from "@/lib/permissions";
 import { contactShareMessage, emailUrl, mapUrls } from "./contact-links";
 
@@ -41,22 +42,58 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
     const insets = useSafeAreaInsets();
     const { locale } = useLocalization();
     const copy = getMemberCopy(locale);
-    const [profile, setProfile] = useState<MemberProfile | null | undefined>();
+    const scope = (() => { try { return sessionCacheScope(); } catch { return null; } })();
+    const [loaded, setLoaded] = useState<{ scope: string | null; memberId: string; profile: MemberProfile | null }>();
+    const profile = loaded?.scope === scope && loaded?.memberId === memberId && scope !== null ? loaded.profile : undefined;
     const [failed, setFailed] = useState(false);
-    const [photoFailed, setPhotoFailed] = useState(false);
-    const load = () => {
-        setProfile(undefined);
+    const [failedPhoto, setFailedPhoto] = useState<string>();
+    const request = useRef(0);
+    const load = useCallback(() => {
+        const ticket = ++request.current;
+        if (scope === null) { setLoaded(undefined); return; }
+        const current = () => {
+            try { return request.current === ticket && sessionCacheScope() === scope; }
+            catch { return false; }
+        };
         setFailed(false);
-        setPhotoFailed(false);
         memberProfileRepository
-            .getProfile(memberId)
-            .then(setProfile)
+            .getProfile(memberId, "original", true)
+            .then((next) => {
+                if (!current()) return;
+                setLoaded((previous) => {
+                    const prior = previous?.scope === scope && previous.memberId === memberId ? previous.profile : null;
+                    const samePortrait = next?.photoPaths && prior?.photoPaths?.portrait === next.photoPaths.portrait;
+                    const retained = next && prior ? {
+                        ...next,
+                        photo: samePortrait ? prior.photo : next.photo,
+                        responsibleDeacons: next.responsibleDeacons?.map((deacon) => ({ ...deacon, avatar:
+                            next.photoPaths?.deacons[deacon.id] && next.photoPaths.deacons[deacon.id] === prior.photoPaths?.deacons[deacon.id]
+                                ? prior.responsibleDeacons?.find((person) => person.id === deacon.id)?.avatar ?? deacon.avatar : deacon.avatar,
+                        })),
+                    } : next;
+                    return { scope, memberId, profile: retained };
+                });
+                if (next) for (const part of ["portrait", "deacons"] as const) {
+                    void memberProfileRepository.hydratePhotos(next, "original", part).then((hydrated) => {
+                        if (current()) setLoaded((previous) => previous?.profile ? { ...previous, profile: {
+                            ...previous.profile,
+                            ...(part === "portrait" ? { photo: hydrated.photo } : { responsibleDeacons: hydrated.responsibleDeacons }),
+                        } } : previous);
+                    }).catch(() => {});
+                }
+            })
             .catch(() => {
-                setFailed(true);
-                setProfile(null);
+                if (current()) {
+                    setFailed(true);
+                    setLoaded({ scope, memberId, profile: null });
+                }
             });
-    };
-    useFocusEffect(useCallback(load, [memberId]));
+    }, [memberId, scope]);
+    useFocusEffect(useCallback(() => {
+        load();
+        const unsubscribe = subscribeDataChanges(load);
+        return () => { request.current++; unsubscribe(); };
+    }, [load]));
     const open = async (
         url: string,
         unavailableMessage: string,
@@ -123,7 +160,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
         session.status === "ready" && canCreateVisit(session.account);
     const canEdit =
         session.status === "ready" && session.account.role === "admin";
-    const hasHeroPhoto = hasImageSource(profile.photo) && !photoFailed;
+    const photoIdentity = typeof profile.photo === "object" && "uri" in profile.photo ? profile.photo.uri : avatarSourceIdentity(profile.photo);
+    const hasHeroPhoto = hasImageSource(profile.photo) && failedPhoto !== photoIdentity;
     const shareContact = async () => {
         const message = contactShareMessage(
             {
@@ -405,7 +443,9 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                                     accessibilityLabel={`${name} ${copy.profile}`}
                                     cachePolicy="memory"
                                     contentFit="cover"
-                                    onError={() => setPhotoFailed(true)}
+                                    recyclingKey={avatarSourceIdentity(profile.photo)}
+                                    transition={0}
+                                    onError={() => setFailedPhoto(photoIdentity)}
                                     source={profile.photo}
                                     style={styles.desktopPhoto}
                                 />
@@ -459,7 +499,9 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                                 accessibilityLabel={`${name} ${copy.profile}`}
                                 cachePolicy="memory"
                                 contentFit="cover"
-                                onError={() => setPhotoFailed(true)}
+                                recyclingKey={avatarSourceIdentity(profile.photo)}
+                                transition={0}
+                                onError={() => setFailedPhoto(photoIdentity)}
                                 source={profile.photo}
                                 style={StyleSheet.absoluteFill}
                             />

@@ -8,6 +8,7 @@ export type MemberProfile = {
   name: string;
   nameUk: string;
   photo: ImageSourcePropType;
+  photoPaths?: { portrait: string | null; deacons: Record<string, string | null> };
   phone?: string;
   email?: string;
   address?: string;
@@ -28,7 +29,8 @@ export type MemberProfile = {
 };
 
 export interface MemberProfileRepository {
-  getProfile(memberId: string, photoVariant?: "avatar" | "original"): Promise<MemberProfile | null>;
+  getProfile(memberId: string, photoVariant?: "avatar" | "original", deferPhotos?: boolean): Promise<MemberProfile | null>;
+  hydratePhotos(profile: MemberProfile, photoVariant?: "avatar" | "original", part?: "portrait" | "deacons" | "all"): Promise<MemberProfile>;
 }
 
 const profiles: MemberProfile[] = [
@@ -42,6 +44,7 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Local preview adapter used when the Supabase environment is unavailable. */
 class InMemoryMemberProfileRepository implements MemberProfileRepository {
+  async hydratePhotos(profile: MemberProfile) { return profile; }
   async getProfile(memberId: string) {
     const profile = profiles.find((candidate) => candidate.id === memberId);
     if (!profile) return null;
