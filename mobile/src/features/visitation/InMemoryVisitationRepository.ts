@@ -18,6 +18,7 @@ import type {
     VisitEdit,
     VisitListItem,
     VisitListMode,
+    VisitPage,
     VisitRecord,
     VisitResponseInput,
     VisitationRepository,
@@ -112,11 +113,11 @@ export class InMemoryVisitationRepository implements VisitationRepository {
         return cloneActor(actor);
     }
 
-    async list(mode: VisitListMode): Promise<VisitListItem[]> {
+    async listPage(mode: VisitListMode, offset = 0, limit = 50): Promise<VisitPage> {
         await this.pause();
-        if (this.sessionActor !== undefined) return [];
+        if (this.sessionActor !== undefined) return { items: [], nextOffset: null };
         const actor = this.actor();
-        return this.visits
+        const items = this.visits
             .filter((visit) => canReadVisit(actor, visit))
             .filter((visit) =>
                 mode === "archive"
@@ -128,7 +129,20 @@ export class InMemoryVisitationRepository implements VisitationRepository {
                     Date.parse(left.scheduledAt) -
                     Date.parse(right.scheduledAt),
             )
+            .slice(offset, offset + limit)
             .map(cloneVisit);
+        return { items, nextOffset: items.length === limit ? offset + limit : null };
+    }
+
+    async list(mode: VisitListMode): Promise<VisitListItem[]> {
+        const items: VisitListItem[] = [];
+        let offset = 0;
+        while (true) {
+            const page = await this.listPage(mode, offset);
+            items.push(...page.items);
+            if (page.nextOffset === null) return items;
+            offset = page.nextOffset;
+        }
     }
 
     async getAuthorized(id: string) {

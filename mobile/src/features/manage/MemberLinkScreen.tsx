@@ -46,7 +46,7 @@ export function MemberLinkScreen() {
     {error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{error}</Text> : null}
     <TextInput accessibilityLabel={copy.search} autoFocus onChangeText={setQ} placeholder={copy.search} placeholderTextColor={palette.secondaryText} style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.line, color: palette.text }]} value={q} />
     <FlatList contentInsetAdjustmentBehavior="automatic" data={members} keyExtractor={(m) => m.id} keyboardShouldPersistTaps="handled" renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityState={{ busy, disabled: busy }} disabled={busy} onPress={() => void linkMember(item.id)} style={[styles.row, { borderBottomColor: palette.line }]}>
-      <ProfileAvatar backgroundColor={palette.accentSoft} name={item.name} source={item.photo} textColor={palette.accent} />
+      <ProfileAvatar name={item.name} source={item.photo} />
       <Text style={[styles.rowText, { color: palette.text }]}>{item.name}</Text>
     </Pressable>} ListEmptyComponent={<Text style={{ color: palette.secondaryText }}>{copy.empty}</Text>} />
   </View>;

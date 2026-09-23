@@ -8,6 +8,7 @@ import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } fro
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { WebTabBar } from "@/features/shell/WebTabBar";
+import { LoadingSkeleton } from "@/features/shell/LoadingSkeleton";
 import { formatFixedPdt } from "@/lib/dates";
 import { canCreateVisit } from "@/lib/permissions";
 
@@ -19,7 +20,7 @@ import { ActionButton, ScreenState, SectionCard, StatusPill, visitColors } from 
 type ListState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; snapshot: RepositorySnapshot; visits: VisitListItem[] };
+  | { status: "ready"; snapshot: RepositorySnapshot; visits: VisitListItem[]; nextOffset: number | null; loadingMore: boolean };
 
 export function VisitationListScreen() {
   const { locale } = useLocalization();
@@ -35,14 +36,29 @@ export function VisitationListScreen() {
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setState({ status: "loading" });
     try {
-      const [snapshot, visits] = await Promise.all([visitationRepository.getSnapshot(), visitationRepository.list(mode)]);
-      setState({ status: "ready", snapshot, visits });
+      const [snapshot, page] = await Promise.all([visitationRepository.getSnapshot(), visitationRepository.listPage(mode)]);
+      setState({ status: "ready", snapshot, visits: page.items, nextOffset: page.nextOffset, loadingMore: false });
     } catch {
       setState({ status: "error", message: c.loadFailed });
     } finally {
       setRefreshing(false);
     }
   }, [c.loadFailed, mode]);
+
+  const loadMore = useCallback(async () => {
+    if (state.status !== "ready" || state.nextOffset === null || state.loadingMore) return;
+    setState((current) => current.status === "ready" ? { ...current, loadingMore: true } : current);
+    try {
+      const page = await visitationRepository.listPage(mode, state.nextOffset);
+      setState((current) => {
+        if (current.status !== "ready") return current;
+        const known = new Set(current.visits.map((visit) => visit.id));
+        return { ...current, visits: [...current.visits, ...page.items.filter((visit) => !known.has(visit.id))], nextOffset: page.nextOffset, loadingMore: false };
+      });
+    } catch {
+      setState((current) => current.status === "ready" ? { ...current, loadingMore: false } : current);
+    }
+  }, [mode, state]);
 
   useEffect(() => bindVisitationSession(account), [account]);
 
@@ -57,7 +73,7 @@ export function VisitationListScreen() {
   };
 
   const content = (() => {
-    if (state.status === "loading") return <ScreenState icon="calendar-outline" loading title={c.loading} />;
+    if (state.status === "loading") return <View accessibilityLiveRegion="polite"><LoadingSkeleton rows={4} /><ScreenState icon="calendar-outline" loading title={c.loading} /></View>;
     if (state.status === "error") return <ScreenState actionLabel={c.retry} detail={state.message} icon="cloud-offline-outline" onAction={() => void load()} title={c.loadFailed} />;
     return (
       <>
@@ -159,6 +175,9 @@ export function VisitationListScreen() {
           </View>)}
           </View>
         )}
+        {state.nextOffset !== null ? (
+          <ActionButton icon="chevron-down" label={state.loadingMore ? c.loadingMore : c.loadMore} onPress={() => void loadMore()} />
+        ) : null}
         <Text selectable style={styles.privacyNote}>{Platform.OS === "web" ? (locale === "uk" ? "Відкривайте відвідування, щоб переглянути оновлення. Сповіщення в цій вебверсії не надсилаються." : "Open visitations to review updates. This web version does not send notifications.") : c.notificationNote}</Text>
       </>
     );

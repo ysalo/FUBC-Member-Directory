@@ -1,6 +1,5 @@
 /** Church scheduling policy: fixed UTC−07:00, including winter. Never use America/Los_Angeles. */
-export const PDT_OFFSET_MINUTES = -420;
-export const PDT_LABEL = "PDT (UTC−07:00)";
+const PDT_OFFSET_MINUTES = -420;
 export function parseDateOnly(value: string): { year: number; month: number; day: number } {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) throw new Error("Use YYYY-MM-DD.");

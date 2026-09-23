@@ -318,6 +318,25 @@ const tests: Array<{ name: string; run: () => void | Promise<void> }> = [
             );
         },
     },
+    {
+        name: "visitation pages are ordered, bounded, and complete without duplicates",
+        run: async () => {
+            const repository = new InMemoryVisitationRepository({ latencyMs: 0 });
+            const pages = [];
+            let offset = 0;
+            while (true) {
+                const page = await repository.listPage("current", offset, 1);
+                pages.push(page);
+                if (page.nextOffset === null) break;
+                offset = page.nextOffset;
+            }
+            const items = pages.flatMap((page) => page.items);
+            assert(pages.every((page) => page.items.length <= 1), "Every page should be bounded");
+            assert(pages.length > 1, "The fixture should require multiple pages");
+            assert(new Set(items.map((item) => item.id)).size === items.length, "Pages must not duplicate visits");
+            assert(items.every((item, index) => index === 0 || Date.parse(items[index - 1].scheduledAt) <= Date.parse(item.scheduledAt)), "Pages preserve scheduled order");
+        },
+    },
 ];
 
 async function run() {

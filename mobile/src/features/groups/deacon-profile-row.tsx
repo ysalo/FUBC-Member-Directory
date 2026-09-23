@@ -29,7 +29,7 @@ export function DeaconProfileRow({ accessibilityHint, deacon, roleLabel, last = 
         pressed && styles.pressed,
       ]}
     >
-      <ProfileAvatar backgroundColor={palette.accentSoft} name={deacon.name} source={deacon.photo} size={42} textColor={palette.accent} />
+      <ProfileAvatar name={deacon.name} source={deacon.photo} size={42} />
       <View style={styles.copy}>
         <Text numberOfLines={2} selectable style={[styles.name, { color: palette.text }]}>{deacon.name}</Text>
         <Text selectable style={[styles.label, { color: palette.secondaryText }]}>{roleLabel}</Text>
