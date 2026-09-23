@@ -24,6 +24,7 @@ import { LeadershipBadge } from "@/features/members/leadership-badge";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DutySummary } from "@/features/duty/DutySummary";
 import { formatPhoneNumber } from "@/lib/phone";
+import { formatMemberName } from "@/lib/member-name";
 
 import { getDirectoryVisitCount, listDirectory } from "./directory-repository";
 import type { Member } from "./members";
@@ -105,7 +106,7 @@ export function MemberRow({
                     numberOfLines={1}
                     style={[styles.memberName, { color: palette.text }]}
                 >
-                    {item.name}
+                    {formatMemberName(item.name, item.patronymic, true)}
                 </Text>
                 {!desktop && showsMinistry ? (
                     <Text
@@ -252,7 +253,7 @@ export function DirectoryScreen() {
         return directoryMembers
             .map((member) => ({
                 member,
-                searchText: `${member.name} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase(),
+                searchText: `${member.name} ${formatMemberName(member.name, member.patronymic)} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase(),
                 surname: surname(member.name),
             }))
             .sort(

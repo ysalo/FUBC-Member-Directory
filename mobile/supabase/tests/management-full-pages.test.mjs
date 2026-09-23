@@ -41,12 +41,31 @@ before(async () => {
     "20260920000000_optional_visit_participants.sql", "20260920010000_person_based_visit_participants.sql",
     "20260921000000_deacon_duty_schedule.sql", "20260921040000_member_deletion_duty_cleanup.sql",
     "20260921050000_accountless_deacon_schedule.sql",
+    "20260923000000_member_patronymic.sql",
   ]) await db.exec(await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
   await db.query("insert into auth.users(id,email) values($1,'admin@example.com'),($2,'editor@example.com'),($3,'member@example.com')", [ids.admin, ids.editor, ids.member]);
   await db.exec(`update public.profiles set status='active',role='admin' where id='${ids.admin}';
     update public.profiles set status='active',role='editor' where id='${ids.editor}';`);
 });
 after(async () => db.close());
+
+test("optional patronymics round-trip, preserve older writes, and enforce permissions and revisions", async () => {
+  const save = (id, revision, data, actor = "editor") => as(actor, "select * from public.save_person($1,$2,$3::jsonb)", [id, revision, JSON.stringify(data)]).then((result) => result.rows[0]);
+  const person = await save(null, null, { name: "Ivan Petrenko", patronymic: " Mykolayovych " });
+  assert.equal(person.patronymic, "Mykolayovych");
+  const directory = (await as("editor", "select * from public.directory_active_members() where id=$1", [person.id])).rows[0];
+  assert.equal(directory.patronymic, person.patronymic);
+  assert.equal(directory.name, "Ivan Petrenko");
+  assert.equal((await as("member", "select * from public.directory_active_members() where id=$1", [person.id])).rows.length, 0);
+  await assert.rejects(save(person.id, person.revision, { name: person.name, patronymic: "Other" }, "member"), /Not authorized/);
+  const legacy = await save(person.id, person.revision, { name: person.name, phone: "123" });
+  assert.equal(legacy.patronymic, person.patronymic);
+  await assert.rejects(save(person.id, person.revision, { name: person.name, patronymic: "Other" }), /Conflict/);
+  const cleared = await save(person.id, legacy.revision, { name: person.name, patronymic: "  " });
+  assert.equal(cleared.patronymic, null);
+  assert.equal((await save(null, null, { name: "No Patronymic" })).patronymic, null);
+  await assert.rejects(save(null, null, { name: "Too Long", patronymic: "x".repeat(201) }), /check constraint/);
+});
 
 test("editor manages ministry catalog and complete member details without exposing private tables", async () => {
   const ministry = (await as("editor", "select * from public.save_ministry(null,null,'Music','Музика',false)")).rows[0];

@@ -172,6 +172,7 @@ export class SupabaseManagementRepository {
         return {
             id: row.id,
             name: row.name,
+            patronymic: row.patronymic,
             group:
                 groups.find((group) => group.id === row.membership_group_id)
                     ?.name ?? "",
@@ -317,6 +318,7 @@ export class SupabaseManagementRepository {
         id?: string | null;
         revision?: number | null;
         name: string;
+        patronymic?: string | null;
         birthday?: string | null;
         ministryIds?: string[];
         phone?: string | null;
@@ -333,6 +335,7 @@ export class SupabaseManagementRepository {
                 p_revision: member.revision ?? null,
                 p_data: {
                     name: member.name,
+                    ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                     birth_date: member.birthday ?? null,
                     ministry_ids: member.ministryIds ?? [],
                     phone: member.phone ?? null,
@@ -765,6 +768,7 @@ class InMemoryManagementRepository {
         id?: string | null;
         revision?: number | null;
         name: string;
+        patronymic?: string | null;
         birthday?: string | null;
         ministryIds?: string[];
         phone?: string | null;
@@ -777,6 +781,7 @@ class InMemoryManagementRepository {
         if (saved)
             Object.assign(saved, {
                 name: member.name,
+                ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                 birthday: member.birthday ?? null,
                 ministryIds: member.ministryIds ?? [],
                 phone: member.phone ?? null,
@@ -788,6 +793,7 @@ class InMemoryManagementRepository {
             saved = {
                 id: `member-${Date.now()}`,
                 name: member.name,
+                patronymic: member.patronymic?.trim() || null,
                 group: "",
                 archived: false,
                 revision: 1,

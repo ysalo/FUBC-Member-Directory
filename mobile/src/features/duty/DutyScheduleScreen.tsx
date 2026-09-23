@@ -1,7 +1,7 @@
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useWarmResource } from "@/lib/use-warm-resource";
 import { ResourceRefresh } from "@/features/shell/ResourceRefresh";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -139,7 +139,7 @@ export function DutyScheduleScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
+    <SafeAreaView edges={Platform.OS === "web" ? [] : ["top", "right", "bottom", "left"]} style={[styles.safe, { backgroundColor: palette.background }]}>
       <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={load} />}>
         <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
         <ResourceRefresh error={resource.error && state.status === "ready"} refreshing={resource.refreshing} onRefresh={load} />
@@ -294,7 +294,7 @@ export function DutyScheduleScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { paddingBottom: 100, paddingHorizontal: 20, paddingTop: 16 },
+  content: { paddingBottom: Platform.OS === "web" ? 16 : 100, paddingHorizontal: 20, paddingTop: 16 },
   title: { fontSize: 34, fontWeight: "800", letterSpacing: -1, marginBottom: 20 },
   center: { alignItems: "center", gap: 10, paddingVertical: 40 },
   centerText: { fontSize: 14, textAlign: "center" },

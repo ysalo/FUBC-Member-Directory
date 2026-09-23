@@ -56,7 +56,7 @@ export function WebAppShell({ children }: PropsWithChildren) {
       <div className="web-navigation-links">{destinations.filter((item) => item.key !== "manage" || (session.status === "ready" && canManageDirectory(session.account))).map((item) => {
         const active = item.href === "/" ? pathname === "/" || pathname.startsWith("/members/") : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const label = copy.tabs[item.key];
-        return <Link key={item.key} href={item.href as never} asChild><NavigationAnchor className="web-navigation-link" aria-current={active ? "page" : undefined}>
+        return <Link key={item.key} href={item.href as never} asChild><NavigationAnchor className="web-navigation-link" title={label} aria-current={active ? "page" : undefined}>
           <span className="web-navigation-icon">
             <span aria-hidden="true"><Ionicons name={item.icon} size={24} color="currentColor" /></span>
             {item.key === "visitation" && activeVisitationCount > 0 ? <span className="web-navigation-badge" aria-label={`${activeVisitationCount} active visitations`}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</span> : null}

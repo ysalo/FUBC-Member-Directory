@@ -8,8 +8,17 @@ import { formatPhoneNumber, phoneDigits } from '../src/lib/phone.ts';
 import { contactShareMessage, emailUrl, mapUrls } from '../src/features/members/contact-links.ts';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { formatMemberName } from '../src/lib/member-name.ts';
 
 const require = createRequire(import.meta.url);
+
+test('member names use optional patronymics without changing existing surnames', () => {
+  assert.equal(formatMemberName('Ivan Petrenko'), 'Ivan Petrenko');
+  assert.equal(formatMemberName('Ivan Petrenko', '  ', true), 'Ivan Petrenko');
+  assert.equal(formatMemberName('Ivan van Petrenko', ' Mykolayovych ', true), 'Ivan M. van Petrenko');
+  assert.equal(formatMemberName('Ivan Petrenko', 'Mykolayovych'), 'Ivan Mykolayovych Petrenko');
+  assert.equal(formatMemberName('\u0406\u0432\u0430\u043d \u041f\u0435\u0442\u0440\u0435\u043d\u043a\u043e', '\u041c\u0438\u043a\u043e\u043b\u0430\u0439\u043e\u0432\u0438\u0447', true), '\u0406\u0432\u0430\u043d \u041c. \u041f\u0435\u0442\u0440\u0435\u043d\u043a\u043e');
+});
 
 test('member profiles load active responsible deacons from their membership group in slot order', async () => {
   const ts = require('typescript');
@@ -135,6 +144,7 @@ test('profile loading renders data before photos and ignores old member or sessi
     } };
     if (id === './ProfileAvatar') return { ProfileAvatar: 'ProfileAvatar', hasImageSource: photo => Boolean(photo?.uri), avatarSourceIdentity: photo => photo?.uri ?? '' };
     if (id === '@/lib/permissions') return { canCreateVisit: () => false };
+    if (id === '@/lib/member-name') return { formatMemberName };
     return {};
   }, exports);
   const render = memberId => { cursor = 0; return exports.MemberProfileScreen({ memberId }); };

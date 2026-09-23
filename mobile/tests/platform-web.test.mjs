@@ -17,6 +17,19 @@ import {
 } from "../src/features/platform/alert.web.ts";
 import { detectInstallPlatform } from "../src/features/shell/install-platform.ts";
 
+test("mobile controls avoid focus zoom and navigation labels stay on one line", async () => {
+    const css = await readFile(new URL("../src/app/global.css", import.meta.url), "utf8");
+    assert.match(css, /input, textarea, select \{ font-size: max\(16px, 1em\) !important;/);
+    assert.match(css, /\.web-navigation-link-label \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap;/);
+    const schedule = await readFile(new URL("../src/features/duty/DutyScheduleScreen.tsx", import.meta.url), "utf8");
+    assert.match(schedule, /edges=\{Platform.OS === "web" \? \[\]/);
+    assert.match(schedule, /paddingBottom: Platform.OS === "web" \? 16 : 100/);
+    const gate = await readFile(new URL("../src/features/session/AccessGate.tsx", import.meta.url), "utf8");
+    assert.doesNotMatch(gate, /checkingSecure|checkingApproval|checkingDirectory|detail=\{session.error\}/);
+    assert.match(gate, /if \(loading\) return/);
+    assert.match(gate, /style=\{styles.loadingMark\}/);
+});
+
 test("install help detects iPhone, iPad desktop mode, Android, and desktop browsers", () => {
     assert.equal(
         detectInstallPlatform(

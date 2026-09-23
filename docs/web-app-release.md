@@ -2,6 +2,23 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Member Names and Mobile Recovery
+
+Implemented on `feature/member-names-mobile-recovery`, branched from `dev`. Not deployed or merged.
+
+- Optional patronymics are stored separately from the existing member name, editable in English/Ukrainian management forms, searchable in the directory, abbreviated in directory rows, and shown in full on member profiles. Existing names and surname sorting are unchanged.
+- Session revalidation retries transient network/server failures once, preserves ready content during that attempt, and still blocks access after a persistent failure or account change. Contract-read network failures are no longer reported as backend-version mismatches. Recovery screens use localized reconnect copy and retry on foreground/online events; OAuth callbacks defer data work until after the auth callback returns.
+- The opening screen uses a larger white church logo and white spinner without the sign-in checklist. Web form controls have a 16px minimum font size without disabling browser zoom. Navigation labels stay on one line with ellipsis and retain full accessible names/tooltips. Schedule no longer adds native bottom clearance or duplicate safe-area insets inside the web shell.
+
+### Verification and Release Gates
+
+- `pnpm verify` passed on the final source: TypeScript, 152 main tests, the visitation suite, and 12 group-suite entries. `pnpm build:web` passed. The design detector reported no findings.
+- Local production-build checks used synthetic in-browser backend responses only: directory initial and full profile patronymic rendering, editor prefill, 16px inputs with small-text preference, deacon search, and Ukrainian large-text Schedule navigation. Phone (390x844) and desktop (1440x900) screenshots were inspected; measured layouts had no horizontal overflow, single-line navigation labels, and no gap between Schedule's content region and navigation. This does not establish physical iPhone focus behavior or live OAuth reliability.
+- A simulated backend 503 on foreground revalidation displayed the localized reconnect state; restoring the fixture and dispatching an online event automatically restored the directory. These were synthetic requests, not a live token-expiry test.
+- Manually apply `mobile/supabase/migrations/20260923000000_member_patronymic.sql` through the approved SQL Editor workflow, then verify editor add/update/clear, ordinary-member read access, unauthorized writes, conflict handling, and the directory RPC. Do not use `supabase db push`. No live migration or member mutation was performed in this implementation.
+- The migration is additive for the previous client: omitted patronymics remain unchanged on edits, absent values remain null, and existing RPC arguments and permission checks are preserved. PGlite tests cover persistence, clearing, legacy writes, authorization, length constraints, and stale revisions. Retain the prior Vercel deployment for rollback; do not remove the column while clients may use it.
+- Complete feature PR -> reviewed, CI-green `dev` Preview -> separate `dev` to `main` release PR, with the release version updated as part of that batch. Authenticated Preview, live idle/refresh behavior, callback/deep-link/confirmation smoke checks, and physical-device validation remain required before production release. Notification APIs and preferences are unchanged.
+
 ## Profile Portrait Loading Fix
 
 Implemented on `fix/profile-avatar-flash`. Profiles with a known photo path reserve a neutral portrait area while the signed source is pending instead of briefly displaying initials. Details still render immediately, and retained portraits remain visible during same-member refreshes. Members without photos and failed signing/image requests retain the initials fallback. Portrait completion is independent of deacon-avatar loading and remains protected by the existing member/session request guards.
