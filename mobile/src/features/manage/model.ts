@@ -7,6 +7,7 @@ export type ManagedMember = {
     leftAt?: string | null;
     revision?: number;
     birthday?: string | null;
+    membershipJoinedAt?: string | null;
     ministryIds?: string[];
     phone?: string | null;
     email?: string | null;

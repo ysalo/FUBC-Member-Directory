@@ -180,6 +180,7 @@ export class SupabaseManagementRepository {
             leftAt: row.archived_at,
             revision: row.revision,
             birthday: details?.birth_date ?? null,
+            membershipJoinedAt: row.membership_joined_at,
             address: details?.address ?? null,
             isOrphan: Boolean(details?.orphan_status),
             isWidow: [
@@ -326,6 +327,7 @@ export class SupabaseManagementRepository {
         address?: string | null;
         isOrphan?: boolean;
         isWidow?: boolean;
+        membershipJoinedAt?: string | null;
     }) {
         if (!canManageDirectory(activeAccount()))
             throw new Error("Not authorized.");
@@ -337,6 +339,7 @@ export class SupabaseManagementRepository {
                     name: member.name,
                     ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                     birth_date: member.birthday ?? null,
+                    ...(member.membershipJoinedAt !== undefined ? { membership_joined_at: member.membershipJoinedAt || null } : {}),
                     ministry_ids: member.ministryIds ?? [],
                     phone: member.phone ?? null,
                     email: member.email ?? null,
@@ -752,6 +755,7 @@ class InMemoryManagementRepository {
         phone?: string | null;
         email?: string | null;
         address?: string | null;
+        membershipJoinedAt?: string | null;
     }) {
         let saved = member.id
             ? this.state.members.find((m) => m.id === member.id)
@@ -761,6 +765,7 @@ class InMemoryManagementRepository {
                 name: member.name,
                 ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                 birthday: member.birthday ?? null,
+                ...(member.membershipJoinedAt !== undefined ? { membershipJoinedAt: member.membershipJoinedAt || null } : {}),
                 ministryIds: member.ministryIds ?? [],
                 phone: member.phone ?? null,
                 email: member.email ?? null,
@@ -776,6 +781,7 @@ class InMemoryManagementRepository {
                 archived: false,
                 revision: 1,
                 birthday: member.birthday ?? null,
+                membershipJoinedAt: member.membershipJoinedAt || null,
                 ministryIds: member.ministryIds ?? [],
                 phone: member.phone ?? null,
                 email: member.email ?? null,

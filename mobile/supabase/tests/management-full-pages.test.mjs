@@ -49,6 +49,39 @@ before(async () => {
 });
 after(async () => db.close());
 
+test("membership dates round-trip through the guarded writer and preserve older clients", async () => {
+  await db.exec('begin');
+  try {
+    for (const migration of ['20260923010000_role_permissions.sql', '20260923020000_membership_date.sql']) {
+      await db.exec((await readFile(new URL(`../migrations/${migration}`, import.meta.url), 'utf8')).replace(/^begin;|commit;$/gm, ''));
+    }
+    const save = async (id, revision, data, actor = 'editor') => (await as(actor, 'select * from public.save_person($1,$2,$3)', [id, revision, data])).rows[0];
+    const person = await save(null, null, { name: 'Membership Date Test', membership_joined_at: '2004-02-29' });
+    assert.equal(person.membership_joined_at.toISOString().slice(0, 10), '2004-02-29');
+    const edited = await save(person.id, person.revision, { name: person.name, membership_joined_at: '2012-06-17' });
+    assert.equal(edited.membership_joined_at.toISOString().slice(0, 10), '2012-06-17');
+    assert.equal(edited.revision, person.revision + 1);
+    const legacy = await save(person.id, edited.revision, { name: person.name });
+    assert.deepEqual(legacy.membership_joined_at, edited.membership_joined_at);
+    const cleared = await save(person.id, legacy.revision, { name: person.name, membership_joined_at: null }, 'admin');
+    assert.equal(cleared.membership_joined_at, null);
+    for (const [actor, revision, date, pattern] of [
+      ['editor', cleared.revision, '2999-01-01', /not in the future/],
+      ['editor', cleared.revision, '2024-02-30', /out of range/],
+      ['editor', cleared.revision, 'infinity', /valid date/],
+      ['editor', person.revision, '2000-01-01', /Conflict/],
+      ['member', cleared.revision, '2000-01-01', /Not authorized/],
+    ]) {
+      await db.exec('savepoint rejected_date');
+      await db.exec('set role authenticated');
+      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [ids[actor]]);
+      await assert.rejects(db.query('select * from public.save_person($1,$2,$3)', [person.id, revision, { name: person.name, membership_joined_at: date }]), pattern);
+      await db.exec('rollback to savepoint rejected_date; reset role');
+    }
+    assert.equal((await db.query('select membership_joined_at from public.people where id=$1', [person.id])).rows[0].membership_joined_at, null);
+  } finally { await db.exec('rollback'); }
+});
+
 test("optional patronymics round-trip, preserve older writes, and enforce permissions and revisions", async () => {
   const save = (id, revision, data, actor = "editor") => as(actor, "select * from public.save_person($1,$2,$3::jsonb)", [id, revision, JSON.stringify(data)]).then((result) => result.rows[0]);
   const person = await save(null, null, { name: "Ivan Petrenko", patronymic: " Mykolayovych " });
