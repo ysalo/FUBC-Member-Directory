@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -41,6 +41,18 @@ export function BulkMemberDeletion({ members, onClose }: { members: readonly Man
   const completedIds = new Set(result?.completed.map((item) => item.deletedPersonId));
   const errorDetail = result?.error === "conflict" ? copy.conflict : result?.error === "self-delete" ? copy.self : result?.error === "final-admin" ? copy.admin : result?.error === "not-authorized" ? copy.denied : null;
   const close = () => { if (!submitting.current) onClose(result !== null); };
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!submitting.current) onClose(result !== null);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [onClose, result]);
 
   async function submit() {
     if (!valid || submitting.current || result) return;

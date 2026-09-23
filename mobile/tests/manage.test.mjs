@@ -41,10 +41,11 @@ async function bulkUiFixture(component, role = "admin") {
     }).outputText;
     const exports = {};
     const closeCalls = [];
-    new Function("require", "exports", code)((id) => {
+    const keyboardListeners = new Map();
+    new Function("require", "exports", "document", code)((id) => {
         if (id === "react") return hooks;
         if (id === "react/jsx-runtime") return require(id);
-        if (id === "react-native") return { View: "View", Pressable: "Pressable", ScrollView: "ScrollView", Modal: "Modal", ActivityIndicator: "ActivityIndicator", FlatList: ({ ListHeaderComponent, data, renderItem }) => React.createElement("List", {}, ListHeaderComponent, data.map((item) => renderItem({ item }))), StyleSheet: { create: (styles) => styles, hairlineWidth: 1 } };
+        if (id === "react-native") return { Platform: { OS: "web" }, View: "View", Pressable: "Pressable", ScrollView: "ScrollView", Modal: "Modal", ActivityIndicator: "ActivityIndicator", FlatList: ({ ListHeaderComponent, data, renderItem }) => React.createElement("List", {}, ListHeaderComponent, data.map((item) => renderItem({ item }))), StyleSheet: { create: (styles) => styles, hairlineWidth: 1 } };
         if (id === "react-native-safe-area-context") return { SafeAreaView: "SafeAreaView" };
         if (id === "@react-native-vector-icons/ionicons") return { Ionicons: "Icon" };
         if (id === "@/features/accessibility/app-text") return { Text: "Text", TextInput: "TextInput" };
@@ -64,7 +65,7 @@ async function bulkUiFixture(component, role = "admin") {
         if (id === "./BulkMemberDeletion") return { BulkMemberDeletion: "BulkMemberDeletion" };
         if (id === "./member-deletion") return { deleteMembers: (requests) => { calls.push(requests); return pending; } };
         throw new Error(`Unexpected module ${id}`);
-    }, exports);
+    }, exports, { addEventListener: (event, callback) => keyboardListeners.set(event, callback), removeEventListener: (event) => keyboardListeners.delete(event) });
     if (component === "ManageScreen") { states[0] = "members"; states[1] = { members, accounts: [] }; states[2] = false; }
     function render() {
         cursor = 0; refCursor = 0; effectCursor = 0; pendingEffects = [];
@@ -82,7 +83,7 @@ async function bulkUiFixture(component, role = "admin") {
     const text = (node) => typeof node === "string" || typeof node === "number" ? String(node) : Array.isArray(node) ? node.map(text).join("") : text(node?.props?.children ?? "");
     const button = (label) => render().find((node) => node.type === "Pressable" && text(node) === label);
     render();
-    return { render, button, calls, closeCalls, finish, actor };
+    return { render, button, calls, closeCalls, finish, actor, escape: () => keyboardListeners.get("keydown")?.({ key: "Escape", preventDefault() {}, stopPropagation() {} }) };
 }
 
 test("member selection excludes self, follows shown members, and clears across searches and panels", async () => {
@@ -117,6 +118,7 @@ test("bulk confirmation requires typed intent, blocks duplicate submits, and rep
     assert.deepEqual(ui.calls[0], ["first", "second"].map((personId) => ({ personId, expectedRevision: 7, confirmation: personId })));
     assert.equal(ui.button("Cancel").props.disabled, true);
     ui.render().find((node) => node.type === "Modal").props.onRequestClose();
+    ui.escape();
     assert.deepEqual(ui.closeCalls, []);
     ui.finish({ completed: [{ deletedPersonId: "first" }], failedPersonId: "second", error: "conflict" });
     await Promise.resolve(); await Promise.resolve();
@@ -128,6 +130,10 @@ test("bulk confirmation requires typed intent, blocks duplicate submits, and rep
     canceled.button("Cancel").props.onPress();
     assert.deepEqual(canceled.calls, []);
     assert.deepEqual(canceled.closeCalls, [false]);
+    const escaped = await bulkUiFixture("BulkMemberDeletion");
+    escaped.escape();
+    assert.deepEqual(escaped.calls, []);
+    assert.deepEqual(escaped.closeCalls, [false]);
     const editor = await bulkUiFixture("BulkMemberDeletion", "editor");
     editor.render().find((node) => node.type === "TextInput").props.onChangeText("DELETE");
     assert.equal(editor.button("Delete permanently").props.disabled, true);
