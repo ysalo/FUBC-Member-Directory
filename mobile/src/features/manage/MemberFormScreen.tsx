@@ -24,7 +24,7 @@ import { managementRepository } from "./management-repository";
 import { MemberAvatar } from "./MemberAvatar";
 import type { ManagedMember, ManagedMinistry } from "./model";
 import { managedAccountHref } from "./route-params";
-import { createPhotoThumbnail } from "./photo-thumbnail";
+import { createPhotoRenditions } from "./photo-thumbnail";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 type PhotoMimeType = "image/jpeg" | "image/png" | "image/webp";
@@ -205,13 +205,12 @@ export function MemberFormScreen() {
             }
             const response = await fetch(asset.uri);
             if (!response.ok) throw new Error("photo");
-            const bytes = await response.arrayBuffer();
-            if (bytes.byteLength === 0 || bytes.byteLength > MAX_PHOTO_BYTES) {
+            const selected = await response.blob();
+            if (selected.size === 0 || selected.size > MAX_PHOTO_BYTES) {
                 setError(labels.photoSize);
                 return;
             }
-            const thumbnail = await createPhotoThumbnail(asset.uri);
-            setPendingPhoto({ uri: asset.uri, bytes, mimeType, thumbnail });
+            setPendingPhoto(await createPhotoRenditions(asset.uri));
             setPhotoRemoved(false);
         } catch {
             setError(labels.photoError);
