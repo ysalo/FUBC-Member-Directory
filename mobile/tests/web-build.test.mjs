@@ -23,6 +23,15 @@ test('home-screen manifest references correctly sized PNG assets', async () => {
   const manifest = JSON.parse(await readFile(new URL('../public/manifest.webmanifest', import.meta.url), 'utf8'));
   assert.equal(manifest.display, 'standalone');
   assert.equal(manifest.scope, '/');
+  assert.equal(manifest.name, 'Довідник');
+  assert.equal(manifest.short_name, 'Довідник');
+  assert.equal(manifest.icons.find((icon) => icon.purpose === 'maskable')?.src, '/icons/icon-maskable-512.png');
+  assert.equal(manifest.icons.find((icon) => icon.src === '/icons/icon-512.png')?.purpose, 'any');
+  const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  assert.match(html, /name="apple-mobile-web-app-title" content="Довідник"/);
+  const appleIcon = await readFile(new URL('../public/icons/apple-touch-icon.png', import.meta.url));
+  assert.equal(appleIcon.readUInt32BE(16), 180);
+  assert.equal(appleIcon.readUInt32BE(20), 180);
   for (const icon of manifest.icons) {
     const png = await readFile(new URL(`../public${icon.src}`, import.meta.url));
     const [width, height] = icon.sizes.split('x').map(Number);
