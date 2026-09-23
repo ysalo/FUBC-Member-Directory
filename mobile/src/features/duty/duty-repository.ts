@@ -1,7 +1,8 @@
 import { listDirectory } from "@/features/directory/directory-repository";
 import type { DutyPeriod } from "@/lib/domain";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
-import { unwrap } from "@/lib/repository-helpers";
+import { activeAccount, unwrap } from "@/lib/repository-helpers";
+import { createSessionCache, invalidateData } from "@/lib/session-cache";
 import { buildRotation, sortCandidatesByLastName, type DutyCandidate } from "./duty-domain";
 
 export type DutyYear = {
@@ -11,7 +12,7 @@ export type DutyYear = {
 };
 
 export interface DutyRepository {
-  loadYear(year: number): Promise<DutyYear>;
+  loadYear(year: number, options?: { fresh?: boolean }): Promise<DutyYear>;
   saveRotation(year: number, orderedPersonIds: readonly string[]): Promise<DutyYear>;
   reassignPeriod(year: number, sundayOn: string, personId: string, expectedRevision: number): Promise<DutyYear>;
 }
@@ -47,7 +48,13 @@ class InMemoryDutyRepository implements DutyRepository {
 
 /** Supabase-backed reads/writes against the deacon_duty_periods migration. */
 class SupabaseDutyRepository implements DutyRepository {
-  async loadYear(year: number): Promise<DutyYear> {
+  private readonly cache = createSessionCache<DutyPeriod[]>(["duty", "directory"]);
+  async loadYear(year: number, options: { fresh?: boolean } = {}): Promise<DutyYear> {
+    activeAccount();
+    const periods = await this.cache.load(String(year), () => this.loadPeriods(year), options.fresh);
+    return { year, periods, eligibleDeacons: await eligibleDeacons() };
+  }
+  private async loadPeriods(year: number): Promise<DutyPeriod[]> {
     const client = requireSupabase();
     const result = await client
       .from("deacon_duty_periods")
@@ -57,16 +64,18 @@ class SupabaseDutyRepository implements DutyRepository {
       .order("sunday_on");
     const rows = unwrap(result);
     const periods: DutyPeriod[] = rows.map((row) => ({ sundayOn: row.sunday_on, personId: row.person_id, revision: row.revision }));
-    return { year, periods, eligibleDeacons: await eligibleDeacons() };
+    return periods;
   }
   async saveRotation(year: number, orderedPersonIds: readonly string[]): Promise<DutyYear> {
     const client = requireSupabase();
     unwrap(await client.rpc("generate_duty_schedule", { p_year: year, p_person_ids: [...orderedPersonIds] }));
+    invalidateData("duty");
     return this.loadYear(year);
   }
   async reassignPeriod(year: number, sundayOn: string, personId: string, expectedRevision: number): Promise<DutyYear> {
     const client = requireSupabase();
     unwrap(await client.rpc("reassign_duty_period", { p_sunday_on: sundayOn, p_person_id: personId, p_revision: expectedRevision }));
+    invalidateData("duty");
     return this.loadYear(year);
   }
 }

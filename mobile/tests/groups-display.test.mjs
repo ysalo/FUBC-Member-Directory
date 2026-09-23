@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 
 import { partitionGroups } from "../src/features/groups/groups-display.ts";
+import { createAsyncCache } from "../src/lib/query-cache.ts";
 
 const group = (id, deacons = []) => ({ id, name: id, nameUk: id, description: "", descriptionUk: "", kind: "membership", responsibleDeaconIds: deacons, memberIds: [] });
 
@@ -76,6 +77,10 @@ function remoteGroups({ memberCount = 1, authorized = true, failure = null } = {
   };
   const exports = {};
   new Function("require", "exports", compiledRepository)((id) => {
+    if (id === "@/lib/session-cache") return { createSessionCache: () => {
+      const cache = createAsyncCache();
+      return { load: (key, loader, fresh) => { if (fresh) cache.clear(key); return cache.getOrLoad(key, loader, 300_000); } };
+    } };
     if (id === "@/lib/supabase") return { requireSupabase: () => client };
     if (id === "@/lib/repository-helpers") return {
       activeAccount() { if (!authorized) throw new Error("Not authorized"); return { id: "deacon-account" }; },
@@ -118,6 +123,14 @@ for (const memberCount of [0, 1, 50, 100, 101, 500, 999, 1000]) {
     context.diagnostic(`members=${memberCount}; data requests=${calls.length}; photo signing batches=${photos.length}`);
   });
 }
+
+test("group tab cycles reuse the five-query dataset and explicit refresh reloads it", async () => {
+  const { repository, calls } = remoteGroups();
+  for (let cycle = 0; cycle < 10; cycle++) assert.equal((await repository.listGroups()).length, 1);
+  assert.equal(calls.length, 5);
+  await repository.listGroups({ fresh: true });
+  assert.equal(calls.length, 10);
+});
 
 test("remote group detail stops at authorization, missing groups, and failed reads", async () => {
   const denied = remoteGroups({ authorized: false });

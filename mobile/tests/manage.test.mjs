@@ -1,9 +1,109 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 
 const source = await import("../src/features/manage/model.ts");
 const routeParams = await import("../src/features/manage/route-params.ts");
+
+const require = createRequire(import.meta.url);
+const ts = require("typescript");
+const managementCode = ts.transpileModule(await readFile(new URL("../src/features/manage/management-repository.ts", import.meta.url), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+
+function photoRepository(failure) {
+    const calls = [];
+    const invalidations = [];
+    const storage = {
+        async upload(path, bytes, options) {
+            calls.push({ type: "upload", path, options });
+            return { error: failure === "thumbnail" && path.endsWith(".avatar-256.jpg") ? { message: "Thumbnail failed" } : null };
+        },
+        async remove(paths) { calls.push({ type: "remove", paths }); return { error: failure === "cleanup" ? { message: "Cleanup failed" } : null }; },
+    };
+    const client = { storage: { from: () => storage }, async rpc(name, args) {
+        calls.push({ type: "publish", name, args });
+        return { data: { id: "member", photo_path: args.p_path, revision: 2 }, error: failure === "conflict" ? { message: "Conflict" } : null };
+    } };
+    const exports = {};
+    new Function("require", "exports", managementCode)((id) => {
+        if (id === "@/lib/supabase") return { isBackendConfigured: true, requireSupabase: () => client };
+        if (id === "@/lib/permissions") return { canManageDirectory: () => true };
+        if (id === "@/lib/repository-helpers") return { activeAccount: () => ({}), unwrap: (result) => { if (result.error) throw new Error(result.error.message); return result.data; } };
+        if (id === "@/lib/session-cache") return { invalidateData: (...topics) => invalidations.push(topics), createSessionCache: () => ({ load: (key, loader) => loader() }) };
+        if (id === "@/lib/photo-cache") return { thumbnailPath: (path) => `${path}.avatar-256.jpg` };
+        if (id === "./model") return source;
+        throw new Error(`Unexpected module ${id}`);
+    }, exports);
+    return { repository: new exports.SupabaseManagementRepository(), calls, invalidations };
+}
+
+test("photo pairs publish only after both uploads and clean both replaced paths", async () => {
+    const { repository, calls, invalidations } = photoRepository();
+    await repository.replacePhoto({ id: "member", revision: 1, photoPath: "member/previous.jpg" }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10));
+    assert.deepEqual(calls.map((call) => call.type), ["upload", "upload", "publish", "remove"]);
+    assert.equal(calls[1].path, `${calls[0].path}.avatar-256.jpg`);
+    assert.equal(calls[2].args.p_path, calls[0].path);
+    assert.deepEqual(calls[3].paths, ["member/previous.jpg", "member/previous.jpg.avatar-256.jpg"]);
+    assert.equal(invalidations.length, 1);
+});
+
+test("incomplete and conflicted photo pairs are not published and clean only the attempted pair", async () => {
+    for (const failure of ["thumbnail", "conflict"]) {
+        const { repository, calls, invalidations } = photoRepository(failure);
+        await assert.rejects(repository.replacePhoto({ id: "member", revision: 1, photoPath: "member/previous.jpg" }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10)));
+        assert.deepEqual(calls.at(-1).paths, [calls[0].path, `${calls[0].path}.avatar-256.jpg`]);
+        assert.equal(calls.filter((call) => call.type === "publish").length, failure === "thumbnail" ? 0 : 1);
+        assert.equal(invalidations.length, 0);
+    }
+    const { repository, calls } = photoRepository();
+    await assert.rejects(repository.replacePhoto({ id: "member", revision: 1 }, new ArrayBuffer(20), "image/jpeg"), /thumbnail/);
+    assert.equal(calls.length, 0);
+});
+
+test("photo removal clears the published pointer and both files; cleanup errors are surfaced", async () => {
+    for (const failure of [null, "cleanup"]) {
+        const { repository, calls } = photoRepository(failure);
+        const result = await repository.replacePhoto({ id: "member", revision: 1, photoPath: "member/photo.png" }, null);
+        assert.equal(calls[0].args.p_path, null);
+        assert.deepEqual(calls[1].paths, ["member/photo.png", "member/photo.png.avatar-256.jpg"]);
+        assert.equal(Boolean(result.cleanupWarning), failure === "cleanup");
+    }
+});
+
+test("thumbnail generation crops centrally, never upscales and releases temporary files", async () => {
+    const code = ts.transpileModule(await readFile(new URL("../src/features/manage/photo-thumbnail.ts", import.meta.url), "utf8"), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    for (const [width, height] of [[1200, 800], [800, 1200], [120, 80]]) {
+        const calls = [];
+        let renders = 0;
+        const context = {
+            crop: (rect) => calls.push(["crop", rect]),
+            resize: (size) => calls.push(["resize", size]),
+            release: () => calls.push(["release-context"]),
+            async renderAsync() {
+                const number = ++renders;
+                return { width, height, release: () => calls.push(["release-image", number]), async saveAsync(options) {
+                    calls.push(["save", options]);
+                    return { uri: "file:///temporary-thumbnail.jpg", base64: "AQID" };
+                } };
+            },
+        };
+        const exports = {};
+        new Function("require", "exports", code)((id) => {
+            if (id === "expo-image-manipulator") return { ImageManipulator: { manipulate: () => context }, SaveFormat: { JPEG: "jpeg" } };
+            if (id === "expo-file-system") return { File: class { constructor(uri) { assert.equal(uri, "file:///temporary-thumbnail.jpg"); } delete() { calls.push(["delete-file"]); } } };
+            throw new Error(id);
+        }, exports);
+        assert.deepEqual([...new Uint8Array(await exports.createPhotoThumbnail("original"))], [1, 2, 3]);
+        const side = Math.min(width, height);
+        assert.deepEqual(calls[0], ["crop", { originX: (width - side) / 2, originY: (height - side) / 2, width: side, height: side }]);
+        assert.deepEqual(calls[1], ["resize", { width: Math.min(256, side), height: Math.min(256, side) }]);
+        assert.deepEqual(calls.slice(-4), [["delete-file"], ["release-image", 2], ["release-image", 1], ["release-context"]]);
+    }
+});
 
 test("member records can be archived and restored", () => {
     const archived = source.managementReducer(source.initialManagementState, {
@@ -470,7 +570,7 @@ test("menu identifies the linked member and treats sign out as destructive", asy
     );
     assert.match(
         menu,
-        /memberProfileRepository\.getProfile\(session\.account\.personId\)/,
+        /memberProfileRepository\.getProfile\(session\.account\.personId, "avatar"\)/,
     );
     assert.match(menu, /<ProfileAvatar/);
     assert.match(menu, /color: palette\.danger/);

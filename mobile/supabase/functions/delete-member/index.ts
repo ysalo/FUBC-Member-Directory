@@ -62,7 +62,7 @@ Deno.serve(async (request: Request) => {
     }
 
     if (person.photo_path) {
-      const { error: photoError } = await adminClient.storage.from("member-photos").remove([person.photo_path]);
+      const { error: photoError } = await adminClient.storage.from("member-photos").remove([person.photo_path, `${person.photo_path}.avatar-256.jpg`]);
       if (photoError) throw new Error(`Private photo cleanup failed: ${photoError.message}`);
     }
 

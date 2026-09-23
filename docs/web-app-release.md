@@ -2,6 +2,31 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Warm Tabs and Thumbnails (1.2.0)
+
+Implemented on `feature/warm-tabs-thumbnails`, branched from `dev`. Not deployed or merged.
+
+- Directory records, Groups list records, yearly duty periods, visit counts, and pending-approval badge counts have five-minute, bounded, session-only caches. Concurrent reads share requests. Manual refresh bypasses freshness; successful local mutations invalidate affected data. Birthday authorization is not cached.
+- Directory, Groups, Schedule, and Duty Summary retain ready content during background refresh. Native pull-to-refresh and web refresh buttons remain available; failed warm refreshes retain rows with a retry action. Focus/unmount guards reject late UI updates. Foreground/four-minute active-view checks revalidate account access and renew photo sources; no background polling while hidden.
+- Cache scope includes account ID, status, role, leadership, linked member, revision, and session generation. Access changes/sign-out clear caches. There is no private offline store, service worker, new backend service, or cross-account image key.
+- Private photo URLs are signed in batches of at most 100 and reused for 240 seconds of their 300-second lifetime, independently of dataset freshness. Native image decoding uses memory-only caching with stable session/path keys. Browser HTTP caching remains browser-controlled.
+- Every photo upload produces an unchanged selected original plus a centered JPEG thumbnail, at most 256x256 without upscaling. The thumbnail path is `<original-path>.avatar-256.jpg`. Both upload before the original path is published. Partial failures/conflicts clean the attempted pair; replacement/removal/member deletion clean both files. Generated temporary files and image handles are released.
+- Small avatars, including Menu, use thumbnails; profile portraits and the large member editor portrait use originals. Missing/failed thumbnails show initials. There is no original-only compatibility branch, original-image fallback, backfill tool, or legacy-photo handling.
+
+### Verification
+
+- `pnpm verify`: passed (142 main tests, visitation domain suite, 12 group-suite entries). Covers freshness, bounded retention, request deduplication, account/permission changes, late responses, warm error state, signing renewal/batching, paired upload rollback, and crop/cleanup API behavior.
+- `pnpm build:web`: passed. iOS and Android exports passed into ignored `.expo/warm-tabs-native`; exports are not physical-device tests.
+- Built web app with an in-page synthetic backend fixture: ten warm Directory -> Groups -> Schedule cycles issued **zero additional backend requests**, including badges, and inserted **zero cold loading indicators**. Each dataset/count was requested once during warm-up. A forced failed manual refresh retained both visible directory rows. Phone (390x844) and desktop (1440x900) layout bounds had no horizontal overflow across those three views.
+- Browser fixture uses initials, not signed private photos, and dispatched navigation events because embedded-browser pointer actionability was unreliable. Phone screenshot inspected; desktop captures were clipped by the embedded browser. This is not an authenticated Preview, real-photo transfer measurement, full desktop visual review, or live OAuth test.
+
+### Release Gates
+
+1. Manually deploy and verify the changed `delete-member` Edge Function before enabling paired uploads in production. No database schema/contract change or automatic migration push is required.
+2. Build/distribute native binaries with the SDK 57 image-manipulator and file-system dependencies. Verify picking, orientation/transparency, thumbnail dimensions/bytes, replacement/removal/deletion, and cleanup on physical iOS/Android with disposable records.
+3. In authenticated dev Preview and on devices, measure real photo transfers/decodes and sharpness at 1x/2x/3x. A typical <=50 KB thumbnail remains a measurement target, not a guarantee. Check image renewal after expiry, failed thumbnails, changed member photos, foreground revalidation, and sign-out/account switching.
+4. Complete full mobile/desktop visual and existing auth/deep-link/confirmation/notification-side-effect smoke checks. Follow feature PR -> reviewed/CI-green `dev` Preview -> separate `dev` to `main` release PR. Keep the prior deployment as the rollback target; do not add legacy-photo code.
+
 ## Branch Model
 
 ```text

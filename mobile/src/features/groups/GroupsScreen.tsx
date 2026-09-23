@@ -1,9 +1,11 @@
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { useWarmResource } from "@/lib/use-warm-resource";
+import { ResourceRefresh } from "@/features/shell/ResourceRefresh";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -13,7 +15,7 @@ import { getGroupsCopy } from "./groups-copy";
 import { partitionGroups } from "./groups-display";
 import { groupsRepository, type MinistryGroup } from "./groups-repository";
 
-type LoadState = "loading" | "error" | "ready";
+const loadGroups = (fresh: boolean) => groupsRepository.listGroups({ fresh });
 
 export function GroupsScreen() {
   const router = useRouter();
@@ -22,16 +24,12 @@ export function GroupsScreen() {
   const { locale } = useLocalization();
   const session = useSession();
   const copy = getGroupsCopy(locale);
-  const [groups, setGroups] = useState<MinistryGroup[]>([]);
-  const [state, setState] = useState<LoadState>("loading");
+  const resource = useWarmResource("groups", loadGroups);
+  const groups = resource.data ?? [];
+  const state = resource.status;
+  const load = resource.refresh;
   const [query, setQuery] = useState("");
 
-  const load = () => {
-    setState("loading");
-    void groupsRepository.listGroups().then(setGroups).then(() => setState("ready")).catch(() => setState("error"));
-  };
-
-  useFocusEffect(useCallback(load, []));
 
   const account = session.status === "ready" ? session.account : null;
   const isDeacon = account?.leadershipMinistry === "deacon";
@@ -46,8 +44,9 @@ export function GroupsScreen() {
 
   const openGroup = (group: MinistryGroup) => router.push({ pathname: "/groups/[groupId]", params: { groupId: group.id } });
 
-  return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.screen, desktop && styles.desktopScreen]} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
+  return <ScrollView refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={load} />} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.screen, desktop && styles.desktopScreen]} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
     <Text accessibilityRole="header" selectable style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
+    <ResourceRefresh error={resource.error && state === "ready"} refreshing={resource.refreshing} onRefresh={load} />
 
     {state === "ready" && assigned ? <View style={styles.featuredSection}>
       <Text selectable style={[styles.sectionLabel, { color: palette.text }]}>{copy.myGroup}</Text>

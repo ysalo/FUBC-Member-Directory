@@ -1,7 +1,8 @@
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useWarmResource } from "@/lib/use-warm-resource";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -19,23 +20,12 @@ export function todayFixedPdt(): string {
 export function DutySummary({ locale, directoryMembers }: { locale: "en" | "uk"; directoryMembers: Member[] }) {
   const router = useRouter();
   const { palette } = useAppearance();
-  const [state, setState] = useState<{ status: "loading" | "ready" | "empty"; sundayOn?: string; personId?: string }>({ status: "loading" });
-
-  useEffect(() => {
-    let cancelled = false;
-    const today = todayFixedPdt();
-    dutyRepository
-      .loadYear(Number(today.slice(0, 4)))
-      .then((year) => {
-        if (cancelled) return;
-        const active = currentPeriod(year.periods, today);
-        setState(active ? { status: "ready", sundayOn: active.sundayOn, personId: active.personId } : { status: "empty" });
-      })
-      .catch(() => !cancelled && setState({ status: "empty" }));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const today = todayFixedPdt();
+  const year = Number(today.slice(0, 4));
+  const loader = useCallback((fresh: boolean) => dutyRepository.loadYear(year, { fresh }), [year]);
+  const resource = useWarmResource(`duty-summary:${year}`, loader);
+  const active = resource.data ? currentPeriod(resource.data.periods, today) : null;
+  const state = active ? { status: "ready", sundayOn: active.sundayOn, personId: active.personId } : { status: "empty", sundayOn: undefined, personId: undefined };
 
   if (state.status !== "ready" || !state.sundayOn || !state.personId) return null;
   const deacon = directoryMembers.find((member) => member.id === state.personId);

@@ -1,6 +1,22 @@
 import type { ImageSourcePropType } from "react-native";
-import { getSessionState } from "./session";
+import { getSessionState, subscribeSession } from "./session";
 import { requireSupabase } from "./supabase";
+import { createPhotoCache } from "./photo-cache";
+import { sessionCacheScope, subscribeDataChanges } from "./session-cache";
+
+const photoCache = createPhotoCache(async (paths) => {
+  const result = await requireSupabase().storage.from("member-photos").createSignedUrls(paths, 300);
+  if (result.error) throw new Error(result.error.message);
+  return new Map((result.data ?? []).flatMap((item) => item.path && item.signedUrl ? [[item.path, item.signedUrl] as const] : []));
+});
+let photoScope: string | null = null;
+function clearChangedPhotoScope() {
+  let next: string | null = null;
+  try { next = sessionCacheScope(); } catch {}
+  if (next !== photoScope) { photoCache.clear(); photoScope = next; }
+}
+subscribeSession(clearChangedPhotoScope);
+subscribeDataChanges(clearChangedPhotoScope);
 
 export function activeAccount() {
   const session = getSessionState();
@@ -12,10 +28,11 @@ export function unwrap<T>(result: { data: T | null; error: { message: string } |
   if (result.data === null) throw new Error("The requested information is unavailable.");
   return result.data as NonNullable<T>;
 }
-export async function privatePhotoSources(paths: Array<string | null>): Promise<Map<string, ImageSourcePropType>> {
-  const unique = [...new Set(paths.filter((path): path is string => Boolean(path)))];
-  if (!unique.length) return new Map();
-  const result = await requireSupabase().storage.from("member-photos").createSignedUrls(unique, 300);
-  if (result.error) throw new Error(result.error.message);
-  return new Map((result.data ?? []).flatMap((item) => item.path && item.signedUrl ? [[item.path, { uri: item.signedUrl }] as const] : []));
+export async function privatePhotoSources(paths: Array<string | null>, variant: "avatar" | "original" = "avatar"): Promise<Map<string, ImageSourcePropType>> {
+  activeAccount();
+  clearChangedPhotoScope();
+  const scope = sessionCacheScope();
+  const sources = await photoCache.sources(paths, scope, variant);
+  if (scope !== sessionCacheScope()) throw new Error("The photo session changed.");
+  return sources;
 }

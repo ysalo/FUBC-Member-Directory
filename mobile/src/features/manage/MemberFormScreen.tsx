@@ -24,12 +24,14 @@ import { managementRepository } from "./management-repository";
 import { MemberAvatar } from "./MemberAvatar";
 import type { ManagedMember, ManagedMinistry } from "./model";
 import { managedAccountHref } from "./route-params";
+import { createPhotoThumbnail } from "./photo-thumbnail";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 type PhotoMimeType = "image/jpeg" | "image/png" | "image/webp";
 type PendingPhoto = {
     uri: string;
     bytes: ArrayBuffer;
+    thumbnail: ArrayBuffer;
     mimeType: PhotoMimeType;
 };
 
@@ -208,7 +210,8 @@ export function MemberFormScreen() {
                 setError(labels.photoSize);
                 return;
             }
-            setPendingPhoto({ uri: asset.uri, bytes, mimeType });
+            const thumbnail = await createPhotoThumbnail(asset.uri);
+            setPendingPhoto({ uri: asset.uri, bytes, mimeType, thumbnail });
             setPhotoRemoved(false);
         } catch {
             setError(labels.photoError);
@@ -241,11 +244,12 @@ export function MemberFormScreen() {
             const previousPhotoPath =
                 member?.photoPath ??
                 ("photo_path" in saved ? saved.photo_path : null);
+            setMember({ ...member, id: saved.id, name: fullName, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
             const photoChanged =
                 Boolean(pendingPhoto) ||
                 (photoRemoved && Boolean(previousPhotoPath));
-            if (photoChanged && saved.id && saved.revision != null)
-                await managementRepository.replacePhoto(
+            if (photoChanged && saved.id && saved.revision != null) {
+                const photoResult = await managementRepository.replacePhoto(
                     {
                         id: saved.id,
                         revision: saved.revision,
@@ -253,7 +257,13 @@ export function MemberFormScreen() {
                     },
                     pendingPhoto?.bytes ?? null,
                     pendingPhoto?.mimeType,
+                    pendingPhoto?.thumbnail,
                 );
+                if (photoResult.cleanupWarning) Alert.alert(
+                    locale === "uk" ? "Фото збережено" : "Photo saved",
+                    locale === "uk" ? "Попереднє фото не вдалося видалити. Зверніться до адміністратора." : "The previous photo could not be removed. Please contact an administrator.",
+                );
+            }
             if (accountId && saved.id) {
                 const management = await managementRepository.load();
                 await managementRepository.apply(management, {
