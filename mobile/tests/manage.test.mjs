@@ -22,9 +22,15 @@ function photoRepository(failure) {
         },
         async remove(paths) { calls.push({ type: "remove", paths }); return { error: failure === "cleanup" ? { message: "Cleanup failed" } : null }; },
     };
-    const client = { storage: { from: () => storage }, async rpc(name, args) {
+    const client = { from() {
+        const query = { select() { return query; }, eq() { return query; },
+            async limit() { return { data: failure === "referenced" ? [{ id: "other" }] : [], error: null }; },
+            async maybeSingle() { return { data: { photo_path: "member/previous.jpg" }, error: failure === "ambiguous" ? { message: "Network failed" } : null }; },
+        };
+        return query;
+    }, storage: { from: () => storage }, async rpc(name, args) {
         calls.push({ type: "publish", name, args });
-        return { data: { id: "member", photo_path: args.p_path, revision: 2 }, error: failure === "conflict" ? { message: "Conflict" } : null };
+        return { data: { id: "member", photo_path: args.p_path, revision: 2 }, error: ["conflict", "ambiguous"].includes(failure) ? { message: "Conflict" } : null };
     } };
     const exports = {};
     new Function("require", "exports", managementCode)((id) => {
@@ -72,6 +78,15 @@ test("photo removal clears the published pointer and both files; cleanup errors 
     }
 });
 
+test("photo cleanup preserves referenced originals and ambiguous publications", async () => {
+    const referenced = photoRepository("referenced");
+    await referenced.repository.replacePhoto({ id: "member", revision: 1, photoPath: "shared.jpg" }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10));
+    assert.equal(referenced.calls.some((call) => call.type === "remove"), false);
+    const ambiguous = photoRepository("ambiguous");
+    await assert.rejects(ambiguous.repository.replacePhoto({ id: "member", revision: 1, photoPath: "shared.jpg" }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10)), /could not be confirmed/);
+    assert.equal(ambiguous.calls.some((call) => call.type === "remove"), false);
+});
+
 test("thumbnail generation crops centrally, never upscales and releases temporary files", async () => {
     const code = ts.transpileModule(await readFile(new URL("../src/features/manage/photo-thumbnail.ts", import.meta.url), "utf8"), {
         compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
@@ -103,6 +118,69 @@ test("thumbnail generation crops centrally, never upscales and releases temporar
         assert.deepEqual(calls[1], ["resize", { width: Math.min(256, side), height: Math.min(256, side) }]);
         assert.deepEqual(calls.slice(-4), [["delete-file"], ["release-image", 2], ["release-image", 1], ["release-context"]]);
     }
+});
+
+test("profile renditions are bounded and originals are never returned for upload", async () => {
+    const code = ts.transpileModule(await readFile(new URL("../src/features/manage/photo-thumbnail.ts", import.meta.url), "utf8"), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    for (const [width, height] of [[4000, 3000], [3000, 4000], [120, 80]]) {
+        const sizes = [];
+        const qualities = [];
+        let deleted = 0;
+        let contexts = 0;
+        const exports = {};
+        new Function("require", "exports", code)((id) => {
+            if (id === "expo-image-manipulator") return { SaveFormat: { JPEG: "jpeg" }, ImageManipulator: { manipulate: () => ({
+                resize: (size) => sizes.push(size), crop() {}, release: () => contexts++,
+                async renderAsync() { return { width, height, release() {}, async saveAsync(options) {
+                    qualities.push(options.compress);
+                    return { uri: "file:///encoded.jpg", base64: "AQID" };
+                } }; },
+            }) } };
+            if (id === "expo-file-system") return { File: class { delete() { deleted++; } } };
+            throw new Error(id);
+        }, exports);
+        const result = await exports.createPhotoRenditions("selected-original");
+        assert.equal(result.mimeType, "image/jpeg");
+        assert.equal(result.uri, "data:image/jpeg;base64,AQID");
+        assert.equal(result.bytes.byteLength, 3);
+        assert.equal(result.thumbnail.byteLength, 3);
+        if (width > 1280 || height > 1280) assert.equal(Math.max(sizes[0].width, sizes[0].height), 1280);
+        else assert.equal(sizes.length, 1);
+        assert.deepEqual(qualities, [0.8, 0.8]);
+        assert.equal(deleted, 2);
+        assert.equal(contexts, 2);
+    }
+    const { repository, calls } = photoRepository();
+    await assert.rejects(repository.replacePhoto({ id: "member", revision: 1 }, new ArrayBuffer(512 * 1024 + 1), "image/jpeg", new ArrayBuffer(10)), /512 KB/);
+    await assert.rejects(repository.replacePhoto({ id: "member", revision: 1 }, new ArrayBuffer(10), "image/jpeg", new ArrayBuffer(50 * 1024 + 1)), /thumbnail/);
+    assert.equal(calls.length, 0);
+});
+
+test("oversized encodes stop after three attempts and release all temporary files", async () => {
+    const code = ts.transpileModule(await readFile(new URL("../src/features/manage/photo-thumbnail.ts", import.meta.url), "utf8"), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const qualities = [];
+    let deleted = 0;
+    let released = 0;
+    const exports = {};
+    new Function("require", "exports", code)((id) => {
+        if (id === "expo-image-manipulator") return { SaveFormat: { JPEG: "jpeg" }, ImageManipulator: { manipulate: () => ({
+            resize() {}, release: () => released++,
+            async renderAsync() { return { width: 1600, height: 1000, release: () => released++, async saveAsync(options) {
+                qualities.push(options.compress);
+                return { uri: "file:///encoded.jpg", base64: Buffer.alloc(512 * 1024 + 1).toString("base64") };
+            } }; },
+        }) } };
+        if (id === "expo-file-system") return { File: class { delete() { deleted++; } } };
+        throw new Error(id);
+    }, exports);
+    await assert.rejects(exports.createPhotoRenditions("original"), /upload limit/);
+    assert.deepEqual(qualities, [0.8, 0.75, 0.7]);
+    assert.equal(deleted, 3);
+    assert.equal(released, 3);
 });
 
 test("member records can be archived and restored", () => {

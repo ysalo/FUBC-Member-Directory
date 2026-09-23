@@ -41,7 +41,7 @@ test('member profiles load active responsible deacons from their membership grou
     const helpers = {
       activeAccount() { calls.push('authorize'); },
       unwrap(result) { if (result.error) throw new Error(result.error.message); return result.data; },
-      async privatePhotoSources(paths) { return new Map(paths.filter(Boolean).map((path) => [path, { uri: `signed:${path}` }])); },
+      async privatePhotoSources(paths) { calls.push('sign'); return new Map(paths.filter(Boolean).map((path) => [path, { uri: `signed:${path}` }])); },
     };
     new Function('require', 'exports', compiled)((id) => {
       if (id === '@/lib/repository-helpers') return helpers;
@@ -57,6 +57,13 @@ test('member profiles load active responsible deacons from their membership grou
     deacons: [deacon('second'), deacon('first', { phone: '2065550100', photo_path: 'first.jpg' }), deacon('archived', { archived_at: '2026-01-01' }), deacon('other')],
   });
   const profile = await repository.getProfile('member');
+  assert.ok(!calls.includes('ministry_accounts'));
+  calls.length = 0;
+  const dataOnly = await repository.getProfile('member', 'original', true);
+  assert.equal(dataOnly.name, 'Member');
+  assert.ok(!calls.includes('sign'));
+  assert.deepEqual(dataOnly.responsibleDeacons[0].avatar, {});
+  assert.deepEqual((await repository.hydratePhotos(dataOnly)).responsibleDeacons[0].avatar, { uri: 'signed:first.jpg' });
   assert.equal(calls[0], 'authorize');
   assert.deepEqual(profile.responsibleDeacons.map((person) => person.id), ['first', 'second']);
   assert.equal(profile.responsibleDeacons[0].phone, '2065550100');
@@ -90,6 +97,73 @@ test('member profile visit action uses planning language', async () => {
   const copy = await readFile(new URL('../src/features/members/member-copy.ts', import.meta.url), 'utf8');
   assert.match(copy, /requestVisit: "Plan visit"/);
   assert.doesNotMatch(copy, /requestVisit: "Request visit"/);
+});
+
+test('profile loading renders data before photos and ignores old member or session responses', async () => {
+  const ts = require('typescript');
+  const source = await readFile(new URL('../src/features/members/MemberProfileScreen.tsx', import.meta.url), 'utf8');
+  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+  const slots = [];
+  let cursor = 0;
+  let focus;
+  let scope = 'account:1';
+  const dataRequests = [];
+  const photoRequests = [];
+  const jsx = (type, props) => ({ type, props });
+  const hooks = {
+    useState(initial) { const index = cursor++; if (!(index in slots)) slots[index] = initial; return [slots[index], value => { slots[index] = typeof value === 'function' ? value(slots[index]) : value; }]; },
+    useRef(initial) { const index = cursor++; return slots[index] ??= { current: initial }; },
+    useCallback: callback => callback, useEffect() {},
+  };
+  const exports = {};
+  new Function('require', 'exports', code)((id) => {
+    if (id === 'react') return hooks;
+    if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
+    if (id === 'expo-router') return { useRouter: () => ({}), useFocusEffect: callback => { focus = callback; } };
+    if (id === 'react-native') return { StyleSheet: { create: value => value, absoluteFill: {} }, Platform: { OS: 'web' } };
+    if (id === 'react-native-safe-area-context') return { useSafeAreaInsets: () => ({ top: 0 }) };
+    if (id.endsWith('use-desktop-layout')) return { useDesktopLayout: () => true };
+    if (id.endsWith('AppearanceProvider')) return { useAppearance: () => ({ palette: {} }) };
+    if (id.endsWith('SessionProvider')) return { useSession: () => ({ status: 'ready', account: { role: 'member' } }) };
+    if (id.endsWith('LocalizationProvider')) return { useLocalization: () => ({ locale: 'en' }) };
+    if (id === './member-copy') return { getMemberCopy: () => ({ loading: 'Loading', error: 'Error' }) };
+    if (id === '@/lib/session-cache') return { sessionCacheScope: () => { if (!scope) throw new Error('Signed out'); return scope; }, subscribeDataChanges: () => () => {} };
+    if (id === './member-repository') return { memberProfileRepository: {
+      getProfile: memberId => new Promise(resolve => dataRequests.push({ memberId, resolve })),
+      hydratePhotos: (profile, variant, part) => new Promise(resolve => photoRequests.push({ profile, part, resolve })),
+    } };
+    if (id === './ProfileAvatar') return { hasImageSource: photo => Boolean(photo?.uri), avatarSourceIdentity: photo => photo?.uri ?? '' };
+    if (id === '@/lib/permissions') return { canCreateVisit: () => false };
+    return {};
+  }, exports);
+  const render = memberId => { cursor = 0; return exports.MemberProfileScreen({ memberId }); };
+  const settle = () => new Promise(resolve => setImmediate(resolve));
+  const profile = id => ({ id, name: id, nameUk: id, photo: {}, photoPaths: { portrait: `${id}.jpg`, deacons: {} }, ministries: [], ministriesUk: [], membershipGroup: '', leadershipMinistry: null });
+  assert.equal(render('first').props.loading, true);
+  let cleanup = focus();
+  dataRequests[0].resolve(profile('first'));
+  await settle();
+  assert.equal(slots[0].profile.name, 'first');
+  assert.equal(photoRequests.length, 2);
+  assert.equal(render('first').props.loading, undefined);
+  cleanup();
+  render('first'); cleanup = focus();
+  assert.equal(slots[0].profile.name, 'first');
+  cleanup();
+  assert.equal(render('second').props.loading, true);
+  cleanup = focus();
+  dataRequests[1].resolve(profile('first'));
+  photoRequests[0].resolve({ ...profile('first'), photo: { uri: 'old.jpg' } });
+  dataRequests[2].resolve(profile('second'));
+  await settle();
+  assert.equal(slots[0].profile.id, 'second');
+  assert.deepEqual(slots[0].profile.photo, {});
+  scope = null;
+  assert.equal(render('second').props.loading, true);
+  photoRequests.at(-1).resolve({ ...profile('second'), photo: { uri: 'private.jpg' } });
+  await settle();
+  assert.deepEqual(slots[0].profile.photo, {});
+  cleanup();
 });
 
 const actor = (role = 'member', leadershipMinistry = null, status = 'active') => ({ id: 'viewer', role, leadershipMinistry, status });

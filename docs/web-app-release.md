@@ -2,6 +2,24 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Bounded Photos and Faster Profiles (1.3.0)
+
+Local implementation on `feature/optimized-profile-photos`; not deployed. This supersedes the unchanged-original upload behavior described below.
+
+- New uploads encode a JPEG portrait with a longest edge of at most 1280 pixels and a centered avatar of at most 256 pixels, without upscaling. Output limits are 512 KiB and 50 KiB respectively; encoding tries quality 0.8, 0.75, then 0.7 and rejects images that still exceed the limit. The existing 5 MiB input limit remains. The selected camera-resolution source is not uploaded.
+- Both images upload to new versioned paths before revision-checked publication. Successful replacements/removals check for references before deleting the previous pair. Unconfirmed publication preserves attempted files; cleanup failures report a warning without undoing publication. Storage policy limits are unchanged, so older installed writers can still upload larger files.
+- Profile details no longer wait for image signing. Portraits and responsible-deacon avatars hydrate independently. Same-member content remains visible during focused reloads; member/session changes hide old content and reject late responses. An unused account query was removed and deacon/member-ministry reads run concurrently. No new persistent private cache or database contract was added.
+
+### Verification and Remaining Gates
+
+- Focused tests passed for size limits, capped encoding retries, temporary-resource cleanup, paired publication, reference-aware deletion, uncertain publication, text-before-photo rendering, warm focus, and obsolete member/session responses. These encoder tests use mocks, not real-image visual validation.
+- `pnpm verify` passed: TypeScript, 146 main tests, visitation domain suite, and 12 group-suite entries. `pnpm build:web` passed. Editor diagnostics and `git diff --check` were clean.
+- The production web encoder generated two local portrait/thumbnail pairs from bundled, nonprivate PNG samples. Both decoded and were visually inspected: 1,935,724 input bytes became a 151,414-byte portrait and 11,730-byte avatar; 1,770,886 input bytes became a 128,833-byte portrait and 9,074-byte avatar. Portraits retained their 1254x1254 input dimensions; avatars were 256x256. Neither JPEG contained EXIF/XMP markers. These opaque PNG samples do not establish EXIF-rotation or transparency handling, nor do they measure live member-photo savings. No samples were uploaded.
+- Before release, check two representative real image pairs for dimensions, bytes, sharpness, orientation, and metadata. Verify picking and replacement on physical iOS/Android. A consistent white transparency matte is not implemented or established by the SDK inspection; resolve that before declaring the agreed image-normalization work complete.
+- Complete authenticated mobile/desktop Preview checks, including existing auth/deep-link/confirmation flows and no notification side effects. Native-device and live OAuth checks have not been performed for this change.
+- Deploy the updated writers before converting existing storage. Conversion has not been run and no existing originals were deleted by this implementation. Inventory first, validate two representative converted pairs, then process remaining records with automatic upload/publication checks. Publish with the current member revision, check that old paths are unreferenced, and remove the old pair immediately after confirmed success. Failed or ambiguous publication must preserve the old pair. Finish with aggregate reference/object counts; no per-pair download verification or retention window is required.
+- Follow feature PR -> reviewed, CI-green `dev` Preview -> separate `dev` to `main` release PR. Existing readers understand the same base-path/thumbnail convention, but deleted full-resolution sources cannot be recovered from the optimized files.
+
 ## Warm Tabs and Thumbnails (1.2.0)
 
 Implemented on `feature/warm-tabs-thumbnails`, branched from `dev`. Not deployed or merged.
