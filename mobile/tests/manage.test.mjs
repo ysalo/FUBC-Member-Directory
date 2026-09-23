@@ -203,6 +203,21 @@ function photoRepository(failure) {
     return { repository: new exports.SupabaseManagementRepository(), calls, invalidations };
 }
 
+test("member saves send membership dates and preserve omission for older callers", async () => {
+    const { repository, calls } = photoRepository();
+    await repository.saveMemberDetails({ id: "member", revision: 7, name: "Ivan Petrenko", membershipJoinedAt: "2010-04-12" });
+    assert.equal(calls.at(-1).args.p_data.membership_joined_at, "2010-04-12");
+    assert.equal(calls.at(-1).args.p_revision, 7);
+    await repository.saveMemberDetails({ name: "Ivan Petrenko", membershipJoinedAt: null });
+    assert.equal(calls.at(-1).args.p_data.membership_joined_at, null);
+    await repository.saveMemberDetails({ name: "Ivan Petrenko" });
+    assert.equal(Object.hasOwn(calls.at(-1).args.p_data, "membership_joined_at"), false);
+    const form = await readFile(new URL("../src/features/manage/MemberFormScreen.tsx", import.meta.url), "utf8");
+    assert.match(form, /setMembershipJoinedAt\(found.membershipJoinedAt \?\? ""\)/);
+    assert.match(form, /membershipJoinedAt: membershipJoinedAt \|\| null/);
+    assert.match(form, /accessibilityLabel=\{labels.membershipDate\}/);
+});
+
 test("member saves send optional patronymics and preserve omission for other callers", async () => {
     const { repository, calls } = photoRepository();
     await repository.saveMemberDetails({ name: "Ivan Petrenko", patronymic: " Mykolayovych " });

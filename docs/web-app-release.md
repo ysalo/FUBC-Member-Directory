@@ -2,6 +2,16 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Editable Membership Start Date
+
+Implemented on `feature/member-membership-date` for feature -> dev -> main delivery. The member editor loads and saves the existing `people.membership_joined_at` date through the revision-checked `save_person` RPC. Administrators and Member Administrators can set, change, or clear the date; the English "Member since" and Ukrainian "Дата вступу до церкви" controls reuse the native/web date field. Unknown dates stay null rather than being silently assigned today. Future or invalid dates are rejected.
+
+Backend prerequisite: manually apply `20260923020000_membership_date.sql` after the role-permissions migration before enabling the client in production. This migration is NOT deployed by this feature work. It preserves the existing guarded writer, leadership restrictions, archival cleanup, and older-client omission behavior. Do not run an automatic database push. Older clients remain compatible with the new writer; rolling back the UI does not require reverting the migration.
+
+Focused SQL coverage checks creation, editing, clearing, older-client preservation, single revision advancement, invalid/future dates, stale revisions, and unauthorized writes. Client regressions check payload/omission and editor hydration. Authenticated Preview, live save/reload, and physical-device checks remain release gates. Keep the feature PR targeted at dev and use a separate dev -> main PR for production.
+
+Verification: `pnpm verify` passed (159 main tests plus visitation/group suites), `pnpm build:web` passed, and editor diagnostics/whitespace checks were clean. Built-app synthetic browser checks verified saved-date hydration, editing and reopening with the changed date, and clearing/reopening with null. Phone layout at 390x844 was visually inspected with no horizontal overflow. Desktop 1440x1000 hydration and keyboard-save checks passed, but the integrated-browser screenshot was clipped; full desktop visual and physical-device validation are not claimed. No live member data or database schema was changed.
+
 ## Bulk Member Deletion
 
 Implemented on `feature/manage-member-bulk-delete`, based on current `dev`. The Members list supports administrator-only multi-selection, select-all-shown, clear selection, and a typed-confirmation review of every selected name. Search, filter, panel, account, and reload changes clear selection. The caller's linked member is excluded. Accounts-only deletion is not part of this feature.
