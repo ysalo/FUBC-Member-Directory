@@ -29,6 +29,8 @@ Implemented on `feature/warm-tabs-thumbnails`, branched from `dev`. Not deployed
 
 ## Branch Model
 
+Pull-to-refresh refinement: removed the added refresh icon from Directory, Groups, and Schedule. Native refresh controls remain; touch web refreshes on a downward gesture from the top, with a progress indicator only during refresh. Warm-refresh errors remain visible without a button. Validation was limited to TypeScript and a focused gesture check at the requester's direction; the full suite, production build, and device/browser smoke checks were not rerun for this refinement.
+
 ```text
 feature/* -> dev -> main
 			  |      |
