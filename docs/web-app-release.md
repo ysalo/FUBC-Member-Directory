@@ -2,6 +2,30 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Bulk Member Deletion
+
+Implemented on `feature/manage-member-bulk-delete`, based on current `dev`. The Members list supports administrator-only multi-selection, select-all-shown, clear selection, and a typed-confirmation review of every selected name. Search, filter, panel, account, and reload changes clear selection. The caller's linked member is excluded. Accounts-only deletion is not part of this feature.
+
+The client calls the existing `delete-member` Edge Function sequentially with each reviewed name and revision. Existing server authorization, self-deletion, revision, and last-administrator guards remain authoritative. Processing stops on the first failure; the dialog reports confirmed deletions separately from unprocessed or uncertain records and reloads on close. A failed member may already have lost linked sign-in access or photos. No new migrations, Edge Function deployments, notification scheduling, or persistent data storage are introduced.
+
+Verification: focused selection/confirmation/batch regressions, `pnpm verify`, and `pnpm build:web` passed. The built local app was checked with synthetic in-page backend responses at 1440x1000 and 390x844, including direct Manage load, self-selection exclusion, disabled confirmation, cancel with zero deletion requests, partial failure, and refreshed remaining rows. Desktop/mobile confirmation screenshots were inspected and no horizontal overflow was found. No real members were deleted. Physical-device, live OAuth, authenticated Vercel Preview, and live deletion checks remain unperformed.
+
+Delivery is a feature PR into `dev`; CI/review and authenticated Preview remain merge gates. A separate reviewed `dev` to `main` PR is required for production. Verify the existing deletion endpoint on disposable records before production release, and retain the previous Vercel deployment for rollback; deleted member data itself cannot be recovered by rolling back the client.
+
+## Member Administrator Permissions
+
+Work in progress on `feature/member-administrator-permissions`, based on `dev` at `3803eeb`. Uncommitted changes were transferred from `main`, preserving the member-name and session-recovery changes already in `dev`. Neither protected branch was committed to or pushed.
+
+Member Administrators (stored as `editor` for compatibility) manage members, groups, ministries, and duty schedules. Account management and permission-granting Pastor/Deacon assignments remain Administrator-only. Pastors and Deacons can plan visits; Administrators can manage all visits.
+
+Local integration verification: `pnpm verify` passed (154 main tests plus visitation and group suites), and `pnpm build:web` passed. Authenticated browser/Preview and physical-device checks remain outstanding. VS Code reported workspace module-resolution diagnostics despite the passing project TypeScript check; these are not claimed resolved.
+
+On 2026-09-23, applied `20260923000000_member_patronymic.sql`, then `20260923010000_role_permissions.sql`, through the user-authenticated Supabase SQL Editor for project `lxrrjrezpdzyqkevgwyx` (main Production). Preflight found both migrations absent; the patronymic prerequisite was applied and verified first. Both transactions completed successfully and notified PostgREST to reload its schema. Do not rerun either migration or use `supabase db push`; CLI migration history remains unreconciled. Older clients may receive authorization errors for newly restricted actions; UI rollback must not remove server restrictions.
+
+Live catalog checks verified the preserved patronymic writer/directory return field, authenticated public member-RPC access, anonymous denial, private-writer denial for both client roles, security-definer wrapper with empty search path, leadership-assignment guard, administrator visitation guards, and administrator-only linked account name synchronization. A read-only transaction with locally simulated identity claims checked editor/admin/visitation helpers against all four existing profiles and rolled back; both visitation tables retain RLS, with two policies present. No member, visit, account, or notification records were changed by deployment verification. This is not a full signed-in client/RLS workflow test.
+
+Feature PR #46 targets `dev`. Delivery still requires successful CI/review and Vercel Preview validation, then a separate release PR from `dev` into `main`. This database operation did not merge branches or deploy the frontend.
+
 ## Member Names and Mobile Recovery
 
 Implemented on `feature/member-names-mobile-recovery`, branched from `dev`. Not deployed or merged.
@@ -15,7 +39,7 @@ Implemented on `feature/member-names-mobile-recovery`, branched from `dev`. Not 
 - `pnpm verify` passed on the final source: TypeScript, 152 main tests, the visitation suite, and 12 group-suite entries. `pnpm build:web` passed. The design detector reported no findings.
 - Local production-build checks used synthetic in-browser backend responses only: directory initial and full profile patronymic rendering, editor prefill, 16px inputs with small-text preference, deacon search, and Ukrainian large-text Schedule navigation. Phone (390x844) and desktop (1440x900) screenshots were inspected; measured layouts had no horizontal overflow, single-line navigation labels, and no gap between Schedule's content region and navigation. This does not establish physical iPhone focus behavior or live OAuth reliability.
 - A simulated backend 503 on foreground revalidation displayed the localized reconnect state; restoring the fixture and dispatching an online event automatically restored the directory. These were synthetic requests, not a live token-expiry test.
-- Manually apply `mobile/supabase/migrations/20260923000000_member_patronymic.sql` through the approved SQL Editor workflow, then verify editor add/update/clear, ordinary-member read access, unauthorized writes, conflict handling, and the directory RPC. Do not use `supabase db push`. No live migration or member mutation was performed in this implementation.
+- Applied `mobile/supabase/migrations/20260923000000_member_patronymic.sql` through the authenticated SQL Editor on 2026-09-23, before the role-permissions migration described above. Live column/writer/directory return-field checks passed. Signed-in editor add/update/clear, ordinary-member read access, unauthorized writes, and conflict-handling checks remain outstanding. Do not rerun the migration or use `supabase db push`. No live member mutation was performed in this deployment.
 - The migration is additive for the previous client: omitted patronymics remain unchanged on edits, absent values remain null, and existing RPC arguments and permission checks are preserved. PGlite tests cover persistence, clearing, legacy writes, authorization, length constraints, and stale revisions. Retain the prior Vercel deployment for rollback; do not remove the column while clients may use it.
 - Complete feature PR -> reviewed, CI-green `dev` Preview -> separate `dev` to `main` release PR, with the release version updated as part of that batch. Authenticated Preview, live idle/refresh behavior, callback/deep-link/confirmation smoke checks, and physical-device validation remain required before production release. Notification APIs and preferences are unchanged.
 

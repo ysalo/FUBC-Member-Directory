@@ -3,7 +3,7 @@ import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
@@ -22,6 +22,7 @@ import { errorMessage, withTimeout } from "@/lib/async-state";
 import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
 import { isBackendConfigured } from "@/lib/supabase";
 import { managementRepository } from "./management-repository";
+import { BulkMemberDeletion } from "./BulkMemberDeletion";
 import { managedAccountRoute } from "./route-params";
 import {
     initialManagementState,
@@ -72,6 +73,7 @@ const labels = {
         done: "Done",
         noMatches: "No matching people",
         noMatchesDetail: "Try a different name, group, or email.",
+        select: "Select members", selectAll: "Select all shown", clearSelection: "Clear selection", selected: "Selected", cancelSelection: "Cancel selection", deleteSelected: "Delete selected", selfDelete: "Your own member record cannot be deleted here.",
     },
     uk: {
         title: "Керування",
@@ -87,7 +89,8 @@ const labels = {
         groups: "Групи",
         groupsDetail: "Призначення дияконів і склад груп",
         schedule: "Розклад",
-        scheduleDetail: "Створення та коригування чергування дияконів у п’ятницю й неділю",
+        scheduleDetail:
+            "Створення та коригування чергування дияконів у п’ятницю й неділю",
         ministries: "Служіння",
         ministriesDetail: "Назви служінь",
         addMember: "Додати учасника",
@@ -113,6 +116,7 @@ const labels = {
         done: "Готово",
         noMatches: "Людей не знайдено",
         noMatchesDetail: "Спробуйте інше ім’я, групу або електронну адресу.",
+        select: "Вибрати учасників", selectAll: "Вибрати всіх показаних", clearSelection: "Скасувати вибір", selected: "Вибрано", cancelSelection: "Завершити вибір", deleteSelected: "Видалити вибраних", selfDelete: "Тут не можна видалити власний запис учасника.",
     },
 } as const;
 
@@ -137,9 +141,20 @@ export function ManageScreen() {
     const [query, setQuery] = useState("");
     const [showFormer, setShowFormer] = useState(false);
     const [filterOpen, setFilterOpen] = useState(false);
+    const [selecting, setSelecting] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [deletionMembers, setDeletionMembers] = useState<ManagedMember[] | null>(null);
+    const deletionAllowed = canManageAccounts(actor);
+
+    useEffect(() => {
+        setSelectedIds([]);
+        setSelecting(false);
+    }, [panel, query, showFormer, actor?.id, deletionAllowed]);
 
     const load = useCallback(() => {
         if (!allowed) return;
+        setSelectedIds([]);
+        setSelecting(false);
         setLoading(true);
         setFailure(null);
         void withTimeout(managementRepository.load())
@@ -185,6 +200,13 @@ export function ManageScreen() {
     }, [accountsAllowed, locale, panel, query, showFormer, state]);
     const openAccount = (accountId: string) => {
         router.push(managedAccountRoute(accountId));
+    };
+    const selectableMembers = panel === "members" ? (data as ManagedMember[]).filter((member) => member.id !== actor?.personId && member.revision != null) : [];
+    const selectedMembers = selectableMembers.filter((member) => selectedIds.includes(member.id));
+    const allSelected = selectableMembers.length > 0 && selectedMembers.length === selectableMembers.length;
+    const toggleMember = (member: ManagedMember) => {
+        if (!deletionAllowed || member.id === actor?.personId || member.revision == null) return;
+        setSelectedIds((current) => current.includes(member.id) ? current.filter((id) => id !== member.id) : [...current, member.id]);
     };
 
     if (!allowed) {
@@ -374,7 +396,9 @@ export function ManageScreen() {
                                                 ]}
                                             >
                                                 <Text
-                                                    style={styles.filterCountText}
+                                                    style={
+                                                        styles.filterCountText
+                                                    }
                                                 >
                                                     1
                                                 </Text>
@@ -523,6 +547,25 @@ export function ManageScreen() {
                                 onOpen={openAccount}
                             />
                         ) : null}
+                        {deletionAllowed && panel === "members" && !loading && !failure && data.length > 0 ? <View style={{ gap: 8, paddingVertical: 12 }}>
+                            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+                                <Pressable accessibilityRole="button" onPress={() => { setSelecting(!selecting); setSelectedIds([]); }} style={{ minHeight: 44, justifyContent: "center" }}>
+                                    <Text style={{ color: palette.accent, fontWeight: "700" }}>{selecting ? copy.cancelSelection : copy.select}</Text>
+                                </Pressable>
+                                {selecting ? <Text accessibilityLiveRegion="polite" style={{ color: palette.text }}>{copy.selected}: {selectedMembers.length}</Text> : null}
+                            </View>
+                            {selecting ? <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
+                                <Pressable accessibilityRole="checkbox" accessibilityLabel={copy.selectAll} accessibilityState={{ checked: allSelected, disabled: !selectableMembers.length }} disabled={!selectableMembers.length} onPress={() => setSelectedIds(allSelected ? [] : selectableMembers.map((member) => member.id))} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                    <Ionicons accessibilityElementsHidden color={palette.accent} name={allSelected ? "checkbox" : "square-outline"} size={24} />
+                                    <Text style={{ color: palette.text }}>{copy.selectAll}</Text>
+                                </Pressable>
+                                <Pressable accessibilityRole="button" disabled={!selectedMembers.length} onPress={() => setSelectedIds([])} style={{ minHeight: 44, justifyContent: "center", opacity: selectedMembers.length ? 1 : 0.5 }}><Text style={{ color: palette.accent }}>{copy.clearSelection}</Text></Pressable>
+                                <Pressable accessibilityRole="button" accessibilityState={{ disabled: !selectedMembers.length }} disabled={!selectedMembers.length} onPress={() => setDeletionMembers(selectedMembers)} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8, opacity: selectedMembers.length ? 1 : 0.5 }}>
+                                    <Ionicons accessibilityElementsHidden color={palette.danger} name="trash-outline" size={21} />
+                                    <Text style={{ color: palette.danger, fontWeight: "700" }}>{copy.deleteSelected} ({selectedMembers.length})</Text>
+                                </Pressable>
+                            </View> : null}
+                        </View> : null}
                     </>
                 }
                 ListEmptyComponent={
@@ -583,6 +626,7 @@ export function ManageScreen() {
                     )
                 }
             />
+            {deletionMembers ? <BulkMemberDeletion members={deletionMembers} onClose={(attempted) => { setDeletionMembers(null); if (attempted) load(); }} /> : null}
             <WebTabBar />
         </SafeAreaView>
     );
@@ -808,19 +852,22 @@ export function ManageScreen() {
                 : item.group;
         return (
             <Pressable
-                accessibilityHint={copy.opensMember}
+                accessibilityHint={selecting ? item.id === actor?.personId ? copy.selfDelete : undefined : copy.opensMember}
                 accessibilityLabel={item.name}
-                accessibilityRole="button"
-                onPress={onPress}
+                accessibilityRole={selecting ? "checkbox" : "button"}
+                accessibilityState={selecting ? { checked: selectedIds.includes(item.id), disabled: item.id === actor?.personId || item.revision == null } : undefined}
+                disabled={selecting && (item.id === actor?.personId || item.revision == null)}
+                onPress={selecting ? () => toggleMember(item) : onPress}
                 style={({ pressed }) => [
                     styles.row,
                     {
-                        backgroundColor: palette.surface,
+                        backgroundColor: selecting && selectedIds.includes(item.id) ? palette.accentSoft : palette.surface,
                         borderColor: palette.line,
                     },
                     pressed && styles.pressed,
                 ]}
             >
+                {selecting ? <Ionicons accessibilityElementsHidden color={item.id === actor?.personId ? palette.secondaryText : palette.accent} name={selectedIds.includes(item.id) ? "checkbox" : "square-outline"} size={24} /> : null}
                 <ProfileAvatar
                     backgroundColor={palette.accentSoft}
                     name={item.name}
@@ -846,12 +893,12 @@ export function ManageScreen() {
                 {item.archived ? (
                     <StatusPill label={copy.archived} tone="muted" />
                 ) : null}
-                <Ionicons
+                {!selecting || item.id === actor?.personId ? <Ionicons
                     accessibilityElementsHidden
                     color={palette.secondaryText}
-                    name="chevron-forward"
+                    name={selecting ? "lock-closed-outline" : "chevron-forward"}
                     size={19}
-                />
+                /> : null}
             </Pressable>
         );
     }

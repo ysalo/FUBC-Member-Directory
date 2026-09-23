@@ -8,7 +8,7 @@ import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
 import { usePendingAccountCount } from "@/features/manage/use-pending-account-count";
-import { canManageDirectory } from "@/lib/permissions";
+import { canCreateVisit, canManageDirectory } from "@/lib/permissions";
 
 const tabs = [
   { labelKey: "directory", path: "/", href: "/(directory)", icon: "list", outlineIcon: "list-outline" },
@@ -32,7 +32,9 @@ export function WebTabBar() {
   const session = useSession();
   const activeVisitationCount = useActiveVisitationCount();
   const pendingAccountCount = usePendingAccountCount();
-  const visibleTabs = tabs.filter((tab) => tab.labelKey !== "manage" || (session.status === "ready" && canManageDirectory(session.account)));
+  const visibleTabs = tabs.filter((tab) =>
+    (tab.labelKey !== "manage" || (session.status === "ready" && canManageDirectory(session.account))) &&
+    (tab.labelKey !== "visitation" || (session.status === "ready" && canCreateVisit(session.account))));
   if (Platform.OS === "ios") return null;
 
   return (

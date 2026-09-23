@@ -8,6 +8,164 @@ const routeParams = await import("../src/features/manage/route-params.ts");
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
+async function bulkUiFixture(component, role = "admin") {
+    const React = require("react");
+    const states = [];
+    const refs = [];
+    const effects = [];
+    let cursor = 0;
+    let refCursor = 0;
+    let effectCursor = 0;
+    let pendingEffects = [];
+    const actor = { id: "admin", personId: "self", status: "active", role };
+    const members = ["self", "first", "second"].map((id) => ({ id, name: id, revision: 7, archived: false, group: "Choir" }));
+    const calls = [];
+    let finish;
+    const pending = new Promise((resolve) => { finish = resolve; });
+    const hooks = { ...React,
+        useState(initial) {
+            const index = cursor++;
+            if (!(index in states)) states[index] = typeof initial === "function" ? initial() : initial;
+            return [states[index], (value) => { states[index] = typeof value === "function" ? value(states[index]) : value; }];
+        },
+        useRef(initial) { return refs[refCursor++] ?? (refs[refCursor - 1] = { current: initial }); },
+        useMemo: (factory) => factory(), useCallback: (callback) => callback,
+        useEffect(callback, deps) {
+            const index = effectCursor++;
+            if (!effects[index] || deps.some((value, offset) => value !== effects[index][offset])) pendingEffects.push(callback);
+            effects[index] = deps;
+        },
+    };
+    const code = ts.transpileModule(await readFile(new URL(`../src/features/manage/${component}.tsx`, import.meta.url), "utf8"), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
+    }).outputText;
+    const exports = {};
+    const closeCalls = [];
+    const keyboardListeners = new Map();
+    new Function("require", "exports", "document", code)((id) => {
+        if (id === "react") return hooks;
+        if (id === "react/jsx-runtime") return require(id);
+        if (id === "react-native") return { Platform: { OS: "web" }, View: "View", Pressable: "Pressable", ScrollView: "ScrollView", Modal: "Modal", ActivityIndicator: "ActivityIndicator", FlatList: ({ ListHeaderComponent, data, renderItem }) => React.createElement("List", {}, ListHeaderComponent, data.map((item) => renderItem({ item }))), StyleSheet: { create: (styles) => styles, hairlineWidth: 1 } };
+        if (id === "react-native-safe-area-context") return { SafeAreaView: "SafeAreaView" };
+        if (id === "@react-native-vector-icons/ionicons") return { Ionicons: "Icon" };
+        if (id === "@/features/accessibility/app-text") return { Text: "Text", TextInput: "TextInput" };
+        if (id === "@/features/appearance/AppearanceProvider") return { useAppearance: () => ({ palette: {} }) };
+        if (id === "@/features/localization/LocalizationProvider") return { useLocalization: () => ({ locale: "en" }) };
+        if (id === "@/features/session/SessionProvider") return { useSession: () => ({ status: "ready", account: actor }) };
+        if (id === "@/features/shell/use-desktop-layout") return { useDesktopLayout: () => false };
+        if (id === "@/features/shell/WebTabBar") return { WebTabBar: "Tabs" };
+        if (id === "@/features/members/ProfileAvatar") return { ProfileAvatar: "Avatar" };
+        if (id === "expo-router") return { useFocusEffect() {}, useRouter: () => ({ push: (route) => calls.push(route) }) };
+        if (id === "@/lib/permissions") return { canManageAccounts: (account) => account?.status === "active" && account.role === "admin", canManageDirectory: () => true };
+        if (id === "@/lib/supabase") return { isBackendConfigured: true };
+        if (id === "@/lib/async-state") return { withTimeout: (promise) => promise, errorMessage: String };
+        if (id === "./management-repository") return { managementRepository: { load: async () => ({ members, accounts: [] }) } };
+        if (id === "./route-params") return routeParams;
+        if (id === "./model") return source;
+        if (id === "./BulkMemberDeletion") return { BulkMemberDeletion: "BulkMemberDeletion" };
+        if (id === "./member-deletion") return { deleteMembers: (requests) => { calls.push(requests); return pending; } };
+        throw new Error(`Unexpected module ${id}`);
+    }, exports, { addEventListener: (event, callback) => keyboardListeners.set(event, callback), removeEventListener: (event) => keyboardListeners.delete(event) });
+    if (component === "ManageScreen") { states[0] = "members"; states[1] = { members, accounts: [] }; states[2] = false; }
+    function render() {
+        cursor = 0; refCursor = 0; effectCursor = 0; pendingEffects = [];
+        const nodes = [];
+        const walk = (node) => {
+            if (!node || typeof node !== "object") return;
+            if (Array.isArray(node)) { node.forEach(walk); return; }
+            if (typeof node.type === "function") { walk(node.type(node.props)); return; }
+            nodes.push(node); walk(node.props?.children);
+        };
+        walk(exports[component]({ members: members.slice(1), onClose: (attempted) => closeCalls.push(attempted) }));
+        pendingEffects.forEach((effect) => effect());
+        return nodes;
+    }
+    const text = (node) => typeof node === "string" || typeof node === "number" ? String(node) : Array.isArray(node) ? node.map(text).join("") : text(node?.props?.children ?? "");
+    const button = (label) => render().find((node) => node.type === "Pressable" && text(node) === label);
+    render();
+    return { render, button, calls, closeCalls, finish, actor, escape: () => keyboardListeners.get("keydown")?.({ key: "Escape", preventDefault() {}, stopPropagation() {} }) };
+}
+
+test("member selection excludes self, follows shown members, and clears across searches and panels", async () => {
+    const ui = await bulkUiFixture("ManageScreen");
+    ui.button("Select members").props.onPress();
+    let rows = ui.render().filter((node) => node.props?.accessibilityRole === "checkbox");
+    assert.equal(rows.find((node) => node.props.accessibilityLabel === "self").props.disabled, true);
+    ui.button("Select all shown").props.onPress();
+    ui.button("Delete selected (2)").props.onPress();
+    assert.deepEqual(ui.render().find((node) => node.type === "BulkMemberDeletion").props.members.map((member) => member.id), ["first", "second"]);
+    ui.render().find((node) => node.type === "BulkMemberDeletion").props.onClose(false);
+    ui.render().find((node) => node.type === "TextInput").props.onChangeText("first");
+    ui.render();
+    ui.button("Select members").props.onPress();
+    ui.button("Select all shown").props.onPress();
+    assert.equal(ui.button("Delete selected (1)").props.disabled, false);
+    ui.button("Accounts").props.onPress(); ui.render();
+    assert.equal(ui.button("Select members"), undefined);
+    ui.button("Members").props.onPress(); ui.render();
+    assert.ok(ui.button("Select members"));
+    const editor = await bulkUiFixture("ManageScreen", "editor");
+    assert.equal(editor.button("Select members"), undefined);
+});
+
+test("bulk confirmation requires typed intent, blocks duplicate submits, and reports partial results", async () => {
+    const ui = await bulkUiFixture("BulkMemberDeletion");
+    assert.equal(ui.button("Delete permanently").props.disabled, true);
+    ui.render().find((node) => node.type === "TextInput").props.onChangeText("DELETE");
+    const submit = ui.button("Delete permanently").props.onPress;
+    submit(); submit();
+    assert.equal(ui.calls.length, 1);
+    assert.deepEqual(ui.calls[0], ["first", "second"].map((personId) => ({ personId, expectedRevision: 7, confirmation: personId })));
+    assert.equal(ui.button("Cancel").props.disabled, true);
+    ui.render().find((node) => node.type === "Modal").props.onRequestClose();
+    ui.escape();
+    assert.deepEqual(ui.closeCalls, []);
+    ui.finish({ completed: [{ deletedPersonId: "first" }], failedPersonId: "second", error: "conflict" });
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(ui.button("Delete permanently"), undefined);
+    assert.match(JSON.stringify(ui.render()), /Deletion stopped/);
+    ui.button("Close").props.onPress();
+    assert.deepEqual(ui.closeCalls, [true]);
+    const canceled = await bulkUiFixture("BulkMemberDeletion");
+    canceled.button("Cancel").props.onPress();
+    assert.deepEqual(canceled.calls, []);
+    assert.deepEqual(canceled.closeCalls, [false]);
+    const escaped = await bulkUiFixture("BulkMemberDeletion");
+    escaped.escape();
+    assert.deepEqual(escaped.calls, []);
+    assert.deepEqual(escaped.closeCalls, [false]);
+    const editor = await bulkUiFixture("BulkMemberDeletion", "editor");
+    editor.render().find((node) => node.type === "TextInput").props.onChangeText("DELETE");
+    assert.equal(editor.button("Delete permanently").props.disabled, true);
+});
+
+test("bulk member deletion is sequential and stops at the first failure", async () => {
+    const code = ts.transpileModule(await readFile(new URL("../src/features/manage/member-deletion.ts", import.meta.url), "utf8"), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    for (const fail of [false, true]) {
+        const calls = [];
+        const invalidations = [];
+        const exports = {};
+        new Function("require", "exports", code)((id) => {
+            if (id === "@/lib/session-cache") return { invalidateData: (...topics) => invalidations.push(topics) };
+            if (id === "@/lib/supabase") return { requireSupabase: () => ({ functions: { async invoke(name, { body }) {
+                calls.push(body);
+                if (fail && body.personId === "second") return { error: { context: { json: async () => ({ code: "conflict" }) } } };
+                return { data: { status: "completed", deletedPersonId: body.personId, deletedAccountId: null, deletedVisitCount: 0 } };
+            } } }) };
+            throw new Error(`Unexpected module ${id}`);
+        }, exports);
+        const requests = ["first", "second", "third"].map((personId) => ({ personId, expectedRevision: 7, confirmation: personId }));
+        const result = await exports.deleteMembers(requests);
+        assert.deepEqual(calls, fail ? requests.slice(0, 2) : requests);
+        assert.equal(result.completed.length, fail ? 1 : 3);
+        assert.equal(result.failedPersonId, fail ? "second" : null);
+        assert.equal(result.error, fail ? "conflict" : null);
+        assert.equal(invalidations.length, result.completed.length);
+    }
+});
+
 const managementCode = ts.transpileModule(await readFile(new URL("../src/features/manage/management-repository.ts", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
@@ -238,14 +396,12 @@ test("membership departure removes group assignments and stays available to mana
         editor,
         /hidden from the directory and removed from every group/,
     );
-    assert.match(
-        repository,
-        /group\.memberIds\.filter\([\s\S]*?id !== member\.id[\s\S]*?\)/,
-    );
-    assert.match(
-        repository,
-        /group\.deaconIds\.filter\([\s\S]*?id !== member\.id[\s\S]*?\)/,
-    );
+    const archival = repository.slice(repository.indexOf('async setMembershipActive'), repository.indexOf('async saveAccount'));
+    assert.doesNotMatch(archival, /saveGroup|loadGroupManagement/);
+    assert.match(archival, /this\.saveMember\(current\.id, member\.revision/);
+    const migration = await readFile(new URL('../supabase/migrations/20260923010000_role_permissions.sql', import.meta.url), 'utf8');
+    assert.match(migration, /delete from public\.deacon_group_members where person_id=result\.id/);
+    assert.match(migration, /delete from public\.deacon_group_deacons where person_id=result\.id/);
     assert.match(repository, /membership_group_id: null,[\s\S]*?archived: !active/);
     assert.match(manage, /formerMembers: "Former members"/);
     assert.match(manage, /archived === showFormer/);
