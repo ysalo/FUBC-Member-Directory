@@ -2,6 +2,24 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Supabase Advisor Hardening
+
+Implemented on `feature/supabase-advisor-hardening`, based on current `dev`, for feature -> dev -> main delivery. No client contracts or public RPC signatures changed.
+
+- `20260923030000_advisor_security.sql` makes both leadership views security-invoker. `person_leadership_ministries` uses existing table RLS; `ministry_accounts` calls the narrowly scoped `app_private.ministry_account_rows()` helper so approved users retain leader pickers without gaining access to other profiles. The helper has an empty search path, an active-account guard, four explicit output fields, and no anonymous execute grant. Keep `app_private` out of Data API exposed schemas.
+- `20260923040000_advisor_performance.sql` caches identity checks in seven RLS policies and adds nine covering foreign-key indexes. It also fixes birthday-preference group correlation: the live policy previously compared `assignment.group_id` with itself, rather than the preference's group. The corrected policy requires the caller's assignment to that specific group.
+- Both transactions use a five-second lock timeout and sixty-second statement timeout. Live preflight confirmed small affected tables and no index-name collisions. No existing index was dropped, RLS disabled, or notification scheduled.
+
+Applied both migrations, in the order above, through the authenticated SQL Editor for `lxrrjrezpdzyqkevgwyx` (main Production) on 2026-09-23 local / 2026-09-24 UTC. Both succeeded and notified PostgREST. Do not rerun them or use `supabase db push`: CLI migration history is still unreconciled. The unrelated membership-date migration was not applied as part of this work.
+
+Verification: `pnpm verify` passed (161 main tests plus visitation/group suites), `pnpm build:web` passed, and focused SQL tests cover member/editor/admin approval states, restricted profile access, anonymous grants, owner isolation, cross-owner write rejection, birthday-group isolation, index coverage, and public definer-RPC anonymous denial/fixed search paths. Live read-only transactions checked leadership projections and owner isolation using all four existing profiles, then rolled back. Catalog checks confirmed both invoker views, seven optimized policies, and zero uncovered public foreign keys. Counts remained 36 people, four profiles, two visits, and nine notification events; no application data writes were performed.
+
+Advisor results after deployment: Security **0 errors, 27 warnings, 2 suggestions**; Performance **0 errors, 0 warnings, 9 suggestions**. Remaining security warnings are the 26 intentional, guarded public definer RPCs and leaked-password protection (requires Pro or above; this project is Free). Existing RPCs were not rewritten merely to suppress warnings; catalog checks and regression tests do not constitute a complete live role-by-role audit of every RPC. The two RLS-without-policy suggestions are intentional deny-by-default tables (`people_private`, `visit_notification_events`). Performance suggestions are unused indexes, including newly created indexes; retain these until representative workload evidence supports removal.
+
+Rollback compatibility: current and previous clients keep the same view names, columns, and public RPC contracts. UI rollback does not require reversing these migrations. Prefer a forward fix if needed; never restore the erroneous birthday-policy correlation, broaden profile access, or disable RLS. If the view implementation must be reverted, restore the guarded view definitions from `20260917110000_leadership_ministries.sql` before removing the private helper, with a reviewed migration. Indexes and optimized policies can remain during a client rollback.
+
+Delivery requires a feature PR into `dev`, CI/review and Vercel Preview validation, followed by a separate reviewed `dev` -> `main` release PR. No protected-branch merge or frontend production release was performed by this work. Authenticated Preview, live OAuth/callback/confirmation workflows, and physical-device checks remain release gates; read-only SQL verification is not a signed-in UI test.
+
 ## Editable Membership Start Date
 
 Implemented on `feature/member-membership-date` for feature -> dev -> main delivery. The member editor loads and saves the existing `people.membership_joined_at` date through the revision-checked `save_person` RPC. Administrators and Member Administrators can set, change, or clear the date; the English "Member since" and Ukrainian "Дата вступу до церкви" controls reuse the native/web date field. Unknown dates stay null rather than being silently assigned today. Future or invalid dates are rejected.
