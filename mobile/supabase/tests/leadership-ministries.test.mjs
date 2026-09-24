@@ -34,6 +34,49 @@ before(async () => {
 });
 after(async () => db.close());
 
+test("advisor views preserve leader pickers without opening profile or anonymous access", async () => {
+  await db.exec("begin");
+  try {
+    const viewerId = "10000000-0000-4000-8000-000000000201";
+    const leaderId = "10000000-0000-4000-8000-000000000202";
+    await db.query("insert into auth.users(id,email) values($1,'viewer@example.com'),($2,'leader@example.com')", [viewerId, leaderId]);
+    await db.query("update public.profiles set status='active',person_id=$2 where id=$1", [leaderId, ids.person]);
+    await db.exec(await readFile(new URL("../migrations/20260923030000_advisor_security.sql", import.meta.url), "utf8").then(sql => sql.replace(/^begin;/, "").replace(/commit;\s*$/, "")));
+    const views = (await db.query("select relname,reloptions from pg_class where oid in ('public.ministry_accounts'::regclass,'public.person_leadership_ministries'::regclass)")).rows;
+    assert.equal(views.length, 2);
+    for (const view of views) assert.ok(view.reloptions.includes("security_invoker=true"));
+    assert.equal((await db.query("select has_function_privilege('anon','app_private.ministry_account_rows()','execute') as allowed")).rows[0].allowed, false);
+    for (const role of ["member", "editor", "admin"]) {
+      for (const status of ["active", "pending", "denied", "revoked"]) {
+        await db.query("update public.profiles set role=$2::public.app_role,status=$3::public.account_status where id=$1", [viewerId, role, status]);
+        await db.exec("set local role authenticated");
+        await db.query("select set_config('request.jwt.claim.sub',$1,true)", [viewerId]);
+        const accounts = (await db.query("select * from public.ministry_accounts")).rows;
+        const ministries = (await db.query("select * from public.person_leadership_ministries")).rows;
+        assert.equal(accounts.length, status === "active" ? 1 : 0, `${role}/${status}`);
+        assert.equal(ministries.length, status === "active" ? 1 : 0, `${role}/${status}`);
+        if (accounts.length) {
+          assert.equal(accounts[0].id, leaderId);
+          assert.deepEqual(Object.keys(accounts[0]), ["id", "display_name", "leadership_ministry", "person_id"]);
+        }
+        const profiles = (await db.query("select id from public.profiles where id<>$1", [viewerId])).rows;
+        if (role !== "admin" || status !== "active") assert.equal(profiles.length, 0);
+        await db.exec("reset role");
+      }
+    }
+    await db.exec("set local role authenticated");
+    await db.query("select set_config('request.jwt.claim.sub','',true)");
+    assert.deepEqual((await db.query("select * from public.ministry_accounts")).rows, []);
+    assert.deepEqual((await db.query("select * from public.person_leadership_ministries")).rows, []);
+    await db.exec("reset role");
+    for (const view of ["ministry_accounts", "person_leadership_ministries"]) {
+      assert.equal((await db.query("select has_table_privilege('anon',$1,'select') as allowed", [`public.${view}`])).rows[0].allowed, false);
+    }
+  } finally {
+    await db.exec("rollback; reset role");
+  }
+});
+
 test("cutover preserves the person ministry while deleting the old special account", async () => {
   assert.equal((await db.query("select * from auth.users where id=$1", [ids.oldDeacon])).rows.length, 0);
   assert.equal((await db.query("select * from public.profiles where id=$1", [ids.oldDeacon])).rows.length, 0);

@@ -49,6 +49,73 @@ before(async () => {
 });
 after(async () => db.close());
 
+test("advisor policy and index changes preserve ownership and restrict birthday preferences to the assigned group", async () => {
+  await db.exec("begin");
+  try {
+    for (const migration of ["20260923010000_role_permissions.sql", "20260923030000_advisor_security.sql", "20260923040000_advisor_performance.sql"]) {
+      await db.exec((await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8")).replace(/^begin;|commit;$/gm, ""));
+    }
+    const uncovered = (await db.query(`
+      select constraint_record.conname from pg_constraint constraint_record
+      where constraint_record.contype='f' and constraint_record.connamespace='public'::regnamespace
+        and not exists(select 1 from pg_index index_record
+          where index_record.indrelid=constraint_record.conrelid and index_record.indisvalid
+            and index_record.indpred is null
+            and (index_record.indkey::smallint[])[0:cardinality(constraint_record.conkey)-1] @> constraint_record.conkey)
+    `)).rows;
+    assert.deepEqual(uncovered, []);
+    const policies = (await db.query("select policyname,qual,with_check from pg_policies where policyname=any($1)", [["own_profile_or_admin", "favorite_owner", "reminder_owner", "preferences_owner", "token_owner", "deletion_owner", "birthday_preferences_owner"]])).rows;
+    assert.equal(policies.length, 7);
+    for (const policy of policies) {
+      assert.match(policy.qual, /SELECT auth.uid\(\)/);
+      if (policy.with_check) assert.match(policy.with_check, /SELECT auth.uid\(\)/);
+    }
+    const person = (await db.query("insert into public.people(name) values('Advisor policy member') returning id")).rows[0].id;
+    const groups = (await db.query("insert into public.deacon_groups(name,kind) values('Advisor assigned','responsibility'),('Advisor other','responsibility') returning id")).rows;
+    await db.query("insert into public.person_ministries(person_id,ministry_id) select $1,id from public.ministries where system_key='deacon'", [person]);
+    await db.query("update public.profiles set status='active',person_id=$2 where id=$1", [ids.member, person]);
+    await db.query("insert into public.deacon_group_deacons(group_id,person_id,slot) values($1,$2,1)", [groups[0].id, person]);
+    await db.query("insert into public.group_birthday_notification_preferences(account_id,group_id) values($1,$2),($1,$3),($4,$2)", [ids.member, groups[0].id, groups[1].id, ids.admin]);
+    assert.deepEqual((await as("member", "select group_id from public.group_birthday_notification_preferences")).rows, [{ group_id: groups[0].id }]);
+    for (const accountId of [ids.member, ids.admin]) {
+      await db.query("insert into public.favorites(account_id,person_id) values($1,$2)", [accountId, person]);
+      await db.query("insert into public.personal_reminders(account_id,person_id,title,remind_at) values($1,$2,'Advisor test',now())", [accountId, person]);
+      await db.query("insert into public.preferences(account_id) values($1) on conflict do nothing", [accountId]);
+      await db.query("insert into public.device_tokens(account_id,token) values($1,$2)", [accountId, `advisor-${accountId}`]);
+      await db.query("insert into public.account_deletion_requests(account_id) values($1)", [accountId]);
+    }
+    for (const status of ["active", "pending", "denied", "revoked"]) {
+      await db.query("update public.profiles set status=$2::public.account_status where id=$1", [ids.member, status]);
+      for (const table of ["favorites", "personal_reminders", "preferences", "device_tokens"]) {
+        assert.deepEqual((await as("member", `select account_id from public.${table}`)).rows, status === "active" ? [{ account_id: ids.member }] : []);
+      }
+      assert.deepEqual((await as("member", "select account_id from public.account_deletion_requests")).rows, [{ account_id: ids.member }]);
+      assert.deepEqual((await as("member", "select id from public.profiles")).rows, [{ id: ids.member }]);
+      if (status !== "active") assert.deepEqual((await as("member", "select * from public.group_birthday_notification_preferences")).rows, []);
+    }
+    await db.query("update public.profiles set status='active' where id=$1", [ids.member]);
+    for (const sql of [
+      `insert into public.favorites(account_id,person_id) values('${ids.editor}','${person}')`,
+      `insert into public.personal_reminders(account_id,person_id,title,remind_at) values('${ids.editor}','${person}','Denied',now())`,
+      `insert into public.preferences(account_id) values('${ids.editor}')`,
+      `insert into public.device_tokens(account_id,token) values('${ids.editor}','denied-token')`,
+    ]) {
+      await db.exec("savepoint denied_write; set role authenticated");
+      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [ids.member]);
+      await assert.rejects(db.exec(sql), /row-level security/);
+      await db.exec("rollback to savepoint denied_write; reset role");
+    }
+    assert.equal((await as("admin", "select id from public.profiles")).rows.length, 3);
+    const privateTables = (await db.query("select relname,relrowsecurity from pg_class where oid in ('public.people_private'::regclass,'public.visit_notification_events'::regclass)")).rows;
+    assert.ok(privateTables.every(table => table.relrowsecurity));
+    assert.equal((await db.query("select count(*)::integer as count from pg_policies where schemaname='public' and tablename in ('people_private','visit_notification_events')")).rows[0].count, 0);
+    const unsafeRpc = (await db.query("select proname from pg_proc where pronamespace='public'::regnamespace and prosecdef and (has_function_privilege('anon',oid,'execute') or not coalesce(proconfig @> array['search_path=\"\"'],false))")).rows;
+    assert.deepEqual(unsafeRpc, []);
+  } finally {
+    await db.exec("rollback; reset role");
+  }
+});
+
 test("membership dates round-trip through the guarded writer and preserve older clients", async () => {
   await db.exec('begin');
   try {

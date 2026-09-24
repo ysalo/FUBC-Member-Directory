@@ -14,6 +14,8 @@ The deployed contract reports `expo-directory-v3`. The leadership-ministry migra
 
 The dashboard execution does not create or reconcile Supabase CLI migration history. Do **not** run `supabase db push` against this project until the linked migration history has been inspected and reconciled. The retired migration chain used the timestamp `20260916010000` for different SQL than the mobile contract file with that timestamp.
 
+`20260923030000_advisor_security.sql` and `20260923040000_advisor_performance.sql` were applied in that order through the authenticated SQL Editor on 2026-09-23 local / 2026-09-24 UTC. Do not rerun. Live checks confirmed two security-invoker leadership views with preserved approved-account results, seven optimized owner policies, corrected birthday-group correlation, and no uncovered public foreign keys. Security errors and performance warnings are now zero. Intentional privileged-RPC warnings, deny-by-default table suggestions, the Free-plan password-protection warning, and unused-index notices remain. See `../../docs/web-app-release.md` for verification and rollback details. This deployment did not apply the unrelated membership-date migration or reconcile CLI history.
+
 `20260918170000_delete_members.sql` and the `delete-member` Edge Function are additive release artifacts for the administrator member-deletion feature. Apply the SQL through the authenticated SQL Editor, then deploy the Edge Function, before merging the client route that invokes it.
 
 ## Safe next steps
