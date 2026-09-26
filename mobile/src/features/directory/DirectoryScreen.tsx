@@ -232,7 +232,7 @@ export function DirectoryScreen() {
     const loadState = resource.status;
     const visitCount = resource.data?.visits ?? 0;
     const loadDirectory = resource.refresh;
-    type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor";
+    type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor" | "ungrouped";
     const [filters, setFilters] = useState<DirectoryFilter[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
 
@@ -271,7 +271,9 @@ export function DirectoryScreen() {
                         ? member.isOrphan
                         : filter === "widow"
                           ? member.isWidow
-                          : member.leadershipMinistry === filter,
+                          : filter === "ungrouped"
+                            ? !member.membershipGroupId
+                            : member.leadershipMinistry === filter,
                 )) && (!needle || searchText.includes(needle)),
         );
         return filtered.reduce<Array<{ title: string; data: Member[] }>>(
@@ -296,6 +298,7 @@ export function DirectoryScreen() {
         },
         { id: "deacon", label: locale === "uk" ? "Диякони" : "Deacons" },
         { id: "pastor", label: locale === "uk" ? "Пастори" : "Pastors" },
+        { id: "ungrouped", label: locale === "uk" ? "Без групи" : "No group" },
     ];
     const toggleFilter = (filter: DirectoryFilter) =>
         setFilters((current) =>

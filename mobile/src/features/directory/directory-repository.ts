@@ -5,7 +5,8 @@ import { createSessionCache } from "@/lib/session-cache";
 import type { Database } from "@/lib/database";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
 
-const directoryCache = createSessionCache<Database["public"]["Functions"]["directory_active_members"]["Returns"]>(["directory"]);
+type DirectoryMemberRow = Database["public"]["Functions"]["directory_active_members"]["Returns"][number];
+const directoryCache = createSessionCache<Array<DirectoryMemberRow & { membership_group_id: string | null }>>(["directory"]);
 const visitCountCache = createSessionCache<number>(["visits"]);
 
 export async function listDirectory(options: { fresh?: boolean } = {}): Promise<Member[]> {
@@ -13,11 +14,17 @@ export async function listDirectory(options: { fresh?: boolean } = {}): Promise<
   activeAccount();
   const people = await directoryCache.load("members", async () => {
     const client = requireSupabase();
-    const peopleResult = await client.rpc("directory_active_members", {}).order("name");
-    return unwrap(peopleResult);
+    const [peopleResult, membershipResult] = await Promise.all([
+      client.rpc("directory_active_members", {}).order("name"),
+      client.from("people").select("id,membership_group_id").is("archived_at", null),
+    ]);
+    const activePeople = unwrap(peopleResult);
+    const memberships = unwrap(membershipResult);
+    const membershipByPerson = new Map(memberships.map((person) => [person.id, person.membership_group_id]));
+    return activePeople.map((person) => ({ ...person, membership_group_id: membershipByPerson.get(person.id) ?? null }));
   }, options.fresh);
   const photos = await privatePhotoSources(people.map((person) => person.photo_path));
-  return people.map((person) => ({ id: person.id, name: person.name, patronymic: person.patronymic, ministry: person.ministry, ministryUk: person.ministry_uk || person.ministry, avatar: person.photo_path ? photos.get(person.photo_path) ?? {} : {}, phone: person.phone, leadershipMinistry: person.leadership_ministry, isOrphan: Boolean(person.is_orphan), isWidow: Boolean(person.is_widow) }));
+  return people.map((person) => ({ id: person.id, name: person.name, patronymic: person.patronymic, ministry: person.ministry, ministryUk: person.ministry_uk || person.ministry, membershipGroupId: person.membership_group_id, avatar: person.photo_path ? photos.get(person.photo_path) ?? {} : {}, phone: person.phone, leadershipMinistry: person.leadership_ministry, isOrphan: Boolean(person.is_orphan), isWidow: Boolean(person.is_widow) }));
 }
 
 export async function getDirectoryVisitCount(options: { fresh?: boolean } = {}): Promise<number> {
