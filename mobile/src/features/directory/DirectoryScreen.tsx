@@ -22,7 +22,6 @@ import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
 import { LeadershipBadge } from "@/features/members/leadership-badge";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
-import { DutySummary } from "@/features/duty/DutySummary";
 import { formatPhoneNumber } from "@/lib/phone";
 import { formatMemberName } from "@/lib/member-name";
 
@@ -600,7 +599,6 @@ export function DirectoryScreen() {
                 ]}
             >
                 {stickyOverview}
-                <DutySummary directoryMembers={directoryMembers} locale={locale} />
                 {desktop && (
                     <View
                         style={[
@@ -684,7 +682,6 @@ export function DirectoryScreen() {
         <View style={[styles.safe, { backgroundColor: palette.background }]}>
             {stickyOverview}
             <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
-            <DutySummary directoryMembers={directoryMembers} locale={locale} />
             <SectionList
                 refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={loadDirectory} />}
                 contentContainerStyle={styles.content}
