@@ -6,6 +6,7 @@ export type Member = {
   patronymic?: string | null;
   ministry: string;
   ministryUk: string;
+  membershipGroupId?: string | null;
   avatar: ImageSourcePropType;
   phone: string | null;
   leadershipMinistry: "pastor" | "deacon" | null;
