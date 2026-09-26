@@ -26,7 +26,6 @@ const labels = {
     error: "Couldn’t load the schedule",
     retry: "Try again",
     empty: "No schedule has been generated for this year yet.",
-    todayTag: "Today",
     youTag: "You",
     pickerPlaceholder: "Choose a deacon",
     pickerTitle: "Select a deacon",
@@ -45,7 +44,6 @@ const labels = {
     error: "Не вдалося завантажити розклад",
     retry: "Спробувати ще раз",
     empty: "Розклад на цей рік ще не створено.",
-    todayTag: "Сьогодні",
     youTag: "Ви",
     pickerPlaceholder: "Оберіть диякона",
     pickerTitle: "Обрати диякона",
@@ -71,27 +69,20 @@ function WeekendRow({
   avatar,
   dateText,
   locale,
-  tag,
-  tagTone = "today",
+  isCurrentWeekend,
 }: {
   personId: string;
   name: string;
   avatar?: Member["avatar"];
   dateText: string;
   locale: "en" | "uk";
-  tag?: string;
-  tagTone?: "today" | "you";
+  isCurrentWeekend: boolean;
 }) {
   const { palette } = useAppearance();
   return (
-    <View style={styles.weekendBlock}>
+    <View style={[styles.weekendBlock, isCurrentWeekend && { borderColor: palette.accent, borderWidth: 1, borderRadius: 12, padding: 10 }]}>
       <View style={styles.dateLine}>
         <Text style={[styles.dateText, { color: palette.text }]}>{dateText}</Text>
-        {tag ? (
-          <View style={[styles.tag, { backgroundColor: tagTone === "you" ? palette.text : palette.accent }]}>
-            <Text style={[styles.tagText, { color: palette.surface }]}>{tag}</Text>
-          </View>
-        ) : null}
       </View>
       <DeaconRow avatar={avatar} card locale={locale} name={name} personId={personId} size={48} />
     </View>
@@ -245,7 +236,7 @@ export function DutyScheduleScreen() {
                         locale={locale}
                         name={member?.name ?? period.personId}
                         personId={period.personId}
-                        tag={isToday ? copy.todayTag : undefined}
+                        isCurrentWeekend={isToday}
                       />
                     );
                   })}
@@ -304,8 +295,6 @@ const styles = StyleSheet.create({
   weekendBlock: { marginBottom: 12 },
   dateLine: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 8 },
   dateText: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, lineHeight: 25 },
-  tag: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
-  tagText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
 });
 
 
