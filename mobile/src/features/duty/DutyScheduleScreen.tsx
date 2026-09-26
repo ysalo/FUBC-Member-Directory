@@ -22,7 +22,6 @@ import { dutyRepository } from "./duty-repository";
 const labels = {
   en: {
     title: "Schedule",
-    today: "Today",
     loading: "Loading the schedule…",
     error: "Couldn’t load the schedule",
     retry: "Try again",
@@ -42,7 +41,6 @@ const labels = {
   },
   uk: {
     title: "Розклад",
-    today: "Сьогодні",
     loading: "Завантаження розкладу…",
     error: "Не вдалося завантажити розклад",
     retry: "Спробувати ще раз",
@@ -158,21 +156,6 @@ export function DutyScheduleScreen() {
           </View>
         ) : (
           <>
-            {active ? (
-              <View style={[styles.card, styles.todayCard, { backgroundColor: palette.surface, borderColor: palette.accent }]}>
-                <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>{copy.today}</Text>
-                <DeaconRow
-                  avatar={memberById.get(active.personId)?.avatar}
-                  detail={weekendLabel(fridayBeforeSunday(active.sundayOn), active.sundayOn, locale)}
-                  locale={locale}
-                  name={memberById.get(active.personId)?.name ?? active.personId}
-                  personId={active.personId}
-                  size={48}
-                  tag={copy.todayTag}
-                />
-              </View>
-            ) : null}
-
             {eligibleDeacons.length > 0 ? (
               <View style={styles.pickerBlock}>
                 <View style={styles.pickerAndOptions}>
@@ -301,8 +284,7 @@ const styles = StyleSheet.create({
   retryButton: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
   retryText: { color: "#FFF", fontWeight: "700" },
   card: { borderRadius: 16, borderWidth: 1, marginBottom: 16, padding: 16 },
-  todayCard: { borderWidth: 1.5 },
-  alertDate: { fontSize: 24, fontWeight: "800", lineHeight: 30 },
+  alertDate: { fontSize: 32, fontWeight: "800", lineHeight: 38 },
   eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, marginBottom: 10, textTransform: "uppercase" },
   pickerBlock: { marginBottom: 16, position: "relative", zIndex: 5 },
   pickerAndOptions: { flexDirection: "row", gap: 10 },
