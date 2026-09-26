@@ -156,9 +156,10 @@ test('the schedule tab is registered as /schedule everywhere, not /duty', async 
 });
 
 test('schedule deacons use the shared Manage-style member card', async () => {
-  const [schedule, deaconRow] = await Promise.all([
+  const [schedule, deaconRow, directory] = await Promise.all([
     readFile(new URL('../src/features/duty/DutyScheduleScreen.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/features/duty/DeaconRow.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/features/directory/DirectoryScreen.tsx', import.meta.url), 'utf8'),
   ]);
   assert.match(schedule, /<DeaconRow avatar=\{avatar\} card locale=\{locale\}/);
   assert.doesNotMatch(schedule, /personCard:/);
@@ -169,7 +170,9 @@ test('schedule deacons use the shared Manage-style member card', async () => {
   assert.match(schedule, /yourNext: "My next duty"/);
   assert.match(schedule, /styles\.alertDate[\s\S]*weekendLabel\(fridayBeforeSunday\(viewerNext\.sundayOn\), viewerNext\.sundayOn, locale\)/);
   assert.doesNotMatch(schedule, /avatar=\{viewerMember|name=\{viewerMember|personId=\{viewerPersonId\}/);
-  assert.match(schedule, /alertDate: \{ fontSize: 24, fontWeight: "800", lineHeight: 30 \}/);
+  assert.match(schedule, /alertDate: \{ fontSize: 32, fontWeight: "800", lineHeight: 38 \}/);
+  assert.doesNotMatch(schedule, /styles\.todayCard|\{copy\.today\}/);
+  assert.doesNotMatch(directory, /DutySummary/);
   assert.doesNotMatch(deaconRow, /Link asChild|Platform\.OS === "web"/);
   assert.match(deaconRow, /accessibilityRole="button"\s+onPress=\{onPress\}/);
   assert.match(schedule, /monthIndex > 0 \? <View style=\{\[styles\.monthSeparator/);
