@@ -15,7 +15,7 @@ function fixture() {
   if(id==='@/lib/session-cache')return {invalidateData:(...keys)=>invalidations.push(keys)};
   throw new Error(id);
  },exports);
- return {api:exports,calls,invalidations,fail:()=>{response={data:null,error:{message:'Refresh before saving',code:'40001'}};}};
+ return {api:exports,calls,invalidations,fail:(code='40001')=>{response={data:null,error:{message:'Server wording is independent',code}};}};
 }
 test('family read exposes signed avatars, archived and inference explanations',async()=>{
  const {api,calls}=fixture(); const value=await api.loadFamily('subject');
@@ -31,4 +31,11 @@ test('family save preserves whole explicit intent and stale errors for refresh U
  assert.deepEqual(invalidations,[['directory']]); fail();
  await assert.rejects(api.saveFamily('subject',9,{parentIds:[],spouseId:null,childIds:[],siblingIds:[]}),error=>error.code==='40001');
  assert.equal(invalidations.length,1);
+});
+
+test('stable server codes normalize validation errors independently of English wording',async()=>{
+ for(const [code,kind] of [['FM001','spouse'],['FM002','cycle'],['FM003','self'],['40001','conflict']]) {
+  const {api,fail}=fixture(); fail(code);
+  await assert.rejects(api.saveFamily('subject',9,{parentIds:[],spouseId:null,childIds:[],siblingIds:[]}),error=>error.kind===kind && error.code===code);
+ }
 });

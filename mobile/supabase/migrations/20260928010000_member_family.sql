@@ -77,12 +77,12 @@ begin
   end if;
   if p_parent_ids is null or p_child_ids is null or p_sibling_ids is null then raise exception 'Relationship lists are required'; end if;
   if not exists(select 1 from public.people where id=p_person_id) then raise exception 'Member not found'; end if;
-  if p_person_id=any(p_parent_ids || p_child_ids || p_sibling_ids) or p_person_id=p_spouse_id then raise exception 'A member cannot be their own relative'; end if;
+  if p_person_id=any(p_parent_ids || p_child_ids || p_sibling_ids) or p_person_id=p_spouse_id then raise exception 'A member cannot be their own relative' using errcode='FM003'; end if;
   if exists(select 1 from unnest(p_parent_ids || p_child_ids || p_sibling_ids || case when p_spouse_id is null then '{}'::uuid[] else array[p_spouse_id] end) id
     where id is null or not exists(select 1 from public.people p where p.id=id)) then raise exception 'Relative not found'; end if;
   if p_spouse_id is not null and exists(select 1 from public.member_family_edges where kind='spouse'
     and (from_id=p_spouse_id or to_id=p_spouse_id) and from_id<>p_person_id and to_id<>p_person_id) then
-    raise exception 'Selected member already has a spouse';
+    raise exception 'Selected member already has a spouse' using errcode='FM001';
   end if;
   delete from public.member_family_edges where from_id=p_person_id or to_id=p_person_id;
   insert into public.member_family_edges(kind,from_id,to_id)
@@ -94,7 +94,7 @@ begin
     select to_id from public.member_family_edges where kind='parent' and from_id=p_person_id
     union
     select e.to_id from descendants d join public.member_family_edges e on e.from_id=d.id and e.kind='parent'
-  ) select 1 from descendants where id=p_person_id) then raise exception 'Parent connections cannot create an ancestry cycle'; end if;
+  ) select 1 from descendants where id=p_person_id) then raise exception 'Parent connections cannot create an ancestry cycle' using errcode='FM002'; end if;
   return public.member_family(p_person_id,true);
 end $$;
 revoke all on function app_private.family_changed() from public,anon,authenticated;
