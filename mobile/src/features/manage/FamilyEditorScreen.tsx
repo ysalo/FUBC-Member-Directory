@@ -99,7 +99,7 @@ export function FamilyEditorScreen() {
     finally { if (isCurrent(ticket)) setBusy(false); }
   }
   function action(label: string, onPress: () => void, disabled = busy) {
-    return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={[styles.button, { borderColor: palette.line }, disabled && styles.disabled]}><Text style={{ color: palette.accent }}>{label}</Text></Pressable>;
+    return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={[styles.button, { borderColor: palette.line }, disabled && styles.disabled]}><Text style={[styles.body, { color: palette.accent }]}>{label}</Text></Pressable>;
   }
   function memberLabel(id: string) {
     const member = members.find(p => p.id === id);
@@ -113,18 +113,18 @@ export function FamilyEditorScreen() {
       <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.edit}{visibleMembers.find(p => p.id === memberId)?.name ? ` · ${visibleMembers.find(p => p.id === memberId)?.name}` : ""}</Text>
       <View style={styles.actions}>{action(copy.cancel, exit)}{snapshot && action(copy.save, () => void save(), busy || conflict)}</View>
       {busy && <ActivityIndicator color={palette.accent} />}
-      {error && <Text accessibilityRole="alert" style={{ color: palette.text }}>{error}</Text>}
+      {error && <Text accessibilityRole="alert" style={[styles.body, { color: palette.text }]}>{error}</Text>}
       {(conflict || (!snapshot && !busy)) && action(conflict ? copy.refresh : copy.retry, () => void load())}
       {snapshot && categories.map(kind => <View key={kind} style={[styles.section, { borderColor: palette.line }]}>
         <Text accessibilityRole="header" style={[styles.heading, { color: palette.text }]}>{copy[kind]}</Text>
-        {!ids(kind).length && <Text style={{ color: palette.secondaryText }}>{copy.empty}</Text>}
+        {!ids(kind).length && <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.empty}</Text>}
         {ids(kind).map(id => <View key={id} style={styles.row}>
-          <Text style={[styles.name, { color: palette.text }]}>{memberLabel(id)}{kind === "siblings" ? ` · ${copy.explicit}` : ""}</Text>
+          <Text style={[styles.body, styles.name, { color: palette.text }]}>{memberLabel(id)}{kind === "siblings" ? ` · ${copy.explicit}` : ""}</Text>
           {action(`${copy.remove}: ${memberLabel(id)} (${copy[kind]})`, () => select(kind, id, true))}
         </View>)}
         {kind === "siblings" && snapshot.siblings.filter(sibling => sibling.supportingParents.length > 0).map(sibling => <View key={sibling.id} style={styles.inference}>
-          <Text style={{ color: palette.text }}>{memberLabel(sibling.id)} · {copy.inferred}: {sibling.supportingParents.map(parent => `${parent.name}${parent.archived ? ` (${copy.archived})` : ""}`).join(", ")}</Text>
-          <Text style={{ color: palette.secondaryText }}>{copy.inferenceHint}</Text>
+          <Text style={[styles.body, { color: palette.text }]}>{memberLabel(sibling.id)} · {copy.inferred}: {sibling.supportingParents.map(parent => `${parent.name}${parent.archived ? ` (${copy.archived})` : ""}`).join(", ")}</Text>
+          <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.inferenceHint}</Text>
         </View>)}
         {action(`${copy.add}: ${copy[kind]}`, () => { setCategory(kind); setCreating(false); setSearch(""); setError(null); })}
       </View>)}
@@ -132,17 +132,17 @@ export function FamilyEditorScreen() {
         <Text accessibilityRole="header" style={[styles.heading, { color: palette.text }]}>{copy.add}: {copy[category]}</Text>
         {action(copy.cancel, () => { setCategory(null); setCreating(false); setError(null); })}
         {creating ? <>
-          <Text style={{ color: palette.secondaryText }}>{copy.createHint}</Text>
-          <TextInput accessibilityLabel={copy.firstName} placeholder={copy.firstName} value={firstName} onChangeText={setFirstName} editable={!busy} style={[styles.input, { color: palette.text, borderColor: palette.line }]} />
-          <TextInput accessibilityLabel={copy.lastName} placeholder={copy.lastName} value={lastName} onChangeText={setLastName} editable={!busy} style={[styles.input, { color: palette.text, borderColor: palette.line }]} />
+          <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.createHint}</Text>
+          <TextInput accessibilityLabel={copy.firstName} placeholder={copy.firstName} value={firstName} onChangeText={setFirstName} editable={!busy} style={[styles.body, styles.input, { color: palette.text, borderColor: palette.line }]} />
+          <TextInput accessibilityLabel={copy.lastName} placeholder={copy.lastName} value={lastName} onChangeText={setLastName} editable={!busy} style={[styles.body, styles.input, { color: palette.text, borderColor: palette.line }]} />
           <View accessibilityRole="radiogroup" accessibilityLabel={copy.gender} aria-required>
-            {(["male", "female"] as const).map(value => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={copy[value]} accessibilityState={{ checked: gender === value, disabled: busy }} disabled={busy} onPress={() => setGender(value)} style={styles.button}><Text style={{ color: palette.text }}>{gender === value ? "◉ " : "○ "}{copy[value]}</Text></Pressable>)}
+            {(["male", "female"] as const).map(value => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={copy[value]} accessibilityState={{ checked: gender === value, disabled: busy }} disabled={busy} onPress={() => setGender(value)} style={styles.button}><Text style={[styles.body, { color: palette.text }]}>{gender === value ? "◉ " : "○ "}{copy[value]}</Text></Pressable>)}
           </View>
-          {matching.length > 0 && <Text style={{ color: palette.text }}>{copy.matches}</Text>}
+          {matching.length > 0 && <Text style={[styles.body, { color: palette.text }]}>{copy.matches}</Text>}
           {matching.map(member => <View key={member.id}>{action(memberLabel(member.id), () => { select(category, member.id); setCategory(null); setCreating(false); setError(null); })}</View>)}
           {action(copy.createSelect, () => void createMember())}
         </> : <>
-          <TextInput accessibilityLabel={copy.search} placeholder={copy.search} value={search} onChangeText={setSearch} editable={!busy} style={[styles.input, { color: palette.text, borderColor: palette.line }]} />
+          <TextInput accessibilityLabel={copy.search} placeholder={copy.search} value={search} onChangeText={setSearch} editable={!busy} style={[styles.body, styles.input, { color: palette.text, borderColor: palette.line }]} />
           {action(copy.create, () => { setCreating(true); setFirstName(""); setLastName(""); setGender(null); })}
           {candidates.filter(member => !ids(category).includes(member.id)).map(member => <View key={member.id}>{action(memberLabel(member.id), () => { select(category, member.id); setCategory(null); })}</View>)}
         </>}
@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "700" }, heading: { fontSize: 20, fontWeight: "700" },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 12 }, section: { borderWidth: 1, borderRadius: 12, padding: 16, gap: 12 },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }, name: { flexGrow: 1, flexShrink: 1 },
-  button: { minHeight: 44, padding: 10, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, justifyContent: "center" },
+  body: { fontSize: 16, lineHeight: 23, flexShrink: 1 },
+  button: { maxWidth: "100%", flexShrink: 1, minWidth: 0, minHeight: 44, padding: 10, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, justifyContent: "center" },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 8, padding: 12 }, inference: { gap: 6 }, disabled: { opacity: 0.45 },
 });
