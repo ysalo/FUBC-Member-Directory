@@ -4,11 +4,21 @@ The application uses Vercel's GitHub integration. GitHub Actions verifies code; 
 
 ## Family Relationships (issue #69)
 
-Implementation is in progress on `feature/family-relationships`, targeting `dev`. The feature adds member-only parent, spouse, and explicit sibling connections, derived profile family, and a dedicated Manage editor. The accepted specification is issue #69; the glossary and ADR are in documentation PR #68.
+Feature PR #70 targets `dev` from `feature/family-relationships`. The shared Expo application now has a dedicated Manage Family editor and a linked Family section immediately below profile Contact. Parents and children are inverse connections, spouses and explicit siblings are reciprocal, and shared recorded parents infer siblings without propagating explicit sibling links. English and Ukrainian labels are gender neutral. Inline member creation saves a separate durable Member; Cancel discards only relationship edits.
 
-Backend readiness is a release prerequisite: review the additive family migration and apply it manually through the established SQL Editor process before enabling this client. Do not automatically push migrations against the unreconciled project history. Existing clients must remain compatible with the additive schema for rollback. No hosted migration has been applied by this work.
+### Backend prerequisite and rollback
 
-Verification results will be recorded here before delivery. Required gates include repository verification, production web export, security and competing-write tests, review, and phone/desktop Vercel Preview checks. Authenticated family workflows require the reviewed backend migration; live OAuth and physical native checks must be recorded separately when performed.
+Review and manually apply `mobile/supabase/migrations/20260928010000_member_family.sql` after the existing management/role/gender migrations using the established SQL Editor process. Do not run `supabase db push`; hosted migration history remains unreconciled. No hosted migration or production release was performed by this implementation.
+
+The additive migration introduces guarded `member_family` and `save_member_family` RPCs. Active Administrators and Member Administrators can write; active directory readers can read visible family. Tables deny direct client writes. Atomic saves reject self-links, ancestry cycles, conflicting spouses and stale revisions. A graph-wide revision deliberately requires refresh after any family edit, including an unrelated member's edit, to cover reciprocal changes and shared-parent inference. Permanent deletion cascades incident connections and invalidates stale family drafts; archival retains connections and profile reads hide archived relatives.
+
+Previous clients remain compatible with the additive family schema and RPCs. Roll back the client to the retained Vercel deployment if needed; retain the family tables and recorded facts. Do not drop family data as a UI rollback. Existing prerequisite migrations, including the gender requirement, keep their own compatibility restrictions. Before production, verify the hosted RPCs and role boundaries, disposal-only creation/edit/deletion workflows, archival/restoration, and forward/rollback client behavior.
+
+### Verification and remaining gates
+
+Local verification is being finalized in PR #70. The suite includes rendered editor/profile workflows, repository contracts, PGlite authorization/graph behavior, and real competing PostgreSQL writes. `FAMILY_TEST_DATABASE_URL` enables the concurrency suite and requires `psql` plus a disposable server with database-creation permission; the test creates and drops its own database. CI supplies an isolated PostgreSQL 18 service, without deployment credentials.
+
+The Vercel Preview URL redirects phone and desktop browsers to Vercel SSO. This confirms a deployment exists but does not validate authenticated Preview behavior. Required before merge: passing CI/review and authorized phone/desktop Preview checks covering family editing, profile links, confirmations, auth callbacks/deep links, and notification isolation after backend readiness. Live OAuth and physical iPhone/native checks were not performed. Production remains a separate reviewed `dev` → protected `main` PR.
 
 ## Required Member Gender (issue #64)
 
