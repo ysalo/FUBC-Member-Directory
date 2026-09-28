@@ -432,6 +432,11 @@ export function MemberFormScreen() {
                         </Text>
                     </Pressable>
                 </View>
+                {editing && memberId && (
+                    <Pressable accessibilityRole="button" disabled={state === "saving"} onPress={() => router.push(`/manage/member/${memberId}/family`)}>
+                        <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
+                    </Pressable>
+                )}
                 {error ? (
                     <Text
                         selectable
