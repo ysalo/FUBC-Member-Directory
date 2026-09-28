@@ -61,6 +61,7 @@ export function MemberFormScreen() {
     const [ministryIds, setMinistryIds] = useState<string[]>([]);
     const [isOrphan, setIsOrphan] = useState(false);
     const [isWidow, setIsWidow] = useState(false);
+    const [gender, setGender] = useState<"male" | "female" | null>(null);
     const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
     const [photoRemoved, setPhotoRemoved] = useState(false);
     const [state, setState] = useState<
@@ -93,6 +94,7 @@ export function MemberFormScreen() {
                     setMinistryIds(found.ministryIds ?? []);
                     setIsOrphan(Boolean(found.isOrphan));
                     setIsWidow(Boolean(found.isWidow));
+                    setGender(found.gender ?? null);
                 }
                 setState("ready");
             })
@@ -120,6 +122,10 @@ export function MemberFormScreen() {
                       invalidMembershipDate: "Вкажіть коректну дату вступу не пізніше сьогоднішньої.",
                       ministry: "Служіння",
                       care: "Статус опіки",
+                      gender: "Стать",
+                      male: "Чоловіча",
+                      female: "Жіноча",
+                      genderRequired: "Оберіть стать учасника: чоловіча або жіноча.",
                       orphan: "Сирота",
                       widow: "Вдова або вдівець",
                       phone: "Телефон",
@@ -158,6 +164,10 @@ export function MemberFormScreen() {
                       invalidMembershipDate: "Enter a valid membership date no later than today.",
                       ministry: "Ministries",
                       care: "Care status",
+                      gender: "Gender",
+                      male: "Male",
+                      female: "Female",
+                      genderRequired: "Choose Male or Female for this member.",
                       orphan: "Orphan",
                       widow: "Widow or widower",
                       phone: "Phone number",
@@ -239,6 +249,10 @@ export function MemberFormScreen() {
             setError(labels.required);
             return;
         }
+        if (!gender) {
+            setError(labels.genderRequired);
+            return;
+        }
         setState("saving");
         if (membershipJoinedAt && !acceptsDateFieldValue(membershipJoinedAt, "date", localDateValue(new Date()))) {
             setError(labels.invalidMembershipDate);
@@ -260,6 +274,7 @@ export function MemberFormScreen() {
                 address: address.trim() || null,
                 isOrphan,
                 isWidow,
+                gender,
             });
             const previousPhotoPath =
                 member?.photoPath ??
@@ -511,6 +526,28 @@ export function MemberFormScreen() {
                             onChangeText={setLastName}
                             palette={palette}
                         />
+                        <View style={styles.field} accessibilityRole="radiogroup" accessibilityLabel={labels.gender} aria-required>
+                            <Text style={[styles.label, { color: palette.secondaryText }]}>{labels.gender}</Text>
+                            <View style={styles.genderOptions}>
+                                {(["male", "female"] as const).map((option) => (
+                                    <Pressable
+                                        key={option}
+                                        accessibilityRole="radio"
+                                        accessibilityLabel={labels[option]}
+                                        accessibilityState={{ checked: gender === option, disabled: state === "saving" }}
+                                        aria-checked={gender === option}
+                                        disabled={state === "saving"}
+                                        onPress={() => { setGender(option); setError(null); }}
+                                        style={[styles.genderOption, { borderColor: palette.line, backgroundColor: palette.surface }]}
+                                    >
+                                        <View style={[styles.radioCircle, { borderColor: palette.accent }]}>
+                                            {gender === option ? <View style={[styles.radioDot, { backgroundColor: palette.accent }]} /> : null}
+                                        </View>
+                                        <Text style={{ color: palette.text }}>{labels[option]}</Text>
+                                    </Pressable>
+                                ))}
+                            </View>
+                        </View>
                         <View style={styles.field}>
                             <Text
                                 style={[
@@ -908,6 +945,10 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         width: 56,
     },
+    genderOptions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    genderOption: { alignItems: "center", borderRadius: 12, borderWidth: 1, flexDirection: "row", gap: 10, minHeight: 48, minWidth: 120, paddingHorizontal: 14 },
+    radioCircle: { alignItems: "center", borderRadius: 10, borderWidth: 2, height: 20, justifyContent: "center", width: 20 },
+    radioDot: { borderRadius: 5, height: 10, width: 10 },
     chips: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
     chip: {
         borderRadius: 99,

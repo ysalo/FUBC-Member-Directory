@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   desktopList: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", gap: 20 },
   desktopCell: { width: "48%", flexGrow: 1, minWidth: 0 },
   screen: { flexGrow: 1, gap: 22, padding: 20, paddingBottom: 110 },
-  title: { fontSize: 36, fontWeight: "800", letterSpacing: -1 },
+  title: { fontSize: 30, fontWeight: "800", letterSpacing: -1 },
   featuredSection: { gap: 9 },
   sectionLabel: { fontSize: 20, fontWeight: "800", letterSpacing: -.25 },
   groupCard: { borderCurve: "continuous", borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },

@@ -175,6 +175,7 @@ export class SupabaseManagementRepository {
             id: row.id,
             name: row.name,
             patronymic: row.patronymic,
+            gender: row.gender,
             group:
                 groups.find((group) => group.id === row.membership_group_id)
                     ?.name ?? "",
@@ -329,6 +330,7 @@ export class SupabaseManagementRepository {
         address?: string | null;
         isOrphan?: boolean;
         isWidow?: boolean;
+        gender?: "male" | "female";
         membershipJoinedAt?: string | null;
     }) {
         if (!canManageDirectory(activeAccount()))
@@ -339,6 +341,7 @@ export class SupabaseManagementRepository {
                 p_revision: member.revision ?? null,
                 p_data: {
                     name: member.name,
+                    ...(member.gender !== undefined ? { gender: member.gender } : {}),
                     ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                     birth_date: member.birthday ?? null,
                     ...(member.membershipJoinedAt !== undefined ? { membership_joined_at: member.membershipJoinedAt || null } : {}),
@@ -758,6 +761,7 @@ class InMemoryManagementRepository {
         email?: string | null;
         address?: string | null;
         membershipJoinedAt?: string | null;
+        gender?: "male" | "female";
     }) {
         let saved = member.id
             ? this.state.members.find((m) => m.id === member.id)
@@ -768,6 +772,7 @@ class InMemoryManagementRepository {
                 ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                 birthday: member.birthday ?? null,
                 ...(member.membershipJoinedAt !== undefined ? { membershipJoinedAt: member.membershipJoinedAt || null } : {}),
+                ...(member.gender !== undefined ? { gender: member.gender } : {}),
                 ministryIds: member.ministryIds ?? [],
                 phone: member.phone ?? null,
                 email: member.email ?? null,
@@ -779,6 +784,7 @@ class InMemoryManagementRepository {
                 id: `member-${Date.now()}`,
                 name: member.name,
                 patronymic: member.patronymic?.trim() || null,
+                gender: member.gender ?? null,
                 group: "",
                 archived: false,
                 revision: 1,
