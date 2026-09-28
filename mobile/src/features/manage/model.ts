@@ -82,18 +82,21 @@ export const initialManagementState: ManagementState = {
         {
             id: "maria-ivanova",
             name: "Maria Ivanova",
+            gender: "female",
             group: "Northside",
             archived: false,
         },
         {
             id: "daniel-kovalenko",
             name: "Daniel Kovalenko",
+            gender: "male",
             group: "Downtown",
             archived: false,
         },
         {
             id: "olena-petrenko",
             name: "Olena Petrenko",
+            gender: "female",
             group: "Not assigned",
             archived: true,
         },

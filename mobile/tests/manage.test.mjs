@@ -171,7 +171,7 @@ const managementCode = ts.transpileModule(await readFile(new URL("../src/feature
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function photoRepository(failure) {
+function photoRepository(failure, configured = true) {
     const calls = [];
     const invalidations = [];
     const storage = {
@@ -193,7 +193,7 @@ function photoRepository(failure) {
     } };
     const exports = {};
     new Function("require", "exports", managementCode)((id) => {
-        if (id === "@/lib/supabase") return { isBackendConfigured: true, requireSupabase: () => client };
+        if (id === "@/lib/supabase") return { isBackendConfigured: configured, requireSupabase: () => client };
         if (id === "@/lib/permissions") return { canManageDirectory: () => true };
         if (id === "@/lib/repository-helpers") return { activeAccount: () => ({}), unwrap: (result) => { if (result.error) throw new Error(result.error.message); return result.data; } };
         if (id === "@/lib/session-cache") return { invalidateData: (...topics) => invalidations.push(topics), createSessionCache: () => ({ load: (key, loader) => loader() }) };
@@ -201,7 +201,7 @@ function photoRepository(failure) {
         if (id === "./model") return source;
         throw new Error(`Unexpected module ${id}`);
     }, exports);
-    return { repository: new exports.SupabaseManagementRepository(), calls, invalidations };
+    return { repository: configured ? new exports.SupabaseManagementRepository() : exports.managementRepository, calls, invalidations };
 }
 
 test("member saves send membership dates and preserve omission for older callers", async () => {
@@ -237,6 +237,16 @@ test("member saves persist the selected gender and preserve it when older caller
     assert.equal(calls.at(-1).args.p_data.gender, "female");
     await repository.saveMemberDetails({ id: "member", revision: 8, name: "Older client edit" });
     assert.equal(Object.hasOwn(calls.at(-1).args.p_data, "gender"), false);
+});
+
+test("demo management reopens the selected gender and preserves it on older edits", async () => {
+    const { repository } = photoRepository(undefined, false);
+    const created = await repository.saveMemberDetails({ name: "Demo Member", gender: "male" });
+    assert.equal((await repository.loadMember(created.id)).gender, "male");
+    await repository.saveMemberDetails({ id: created.id, name: "Older edit" });
+    assert.equal((await repository.loadMember(created.id)).gender, "male");
+    await repository.saveMemberDetails({ id: created.id, name: "Corrected", gender: "female" });
+    assert.equal((await repository.loadMember(created.id)).gender, "female");
 });
 
 test("photo pairs publish only after both uploads and clean both replaced paths", async () => {
