@@ -16,6 +16,20 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: family-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      FAMILY_TEST_DATABASE_URL: postgres://postgres:family-test@localhost:5432/postgres
     defaults:
       run:
         working-directory: mobile
@@ -34,5 +48,7 @@ jobs:
           cache-dependency-path: mobile/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install PostgreSQL test client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Verify application
         run: pnpm verify
