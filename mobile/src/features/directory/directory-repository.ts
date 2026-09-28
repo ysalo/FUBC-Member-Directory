@@ -24,7 +24,7 @@ export async function listDirectory(options: { fresh?: boolean } = {}): Promise<
     return activePeople.map((person) => ({ ...person, membership_group_id: membershipByPerson.get(person.id) ?? null }));
   }, options.fresh);
   const photos = await privatePhotoSources(people.map((person) => person.photo_path));
-  return people.map((person) => ({ id: person.id, name: person.name, patronymic: person.patronymic, ministry: person.ministry, ministryUk: person.ministry_uk || person.ministry, membershipGroupId: person.membership_group_id, avatar: person.photo_path ? photos.get(person.photo_path) ?? {} : {}, phone: person.phone, leadershipMinistry: person.leadership_ministry, isOrphan: Boolean(person.is_orphan), isWidow: Boolean(person.is_widow) }));
+  return people.map((person) => ({ id: person.id, name: person.name, patronymic: person.patronymic, gender: person.gender, ministry: person.ministry, ministryUk: person.ministry_uk || person.ministry, membershipGroupId: person.membership_group_id, avatar: person.photo_path ? photos.get(person.photo_path) ?? {} : {}, phone: person.phone, leadershipMinistry: person.leadership_ministry, isOrphan: Boolean(person.is_orphan), isWidow: Boolean(person.is_widow) }));
 }
 
 export async function getDirectoryVisitCount(options: { fresh?: boolean } = {}): Promise<number> {

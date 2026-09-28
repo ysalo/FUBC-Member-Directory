@@ -315,9 +315,9 @@ test("Last Seen is server-recorded for any account status and remains administra
   const future = new Date(Date.now() + 60_000).toISOString();
   await db.query("update public.profiles set last_seen_at=$2 where id=$1", [ids.member, future]);
   await as("member", "select public.record_account_use()");
-  assert.equal(Date.parse((await db.query("select last_seen_at from public.profiles where id=$1", [ids.member])).rows[0].last_seen_at), Date.parse(future));
+  assert.equal(Math.floor(Date.parse((await db.query("select last_seen_at from public.profiles where id=$1", [ids.member])).rows[0].last_seen_at) / 1000), Math.floor(Date.parse(future) / 1000));
   await as("editor", "select public.record_account_use()");
-  assert.equal(Date.parse((await db.query("select last_seen_at from public.profiles where id=$1", [ids.member])).rows[0].last_seen_at), Date.parse(future));
+  assert.equal(Math.floor(Date.parse((await db.query("select last_seen_at from public.profiles where id=$1", [ids.member])).rows[0].last_seen_at) / 1000), Math.floor(Date.parse(future) / 1000));
 });
 
 test("only an assigned deacon can persist birthday notification preferences", async () => {

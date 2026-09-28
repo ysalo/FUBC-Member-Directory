@@ -2,6 +2,18 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Required Member Gender (issue #64)
+
+Before enabling this client against an existing Supabase project, review and manually apply `mobile/supabase/migrations/20260928000000_member_gender.sql` through the established SQL Editor process. Do not use `supabase db push`: migration history is unreconciled. The migration assigns Male to every existing Member whose gender is unset, including archived records, preserves any previously recorded values, then enforces a required two-value column. The requester must review and correct those placeholder assignments after migration. Filter results reflect the placeholders until corrected.
+
+Apply and verify the migration before a backend-dependent client Preview or production release. Check Member Administrator and Administrator creation and edits, older-client edits that omit gender, rejection of older-client creation, and Directory reads under active and pending accounts. The old client cannot create Members after this migration because it omits required gender. Keep a current compatible client available for rollback or use a reviewed forward fix; reverting only the UI does not restore creation. No hosted migration was applied by this feature work.
+
+Feature delivery is a PR into `dev`. CI, review, authenticated Vercel Preview at phone and desktop widths, callback and direct links, management confirmations, localization and large text, and notification isolation remain release checks. A separate reviewed `dev` to `main` PR is required for production. Physical iPhone and live OAuth verification must be recorded separately when performed.
+
+Local PostgreSQL-compatible tests exercised backfill, validation, omission preservation, authorized management and Directory reads. Rendered screen tests exercised radio selection, missing-selection validation, match-any gender filters and counts. A local web export passed with placeholder public Supabase configuration. Chromium checks at 390×844 and 1440×900 found no horizontal overflow in the built sign-in, failed callback and unauthenticated management deep link, and no notification API calls. A rendered Directory fixture at both widths showed the count beneath controls, accessible gender checkboxes, and text scaling. These checks do not establish authenticated Preview behavior or a live migration.
+
+Feature PR #65 passed GitHub CI and Vercel's deployment check. The Preview URL redirected an unauthenticated browser to Vercel SSO, so authenticated Preview workflows and the hosted gender migration could not be validated in this run. No human review was recorded at that point. Keep the PR open until those release gates are completed; do not merge a backend-dependent client into production without the migration and rollback readiness described above.
+
 ## Account Last Seen
 
 The Expo account activity feature is implemented in `mobile/` for native and web. Before deploying a client that reads the new account contract, apply `mobile/supabase/migrations/20260927000000_account_last_seen.sql` to the existing Supabase project through the reviewed SQL Editor workflow. Do not run `supabase db push`; migration history remains unreconciled. The migration adds a nullable server timestamp, extends the Administrator-only `management_accounts()` RPC, and adds authenticated self-recording. No migration has been applied as part of this implementation. Verify administrator access, pending/denied/revoked self-recording, and Member read isolation in Preview before release. UI rollback remains compatible with the database addition.
@@ -193,15 +205,34 @@ Supabase deployment remains manual and independent of Vercel:
 
 ## Release Procedure
 
-1. Create a feature branch from `dev` and open a pull request into `dev`.
-2. Wait for CI and inspect the Vercel Preview deployment.
-3. Merge into `dev` after review and verify the shared staging Preview.
-4. For a production batch, update `mobile/package.json` on `dev` using SemVer. `mobile/app.config.js` reads this value automatically.
-5. Run `pnpm verify` and `pnpm build:web`.
-6. Open a release pull request from `dev` into `main` with version, backend readiness, known issues, and rollback target.
-7. Merge after required CI and review checks pass. This immediately deploys Production through Vercel.
-8. Verify the production deployment, stable domain, authentication callback, app shell, and critical read-only flows.
-9. Optionally create a matching `vX.Y.Z` GitHub Release on the merged `main` commit. It is audit metadata, not a deployment trigger.
+For feature work, use this issue-to-release flow:
+
+1. Run `/grill-with-docs` to shape the idea and record domain decisions.
+2. Run `/to-spec` to publish the agreed specification as a GitHub issue. Keep the default triage labels below; a completed spec should be `ready-for-agent`.
+3. Run `/implement` from that issue. Open an implementation PR from the feature branch into `dev` and link the issue in the PR's Development section.
+4. After the feature PR is reviewed and merged into `dev`, include every shipped issue in the separate release PR from `dev` into `main` using `Closes #<issue-number>`.
+5. Merge the release PR after review and production readiness checks, then verify each referenced issue closed. GitHub closes the issues when this PR merges into the default branch, `main`, if repository auto-close is enabled. A closing keyword on the implementation PR into `dev` does not close the issue. If an issue remains open, check the release PR body and the repository's **Auto-close issues with merged linked pull requests** setting; close it manually if the release PR has already merged without a closing keyword.
+
+Use GitHub's default triage labels consistently:
+
+- `needs-triage`: incoming issue has not been assessed.
+- `needs-info`: work is waiting for information from the requester.
+- `ready-for-agent`: the spec is ready for implementation.
+- `ready-for-human`: a human decision or action is needed.
+- `wontfix`: the issue will not be implemented.
+
+Update labels as work changes state. Labels track triage state; PR references track implementation and release. Keep issue closure in the `dev` to `main` release PR.
+
+### Release checklist
+
+1. Wait for CI and inspect the Vercel Preview deployment.
+2. Merge into `dev` after review and verify the shared staging Preview.
+3. For a production batch, update `mobile/package.json` on `dev` using SemVer. `mobile/app.config.js` reads this value automatically.
+4. Run `pnpm verify` and `pnpm build:web`.
+5. Open a release pull request from `dev` into `main` with version, backend readiness, known issues, rollback target, and a `Closes #<issue-number>` entry for each issue being released.
+6. Merge after required CI and review checks pass. This immediately deploys Production through Vercel and closes linked issues when repository auto-close is enabled.
+7. Verify the production deployment, stable domain, authentication callback, app shell, critical read-only flows, and issue closure.
+8. Optionally create a matching `vX.Y.Z` GitHub Release on the merged `main` commit. It is audit metadata, not a deployment trigger.
 
 The semantic application version has one source: `mobile/package.json`. The initial release is `1.0.0`; later releases update that package version only.
 

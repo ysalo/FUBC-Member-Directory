@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: visitColors.background, flex: 1 },
   content: { alignSelf: "center", gap: 14, maxWidth: 680, paddingBottom: 104, paddingHorizontal: 18, paddingTop: 20, width: "100%" },
   titleRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  title: { color: visitColors.text, flex: 1, fontSize: 40, fontWeight: "800", letterSpacing: -1.2, lineHeight: 48 },
+  title: { color: visitColors.text, flex: 1, fontSize: 30, fontWeight: "800", letterSpacing: -1.2, lineHeight: 38 },
   refreshButton: { alignItems: "center", backgroundColor: visitColors.surfaceMuted, borderRadius: 22, height: 44, justifyContent: "center", width: 44 },
   actorRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   actorButton: { alignItems: "center", backgroundColor: visitColors.background, borderColor: visitColors.line, borderCurve: "continuous", borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 7, minHeight: 45, paddingHorizontal: 10, paddingVertical: 8 },

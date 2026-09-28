@@ -269,7 +269,7 @@ export function DutyScheduleScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { paddingBottom: Platform.OS === "web" ? 16 : 100, paddingHorizontal: 20, paddingTop: 16 },
-  title: { fontSize: 34, fontWeight: "800", letterSpacing: -1, marginBottom: 20 },
+  title: { fontSize: 30, fontWeight: "800", letterSpacing: -1, marginBottom: 20 },
   center: { alignItems: "center", gap: 10, paddingVertical: 40 },
   centerText: { fontSize: 14, textAlign: "center" },
   retryButton: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },

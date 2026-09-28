@@ -232,7 +232,7 @@ export function DirectoryScreen() {
     const loadState = resource.status;
     const visitCount = resource.data?.visits ?? 0;
     const loadDirectory = resource.refresh;
-    type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor" | "ungrouped";
+    type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor" | "ungrouped" | "male" | "female";
     const [filters, setFilters] = useState<DirectoryFilter[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
 
@@ -262,21 +262,26 @@ export function DirectoryScreen() {
             );
     }, [directoryMembers, locale]);
 
-    const sections = useMemo(() => {
+    const filteredDirectory = useMemo(() => {
         const needle = searchQuery.trim().toLocaleLowerCase();
-        const filtered = sortedDirectory.filter(({ member, searchText }) =>
+        return sortedDirectory.filter(({ member, searchText }) =>
             (filters.length === 0 ||
                 filters.some((filter) =>
                     filter === "orphan"
                         ? member.isOrphan
                         : filter === "widow"
                           ? member.isWidow
+                          : filter === "male" || filter === "female"
+                            ? member.gender === filter
                           : filter === "ungrouped"
                             ? !member.membershipGroupId
                             : member.leadershipMinistry === filter,
                 )) && (!needle || searchText.includes(needle)),
         );
-        return filtered.reduce<Array<{ title: string; data: Member[] }>>(
+    }, [filters, searchQuery, sortedDirectory]);
+
+    const sections = useMemo(() => {
+        return filteredDirectory.reduce<Array<{ title: string; data: Member[] }>>(
             (groups, member) => {
                 const title =
                     member.surname.charAt(0).toLocaleUpperCase(locale) ||
@@ -288,7 +293,7 @@ export function DirectoryScreen() {
             },
             [],
         );
-    }, [filters, locale, searchQuery, sortedDirectory]);
+    }, [filteredDirectory, locale]);
 
     const filterOptions: Array<{ id: DirectoryFilter; label: string }> = [
         { id: "orphan", label: locale === "uk" ? "Сироти" : "Orphans" },
@@ -299,6 +304,8 @@ export function DirectoryScreen() {
         { id: "deacon", label: locale === "uk" ? "Диякони" : "Deacons" },
         { id: "pastor", label: locale === "uk" ? "Пастори" : "Pastors" },
         { id: "ungrouped", label: locale === "uk" ? "Без групи" : "No group" },
+        { id: "male", label: locale === "uk" ? "Чоловіки" : "Male" },
+        { id: "female", label: locale === "uk" ? "Жінки" : "Female" },
     ];
     const toggleFilter = (filter: DirectoryFilter) =>
         setFilters((current) =>
@@ -458,6 +465,13 @@ export function DirectoryScreen() {
                     ) : null}
                 </Pressable>
             </View>
+            {resource.data && (filters.length > 0 || searchQuery.trim()) ? (
+                <Text style={[styles.matchCount, { color: palette.secondaryText }]}>
+                    {locale === "uk"
+                        ? `Показано ${filteredDirectory.length} із ${directoryMembers.length} учасників`
+                        : `Showing ${filteredDirectory.length} of ${directoryMembers.length} members`}
+                </Text>
+            ) : null}
             {filterOpen ? (
                 <View
                     accessibilityViewIsModal
@@ -500,8 +514,10 @@ export function DirectoryScreen() {
                         const selected = filters.includes(option.id);
                         return (
                             <Pressable
+                                accessibilityLabel={option.label}
                                 accessibilityRole="checkbox"
                                 accessibilityState={{ checked: selected }}
+                                aria-checked={selected}
                                 key={option.id}
                                 onPress={() => toggleFilter(option.id)}
                                 style={styles.filterOption}
@@ -772,12 +788,13 @@ const styles = StyleSheet.create({
     titleRow: { paddingHorizontal: px(20), paddingTop: px(22) },
     title: {
         color: "#292D31",
-        fontSize: px(48),
+        fontSize: px(30),
         fontWeight: "800",
         letterSpacing: px(-1.7),
-        lineHeight: px(56),
+        lineHeight: px(38),
     },
     pressed: { opacity: 0.68, transform: [{ scale: 0.985 }] },
+    matchCount: { fontSize: px(14), marginHorizontal: px(20), marginTop: px(9) },
     searchField: {
         alignItems: "center",
         borderRadius: px(14),
