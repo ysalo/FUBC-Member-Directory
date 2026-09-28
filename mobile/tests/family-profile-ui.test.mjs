@@ -47,7 +47,7 @@ for (const locale of ['en', 'uk']) test(`family profile exposes category labels 
   const family = { ...emptyFamily(), parents: [member('parent', 'Parent Name')], spouse: member('spouse', 'Spouse Name'), children: [member('child', 'Child Name')], siblings: [{ ...member('sibling', 'Sibling Name'), explicit: true, supportingParents: [] }] };
   const ui = fixture({ family, locale }); await ui.load();
   const nodes = ui.render();
-  const labels = locale === 'uk' ? ['Родина', 'Батьки', 'Подружжя', 'Діти', 'Брати та сестри'] : ['Family', 'Parents', 'Spouse', 'Children', 'Siblings'];
+  const labels = locale === 'uk' ? ['Батьки', 'Подружжя', 'Діти', 'Брати та сестри'] : ['Parents', 'Spouse', 'Children', 'Siblings'];
   assert.deepEqual(nodes.filter((node) => node.props.accessibilityRole === 'header').map(text), labels);
   const links = nodes.filter((node) => node.type === 'Link');
   assert.deepEqual(links.map((node) => node.props.href), ['/members/parent', '/members/spouse', '/members/child', '/members/sibling']);
@@ -66,7 +66,7 @@ test('empty family and archived-only connections leave no panel; empty categorie
     const ui = fixture({ family }); await ui.load(); assert.deepEqual(ui.render(), []);
   }
   const ui = fixture({ family: { ...emptyFamily(), children: [member('child')] } }); await ui.load();
-  assert.deepEqual(ui.render().filter((node) => node.props.accessibilityRole === 'header').map(text), ['Family', 'Children']);
+  assert.deepEqual(ui.render().filter((node) => node.props.accessibilityRole === 'header').map(text), ['Children']);
 });
 test('a family read failure is visible and retry recovers', async () => {
   let failed = true;

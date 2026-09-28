@@ -349,7 +349,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
             ) : null}
         </Section>
     );
-    const ministriesSection = (
+    const ministriesSection = ministries.length > 0 ? (
         <Section title={copy.ministries}>
             <View style={styles.bodyList}>
                 {profile.leadershipMinistry ? (
@@ -368,7 +368,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                 ))}
             </View>
         </Section>
-    );
+    ) : null;
 
     return (
         <View style={[styles.root, { backgroundColor: palette.background }]}>
@@ -631,9 +631,9 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                         <View style={styles.desktopColumns}>
                             <View style={styles.desktopContactColumn}>
                                 {contactSection}
-                                <FamilySection memberId={memberId} />
                                 {deaconsSection}
                                 {ministriesSection}
+                                <FamilySection memberId={memberId} />
                             </View>
                             <View style={styles.desktopDetailsColumn}>
                                 {detailsSection}
@@ -642,10 +642,10 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     ) : (
                         <>
                             {contactSection}
-                            <FamilySection memberId={memberId} />
                             {deaconsSection}
                             {detailsSection}
                             {ministriesSection}
+                            <FamilySection memberId={memberId} />
                         </>
                     )}
                 </View>
