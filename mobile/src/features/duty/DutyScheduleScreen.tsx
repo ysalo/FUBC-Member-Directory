@@ -35,6 +35,7 @@ const labels = {
     done: "Done",
     yourNext: "My next duty",
     noUpcoming: "You have no upcoming duty this year.",
+    thisWeekend: "This Weekend",
     options: "Options",
     showPastDates: "Show past dates",
   },
@@ -53,6 +54,7 @@ const labels = {
     done: "Готово",
     yourNext: "Моє наступне чергування",
     noUpcoming: "Цього року у вас немає майбутніх чергувань.",
+    thisWeekend: "Цих вихідних",
     options: "Параметри",
     showPastDates: "Показати минулі дати",
   },
@@ -70,6 +72,7 @@ function WeekendRow({
   dateText,
   locale,
   isCurrentWeekend,
+  currentLabel,
 }: {
   personId: string;
   name: string;
@@ -77,11 +80,13 @@ function WeekendRow({
   dateText: string;
   locale: "en" | "uk";
   isCurrentWeekend: boolean;
+  currentLabel?: string;
 }) {
   const { palette } = useAppearance();
   return (
     <View style={[styles.weekendBlock, isCurrentWeekend && { borderColor: palette.accent, borderWidth: 1, borderRadius: 12, padding: 10 }]}>
       <View style={styles.dateLine}>
+        {isCurrentWeekend && currentLabel ? <Text style={[styles.weekendTag, { color: palette.accent }]}>{currentLabel}</Text> : null}
         <Text style={[styles.dateText, { color: palette.text }]}>{dateText}</Text>
       </View>
       <DeaconRow avatar={avatar} card locale={locale} name={name} personId={personId} size={48} />
@@ -117,8 +122,11 @@ export function DutyScheduleScreen() {
   const eligibleDeacons = state.status === "ready" ? state.year!.eligibleDeacons : [];
 
   const active = state.status === "ready" ? currentPeriod(state.year!.periods, today) : null;
+  const remainingPeriods = state.status === "ready"
+    ? state.year!.periods.filter((period) => period.sundayOn !== active?.sundayOn)
+    : [];
   const viewerNext = state.status === "ready" && viewerIsDeacon && viewerPersonId ? nextPeriodForPerson(state.year!.periods, viewerPersonId, today) : null;
-  const filteredPeriods = state.status === "ready" ? periodsForPerson(state.year!.periods, filterPersonId) : [];
+  const filteredPeriods = periodsForPerson(remainingPeriods, filterPersonId);
   const months = periodsByMonth(visibleSchedulePeriods(filteredPeriods, today, showPastDates));
   const filteredMember = filterPersonId ? memberById.get(filterPersonId) : undefined;
 
@@ -147,6 +155,20 @@ export function DutyScheduleScreen() {
           </View>
         ) : (
           <>
+            {active ? (
+              <View style={styles.currentWeekend}>
+                <WeekendRow
+                  avatar={memberById.get(active.personId)?.avatar}
+                  dateText={weekendLabel(fridayBeforeSunday(active.sundayOn), active.sundayOn, locale)}
+                  isCurrentWeekend
+                  locale={locale}
+                  currentLabel={copy.thisWeekend}
+                  name={memberById.get(active.personId)?.name ?? active.personId}
+                  personId={active.personId}
+                />
+              </View>
+            ) : null}
+
             {eligibleDeacons.length > 0 ? (
               <View style={styles.pickerBlock}>
                 <View style={styles.pickerAndOptions}>
@@ -218,9 +240,9 @@ export function DutyScheduleScreen() {
               </View>
             ) : null}
 
-            {months.length === 0 ? (
+            {months.length === 0 && !active ? (
               <Text style={[styles.centerText, { color: palette.secondaryText }]}>{copy.empty}</Text>
-            ) : (
+            ) : months.length > 0 ? (
               months.map((group, monthIndex) => (
                 <View key={group.month} style={styles.monthBlock}>
                   {monthIndex > 0 ? <View style={[styles.monthSeparator, { backgroundColor: palette.line }]} /> : null}
@@ -275,6 +297,7 @@ const styles = StyleSheet.create({
   retryButton: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
   retryText: { color: "#FFF", fontWeight: "700" },
   card: { borderRadius: 16, borderWidth: 1, marginBottom: 16, padding: 16 },
+  currentWeekend: { marginBottom: 16 },
   alertDate: { fontSize: 32, fontWeight: "800", lineHeight: 38 },
   eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4, marginBottom: 10, textTransform: "uppercase" },
   pickerBlock: { marginBottom: 16, position: "relative", zIndex: 5 },
@@ -295,6 +318,5 @@ const styles = StyleSheet.create({
   weekendBlock: { marginBottom: 12 },
   dateLine: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 8 },
   dateText: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3, lineHeight: 25 },
+  weekendTag: { fontSize: 13, fontWeight: "800", letterSpacing: 0.2 },
 });
-
-
