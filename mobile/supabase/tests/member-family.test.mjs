@@ -50,6 +50,7 @@ async function migration(name) {
   await db.query("update public.profiles set status='active', role=case when id=$1 then 'admin'::public.app_role when id=$2 then 'editor'::public.app_role else 'member'::public.app_role end", [ids.admin, ids.editor]);
   await migration('20260928000000_member_gender');
   await migration('20260928010000_member_family');
+  await migration('20260928020000_family_safeupdate');
 }
 after(async () => db.close());
 const read = async (id, actor='admin', manage=true) => (await as(actor,'select public.member_family($1,$2) family',[id,manage])).rows[0].family;
