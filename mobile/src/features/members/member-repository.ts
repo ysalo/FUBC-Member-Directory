@@ -1,3 +1,4 @@
+import { emptyFamily, type FamilySnapshot } from "@/features/family/family-repository";
 import type { ImageSourcePropType } from "react-native";
 import type { Member } from "@/features/directory/members";
 import { isBackendConfigured } from "@/lib/supabase";
@@ -30,6 +31,7 @@ export type MemberProfile = {
 };
 
 export interface MemberProfileRepository {
+  getFamily(memberId: string): Promise<FamilySnapshot>;
   getProfile(memberId: string, photoVariant?: "avatar" | "original", deferPhotos?: boolean): Promise<MemberProfile | null>;
   hydratePhotos(profile: MemberProfile, photoVariant?: "avatar" | "original", part?: "portrait" | "deacons" | "all"): Promise<MemberProfile>;
 }
@@ -45,6 +47,7 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Local preview adapter used when the Supabase environment is unavailable. */
 class InMemoryMemberProfileRepository implements MemberProfileRepository {
+  async getFamily(memberId: string) { return emptyFamily(memberId); }
   async hydratePhotos(profile: MemberProfile) { return profile; }
   async getProfile(memberId: string) {
     const profile = profiles.find((candidate) => candidate.id === memberId);
