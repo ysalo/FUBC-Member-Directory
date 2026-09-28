@@ -67,6 +67,7 @@ export function FamilySection({ memberId }: { memberId: string }) {
             <View style={styles.avatars}>{group.members.map((relative) => <Link key={relative.id} href={`/members/${relative.id}`} asChild>
                 <Pressable accessibilityRole="link" accessibilityLabel={`${relative.name}, ${memberCopy.profile}`} style={styles.relative} {...(Platform.OS === "web" ? { title: relative.name } : {})}>
                     <ProfileAvatar name={relative.name} source={relative.photo} size={64} />
+                    <Text numberOfLines={2} style={[styles.relativeName, { color: palette.text }]}>{relative.name}</Text>
                 </Pressable>
             </Link>)}</View>
         </View>
@@ -78,7 +79,8 @@ const styles = StyleSheet.create({
     title: { fontSize: 19, fontWeight: "800" },
     card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14 },
     avatars: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-    relative: { width: 64, height: 64, borderRadius: 32 },
+    relative: { alignItems: "center", borderRadius: 12, flexDirection: "row", gap: 10, maxWidth: "100%", minHeight: 64, paddingRight: 8 },
+    relativeName: { flexShrink: 1, fontSize: 15, fontWeight: "600" },
     name: { fontSize: 16, lineHeight: 23 },
     feedback: { gap: 10, alignItems: "flex-start" },
     retry: { minHeight: 44, justifyContent: "center", padding: 10, borderRadius: 8 },

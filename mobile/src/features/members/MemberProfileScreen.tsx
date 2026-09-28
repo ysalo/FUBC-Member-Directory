@@ -203,6 +203,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                             {...(Platform.OS === "web" ? { title: deacon.name } : {})}
                         >
                             <ProfileAvatar name={deacon.name} size={64} source={deacon.avatar} />
+                            <Text numberOfLines={2} style={[styles.deaconName, { color: palette.text }]}>{deacon.name}</Text>
                         </Pressable>
                     </Link>
                 ))}
@@ -1014,8 +1015,9 @@ const styles = StyleSheet.create({
     },
     visitButtonText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
     section: { gap: 8 },
-    deaconAvatars: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 12 },
-    deaconAvatarLink: { width: 64, height: 64, borderRadius: 32 },
+    deaconAvatars: { flexDirection: "column", gap: 12, padding: 12 },
+    deaconAvatarLink: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 64 },
+    deaconName: { flexShrink: 1, fontSize: 15, fontWeight: "600" },
     sectionTitle: { fontSize: 19, fontWeight: "800" },
     card: {
         borderCurve: "continuous",
