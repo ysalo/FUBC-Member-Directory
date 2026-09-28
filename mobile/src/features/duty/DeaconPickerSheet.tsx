@@ -22,6 +22,10 @@ export function DeaconPickerSheet({
   memberById,
   selectedPersonId,
   onSelect,
+  onSave,
+  saveLabel,
+  saving,
+  error,
   clearOption,
   onSelectClear,
 }: {
@@ -35,6 +39,10 @@ export function DeaconPickerSheet({
   memberById: Map<string, Member>;
   selectedPersonId: string | null;
   onSelect: (deacon: DutyCandidate) => void;
+  onSave?: () => void;
+  saveLabel?: string;
+  saving?: boolean;
+  error?: string | null;
   clearOption?: ClearOption;
   onSelectClear?: () => void;
 }) {
@@ -102,6 +110,8 @@ export function DeaconPickerSheet({
             })
           )}
         </ScrollView>
+        {error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: palette.danger }]}>{error}</Text> : null}
+        {onSave && saveLabel ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || !selectedPersonId, busy: saving }} disabled={saving || !selectedPersonId} onPress={onSave} style={[styles.saveButton, { backgroundColor: palette.accent }, (saving || !selectedPersonId) && { opacity: 0.5 }]}><Text style={styles.saveText}>{saveLabel}</Text></Pressable> : null}
       </View>
     </Modal>
   );
@@ -121,4 +131,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: "700" },
   clearIcon: { alignItems: "center", borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
   noMatches: { fontSize: 14, paddingTop: 20, textAlign: "center" },
+  saveButton: { alignItems: "center", justifyContent: "center", minHeight: 50, margin: 20, borderRadius: 12 },
+  saveText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+  error: { marginHorizontal: 20, fontSize: 14 },
 });

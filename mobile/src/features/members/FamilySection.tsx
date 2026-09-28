@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
 import { Link, useFocusEffect } from "expo-router";
 import { Text } from "@/features/accessibility/app-text";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -60,12 +60,11 @@ export function FamilySection({ memberId }: { memberId: string }) {
                     </Pressable>
                 </View> : groups.map((group) => <View key={group.label} style={styles.category}>
                     <Text accessibilityRole="header" style={[styles.categoryTitle, { color: palette.secondaryText }]}>{group.label}</Text>
-                    {group.members.map((relative) => <Link key={relative.id} href={`/members/${relative.id}`} asChild>
-                        <Pressable accessibilityRole="link" accessibilityLabel={`${relative.name}, ${memberCopy.profile}`} style={styles.relative}>
-                            <ProfileAvatar name={relative.name} source={relative.photo} size={48} />
-                            <Text style={[styles.name, styles.relativeName, { color: palette.accent }]}>{relative.name}</Text>
+                    <View style={styles.avatars}>{group.members.map((relative) => <Link key={relative.id} href={`/members/${relative.id}`} asChild>
+                        <Pressable accessibilityRole="link" accessibilityLabel={`${relative.name}, ${memberCopy.profile}`} style={styles.relative} {...(Platform.OS === "web" ? { title: relative.name } : {})}>
+                            <ProfileAvatar name={relative.name} source={relative.photo} size={64} />
                         </Pressable>
-                    </Link>)}
+                    </Link>)}</View>
                 </View>)}
         </View>
     </View>;
@@ -77,8 +76,8 @@ const styles = StyleSheet.create({
     card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 18 },
     category: { gap: 6 },
     categoryTitle: { fontSize: 14, fontWeight: "700" },
-    relative: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6, minHeight: 60 },
-    relativeName: { flex: 1, minWidth: 0 },
+    avatars: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+    relative: { width: 64, height: 64, borderRadius: 32 },
     name: { fontSize: 16, lineHeight: 23 },
     feedback: { gap: 10, alignItems: "flex-start" },
     retry: { minHeight: 44, justifyContent: "center", padding: 10, borderRadius: 8 },

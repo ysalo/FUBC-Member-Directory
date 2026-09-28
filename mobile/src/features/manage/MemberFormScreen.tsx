@@ -3,7 +3,7 @@ import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import * as ImagePicker from "expo-image-picker";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import {
     ActivityIndicator,
@@ -18,6 +18,7 @@ import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { NativeDateTimeField } from "@/features/forms/NativeDateTimeField";
 import { acceptsDateFieldValue, localDateValue } from "@/features/forms/date-field";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
+import { getFamilyCopy } from "@/features/family/family-copy";
 import { useSession } from "@/features/session/SessionProvider";
 import { canManageAccounts } from "@/lib/permissions";
 import { formatPhoneNumber } from "@/lib/phone";
@@ -26,6 +27,7 @@ import { MemberAvatar } from "./MemberAvatar";
 import type { ManagedMember, ManagedMinistry } from "./model";
 import { managedAccountHref } from "./route-params";
 import { createPhotoRenditions } from "./photo-thumbnail";
+import { useUnsavedChanges } from "./use-unsaved-changes";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 type PhotoMimeType = "image/jpeg" | "image/png" | "image/webp";
@@ -38,9 +40,10 @@ type PendingPhoto = {
 
 export function MemberFormScreen() {
     const desktop = useDesktopLayout();
-    const { memberId, accountId } = useLocalSearchParams<{
+    const { memberId, accountId, familyReturn } = useLocalSearchParams<{
         memberId?: string;
         accountId?: string;
+        familyReturn?: string;
     }>();
     const editing = Boolean(memberId);
     const router = useRouter();
@@ -50,6 +53,7 @@ export function MemberFormScreen() {
     const leadershipAllowed = session.status === "ready" && canManageAccounts(session.account);
     const [member, setMember] = useState<ManagedMember | null>(null);
     const [ministries, setMinistries] = useState<ManagedMinistry[]>([]);
+    const [familyCandidates, setFamilyCandidates] = useState<ManagedMember[]>([]);
     const [firstName, setFirstName] = useState("");
     const [patronymic, setPatronymic] = useState("");
     const [lastName, setLastName] = useState("");
@@ -64,10 +68,21 @@ export function MemberFormScreen() {
     const [gender, setGender] = useState<"male" | "female" | null>(null);
     const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
     const [photoRemoved, setPhotoRemoved] = useState(false);
+    const savingRef = useRef(false);
     const [state, setState] = useState<
         "loading" | "ready" | "saving" | "error"
     >(editing ? "loading" : "ready");
     const [error, setError] = useState<string | null>(null);
+    const originalName = member ? splitMemberName(member.name) : { firstName: "", lastName: "" };
+    const dirty = state === "ready" && (JSON.stringify([firstName, patronymic, lastName, birthday, membershipJoinedAt, phone, email, address, [...ministryIds].sort(), isOrphan, isWidow, gender]) !== JSON.stringify([originalName.firstName, member?.patronymic ?? "", originalName.lastName, member?.birthday ?? "", member?.membershipJoinedAt ?? "", formatPhoneNumber(member?.phone), member?.email ?? "", member?.address ?? "", [...(member?.ministryIds ?? [])].sort(), Boolean(member?.isOrphan), Boolean(member?.isWidow), member?.gender ?? null]) || Boolean(pendingPhoto) || photoRemoved);
+    const guard = useUnsavedChanges(dirty);
+    const leave = () => familyReturn ? router.replace(`/manage/member/${encodeURIComponent(familyReturn)}/family` as never) : accountId ? router.replace(managedAccountHref(accountId) as never) : router.replace("/manage");
+    useEffect(() => {
+        if (!familyReturn) return;
+        let alive = true;
+        void managementRepository.load().then((result) => { if (alive) setFamilyCandidates(result.members); });
+        return () => { alive = false; };
+    }, [familyReturn]);
     useEffect(() => {
         let alive = true;
         const selectedMember = memberId
@@ -113,6 +128,10 @@ export function MemberFormScreen() {
             locale === "uk"
                 ? {
                       title: editing ? "Редагувати учасника" : "Новий учасник",
+                      identity: "Особисті дані",
+                      dates: "Дати",
+                      contact: "Контактні дані",
+                      requiredField: "Обов’язкове поле",
                       firstName: "Ім’я",
                       patronymic: "По батькові (необов’язково)",
                       lastName: "Прізвище",
@@ -152,9 +171,17 @@ export function MemberFormScreen() {
                       photoSize: "Фото має бути не більшим за 5 МБ.",
                       photoError: "Не вдалося вибрати це фото.",
                       saveError: "Не вдалося зберегти учасника.",
+                      partialSave: "Учасника збережено, але наступний крок не завершився. Ваші зміни залишилися тут — повторіть збереження.",
+                      photoPartial: "Дані учасника збережено, але фото не оновлено. Повторіть збереження, щоб спробувати ще раз.",
+                      linkPartial: "Учасника та фото збережено, але обліковий запис не пов’язано. Повторіть збереження, щоб завершити зв’язування.",
+                      photoUncertain: "Оновлення фото не вдалося підтвердити. Оновіть сторінку учасника, перш ніж повторювати спробу.",
                   }
                 : {
                       title: editing ? "Edit member" : "New member",
+                      identity: "Personal details",
+                      dates: "Dates",
+                      contact: "Contact details",
+                      requiredField: "Required field",
                       firstName: "First name",
                       patronymic: "Patronymic (optional)",
                       lastName: "Last name",
@@ -194,6 +221,10 @@ export function MemberFormScreen() {
                       photoSize: "Photo must be 5 MB or smaller.",
                       photoError: "Unable to choose this photo.",
                       saveError: "Unable to save this member.",
+                      partialSave: "The member was saved, but the next step failed. Your changes remain here; try saving again.",
+                      photoPartial: "Member details were saved, but the photo was not updated. Save again to retry the photo.",
+                      linkPartial: "The member and photo were saved, but the account was not linked. Save again to retry the link.",
+                      photoUncertain: "The photo update could not be confirmed. Reload this member before trying again.",
                   },
         [editing, locale],
     );
@@ -244,7 +275,9 @@ export function MemberFormScreen() {
         .map((value) => value.trim())
         .filter(Boolean)
         .join(" ");
+    const matchingFamilyMembers = familyReturn && firstName.trim() && lastName.trim() ? familyCandidates.filter((candidate) => candidate.name.toLocaleLowerCase() === fullName.toLocaleLowerCase() && candidate.id !== familyReturn) : [];
     async function save() {
+        if (savingRef.current || state === "saving") return;
         if (!firstName.trim() || (!editing && !lastName.trim())) {
             setError(labels.required);
             return;
@@ -253,13 +286,15 @@ export function MemberFormScreen() {
             setError(labels.genderRequired);
             return;
         }
-        setState("saving");
         if (membershipJoinedAt && !acceptsDateFieldValue(membershipJoinedAt, "date", localDateValue(new Date()))) {
             setError(labels.invalidMembershipDate);
-            setState("ready");
             return;
         }
+        savingRef.current = true;
+        setState("saving");
         setError(null);
+        let memberSaved = false;
+        let stage: "details" | "photo" | "link" = "details";
         try {
             const saved = await managementRepository.saveMemberDetails({
                 id: member?.id,
@@ -279,7 +314,9 @@ export function MemberFormScreen() {
             const previousPhotoPath =
                 member?.photoPath ??
                 ("photo_path" in saved ? saved.photo_path : null);
-            setMember({ ...member, id: saved.id, name: fullName, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
+            setMember({ ...member, id: saved.id, name: fullName, patronymic: patronymic.trim() || null, birthday: birthday.trim() || null, membershipJoinedAt: membershipJoinedAt || null, ministryIds, phone: phone.trim() || null, email: email.trim() || null, address: address.trim() || null, isOrphan, isWidow, gender, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
+            memberSaved = true;
+            stage = "photo";
             const photoChanged =
                 Boolean(pendingPhoto) ||
                 (photoRemoved && Boolean(previousPhotoPath));
@@ -294,30 +331,44 @@ export function MemberFormScreen() {
                     pendingPhoto?.mimeType,
                     pendingPhoto?.thumbnail,
                 );
+                const updatedPhotoPath = photoResult.person && ("photo_path" in photoResult.person ? photoResult.person.photo_path : photoResult.person.photoPath);
+                setMember(previous => previous ? { ...previous, revision: photoResult.person?.revision ?? saved.revision, photoPath: updatedPhotoPath ?? null, photo: pendingPhoto ? { uri: pendingPhoto.uri } : undefined } : previous);
+                setPendingPhoto(null);
+                setPhotoRemoved(false);
                 if (photoResult.cleanupWarning) Alert.alert(
                     locale === "uk" ? "Фото збережено" : "Photo saved",
                     locale === "uk" ? "Попереднє фото не вдалося видалити. Зверніться до адміністратора." : "The previous photo could not be removed. Please contact an administrator.",
                 );
             }
             if (accountId && saved.id) {
+                stage = "link";
                 const management = await managementRepository.load();
                 await managementRepository.apply(management, {
                     type: "link-account",
                     accountId,
                     personId: saved.id,
                 });
+                guard.allowLeave();
                 router.replace(managedAccountHref(accountId) as never);
-            } else
-                router.canGoBack() ? router.back() : router.replace("/manage");
+            } else if (familyReturn && saved.id) {
+                guard.allowLeave();
+                router.replace(`/manage/member/${encodeURIComponent(familyReturn)}/family?createdId=${encodeURIComponent(saved.id)}` as never);
+            } else {
+                guard.allowLeave();
+                leave();
+            }
         } catch (e) {
             setError(
-                e instanceof Error &&
+                e instanceof Error && e.message.includes("photo update could not be confirmed") ? labels.photoUncertain :
+                memberSaved ? stage === "photo" ? labels.photoPartial : stage === "link" ? labels.linkPartial : labels.partialSave : e instanceof Error &&
                     e.message ===
                         "Choose a JPEG, PNG or WebP photo smaller than 5 MB."
                     ? labels.photoSize
                     : labels.saveError,
             );
             setState("ready");
+        } finally {
+            savingRef.current = false;
         }
     }
     function confirmMembershipChange() {
@@ -371,11 +422,7 @@ export function MemberFormScreen() {
                     {error ?? labels.loadError}
                 </Text>
                 <Pressable
-                    onPress={() =>
-                        router.canGoBack()
-                            ? router.back()
-                            : router.replace("/manage")
-                    }
+                    onPress={() => guard.confirmLeave(leave)}
                 >
                     <Text style={[styles.link, { color: palette.accent }]}>
                         {labels.cancel}
@@ -398,11 +445,7 @@ export function MemberFormScreen() {
                 <View style={styles.header}>
                     <Pressable
                         accessibilityRole="button"
-                        onPress={() =>
-                            router.canGoBack()
-                                ? router.back()
-                                : router.replace("/manage")
-                        }
+                        onPress={() => guard.confirmLeave(leave)}
                     >
                         <Text
                             style={[styles.cancel, { color: palette.accent }]}
@@ -438,11 +481,13 @@ export function MemberFormScreen() {
                             <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
                         </Pressable>
                     ) : (
-                        <Link href={`/manage/member/${memberId}/family`} asChild>
-                            <Pressable accessibilityRole="link">
-                                <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
-                            </Pressable>
-                        </Link>
+                        <Link href={`/manage/member/${memberId}/family` as never} asChild onPress={(event) => {
+                            if (!dirty) return;
+                            event.preventDefault();
+                            guard.confirmLeave(() => router.push(`/manage/member/${memberId}/family` as never));
+                        }}><Pressable accessibilityRole="link">
+                            <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
+                        </Pressable></Link>
                     )
                 )}
                 {error ? (
@@ -519,8 +564,11 @@ export function MemberFormScreen() {
                             desktop && styles.fieldsColumnDesktop,
                         ]}
                     >
+                        <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.identity}</Text>
                         <Field
                             label={labels.firstName}
+                            hint={labels.requiredField}
+                            errorText={error === labels.required ? labels.required : undefined}
                             value={firstName}
                             onChangeText={setFirstName}
                             palette={palette}
@@ -535,12 +583,20 @@ export function MemberFormScreen() {
                         />
                         <Field
                             label={labels.lastName}
+                            hint={labels.requiredField}
+                            errorText={error === labels.required ? labels.required : undefined}
                             value={lastName}
                             onChangeText={setLastName}
                             palette={palette}
                         />
+                        {matchingFamilyMembers.length ? <View style={styles.field}>
+                            <Text style={[styles.label, { color: palette.secondaryText }]}>{getFamilyCopy(locale).matches}</Text>
+                            {matchingFamilyMembers.map((candidate) => <Pressable key={candidate.id} accessibilityRole="button" onPress={() => guard.confirmLeave(() => router.replace(`/manage/member/${encodeURIComponent(familyReturn!)}/family?createdId=${encodeURIComponent(candidate.id)}` as never))} style={[styles.photoButton, { borderColor: palette.line }]}>
+                                <Text style={{ color: palette.accent }}>{candidate.name}</Text>
+                            </Pressable>)}
+                        </View> : null}
                         <View style={styles.field} accessibilityRole="radiogroup" accessibilityLabel={labels.gender} aria-required>
-                            <Text style={[styles.label, { color: palette.secondaryText }]}>{labels.gender}</Text>
+                            <Text style={[styles.label, { color: palette.secondaryText }]}>{labels.gender} · {labels.requiredField}</Text>
                             <View style={styles.genderOptions}>
                                 {(["male", "female"] as const).map((option) => (
                                     <Pressable
@@ -560,7 +616,9 @@ export function MemberFormScreen() {
                                     </Pressable>
                                 ))}
                             </View>
+                            {error === labels.genderRequired ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{labels.genderRequired}</Text> : null}
                         </View>
+                        <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.dates}</Text>
                         <View style={styles.field}>
                             <Text
                                 style={[
@@ -602,6 +660,7 @@ export function MemberFormScreen() {
                                 value={membershipJoinedAt}
                             /> : null}
                         </View>
+                        <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.contact}</Text>
                         <Field
                             label={labels.phone}
                             value={phone}
@@ -804,6 +863,10 @@ export function MemberFormScreen() {
                                 </Text>
                             </Pressable>
                         ) : null}
+                        <View style={styles.footerActions}>
+                            <Pressable accessibilityRole="button" disabled={state === "saving"} onPress={() => void save()} style={[styles.footerSave, { backgroundColor: palette.accent }, state === "saving" && styles.disabled]}><Text style={styles.footerSaveText}>{state === "saving" ? "…" : labels.save}</Text></Pressable>
+                            <Pressable accessibilityRole="button" disabled={state === "saving"} onPress={() => guard.confirmLeave(leave)} style={styles.footerCancel}><Text style={{ color: palette.accent }}>{labels.cancel}</Text></Pressable>
+                        </View>
                     </View>
                 </View>
             </ScrollView>
@@ -838,12 +901,14 @@ function photoMimeType(
 function Field({
     label,
     hint,
+    errorText,
     palette,
     multiline,
     ...props
 }: {
     label: string;
     hint?: string;
+    errorText?: string;
     palette: ReturnType<typeof useAppearance>["palette"];
     multiline?: boolean;
 } & ComponentProps<typeof TextInput>) {
@@ -868,6 +933,7 @@ function Field({
                     multiline && styles.multiline,
                 ]}
             />
+            {errorText ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger, fontSize: 14 }}>{errorText}</Text> : null}
         </View>
     );
 }
@@ -933,6 +999,10 @@ const styles = StyleSheet.create({
     },
     multiline: { minHeight: 92, textAlignVertical: "top" },
     section: { fontSize: 20, fontWeight: "800", marginTop: 8 },
+    footerActions: { gap: 8, marginTop: 18 },
+    footerSave: { minHeight: 52, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+    footerSaveText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+    footerCancel: { minHeight: 48, alignItems: "center", justifyContent: "center" },
     switchCard: {
         borderRadius: 14,
         borderWidth: StyleSheet.hairlineWidth,

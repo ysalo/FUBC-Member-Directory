@@ -14,6 +14,7 @@ import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { withTimeout } from "@/lib/async-state";
 import { managementRepository } from "./management-repository";
 import type { GroupManagementState, ManagedGroup } from "./model";
+import { useUnsavedChanges } from "./use-unsaved-changes";
 
 const labels = {
   en: {
@@ -73,6 +74,8 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
   }, [copy.unavailable, creating, groupId]);
 
   const group = creating ? undefined : data?.groups.find((candidate) => candidate.id === groupId);
+  const dirty = Boolean(data && (name !== (group?.name ?? "") || kind !== (group?.kind ?? "membership") || JSON.stringify([...selectedDeacons].sort()) !== JSON.stringify([...(group?.deaconIds ?? [])].sort()) || JSON.stringify([...selectedMembers].sort()) !== JSON.stringify([...(group?.memberIds ?? [])].sort())));
+  const guard = useUnsavedChanges(dirty);
   const targetKind = group?.kind ?? kind;
   const visibleMembers = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -123,6 +126,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
         p_deacon_ids: selectedDeacons,
         p_member_ids: selectedMembers,
       });
+      guard.allowLeave();
       (router.canGoBack() ? router.back() : router.replace("/manage/groups"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : copy.failed);
@@ -145,6 +149,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
     setError(null);
     try {
       await managementRepository.deleteGroup(group.id, group.revision);
+      guard.allowLeave();
       (router.canGoBack() ? router.back() : router.replace("/manage/groups"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : copy.deleteFailed);
@@ -219,6 +224,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
 
     </View></View>
     <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={confirmSave} style={[styles.save, { backgroundColor: palette.accent }, busy && styles.disabled]}>{operation === "saving" ? <ActivityIndicator color="#FFF" /> : null}<Text style={styles.saveText}>{operation === "saving" ? copy.saving : copy.save}</Text></Pressable>
+    <Pressable accessibilityRole="button" disabled={busy} onPress={() => guard.confirmLeave(() => router.canGoBack() ? router.back() : router.replace("/manage/groups"))} style={styles.cancel}><Text style={{ color: palette.accent, fontWeight: "700" }}>{copy.cancel}</Text></Pressable>
 
     {group ? <View style={[styles.deleteSection, { borderTopColor: palette.line }]}>
       <Text selectable style={[styles.deleteTitle, { color: palette.text }]}>{copy.deleteSection}</Text>
@@ -240,4 +246,5 @@ const styles = StyleSheet.create({ desktopContent: { padding: 32 }, columns: { g
   search: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 8, minHeight: 48, paddingHorizontal: 13 },
   searchInput: { flex: 1, fontSize: 16, minHeight: 46, paddingVertical: 10 }, save: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, flexDirection: "row", gap: 8, justifyContent: "center", marginTop: 10, minHeight: 50 },
   saveText: { color: "#FFF", fontSize: 16, fontWeight: "800" }, deleteSection: { borderTopWidth: StyleSheet.hairlineWidth, gap: 8, marginTop: 14, paddingTop: 22 }, deleteTitle: { fontSize: 18, fontWeight: "800" }, deleteHost: { minHeight: 50, width: "100%" }, disabled: { opacity: 0.55 }, state: { alignItems: "center", flex: 1, gap: 10, justifyContent: "center", padding: 28 }, stateTitle: { fontSize: 18, fontWeight: "700", textAlign: "center" },
+  cancel: { alignItems: "center", justifyContent: "center", minHeight: 48 },
 });
