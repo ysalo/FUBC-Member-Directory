@@ -28,6 +28,7 @@ import {
     memberProfileRepository,
     type MemberProfile,
 } from "./member-repository";
+import { FamilySection } from "./FamilySection";
 import { CareStatusBadges } from "./care-status-badges";
 import { LeadershipBadge } from "./leadership-badge";
 import { ProfileAvatar, avatarSourceIdentity, hasImageSource } from "./ProfileAvatar";
@@ -630,6 +631,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                         <View style={styles.desktopColumns}>
                             <View style={styles.desktopContactColumn}>
                                 {contactSection}
+                                <FamilySection memberId={memberId} />
                                 {deaconsSection}
                                 {ministriesSection}
                             </View>
@@ -640,6 +642,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     ) : (
                         <>
                             {contactSection}
+                            <FamilySection memberId={memberId} />
                             {deaconsSection}
                             {detailsSection}
                             {ministriesSection}
