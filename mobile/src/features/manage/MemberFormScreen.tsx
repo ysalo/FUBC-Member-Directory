@@ -433,11 +433,17 @@ export function MemberFormScreen() {
                     </Pressable>
                 </View>
                 {editing && memberId && (
-                    <Link href={`/manage/member/${memberId}/family`} asChild onPress={event => { if (state === "saving") event.preventDefault(); }}>
-                    <Pressable accessibilityRole="link" accessibilityState={{ disabled: state === "saving" }} disabled={state === "saving"}>
-                        <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
-                    </Pressable>
-                    </Link>
+                    state === "saving" ? (
+                        <Pressable accessibilityRole="link" accessibilityState={{ disabled: true }} disabled>
+                            <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
+                        </Pressable>
+                    ) : (
+                        <Link href={`/manage/member/${memberId}/family`} asChild>
+                            <Pressable accessibilityRole="link">
+                                <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
+                            </Pressable>
+                        </Link>
+                    )
                 )}
                 {error ? (
                     <Text
