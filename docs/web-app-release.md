@@ -193,15 +193,34 @@ Supabase deployment remains manual and independent of Vercel:
 
 ## Release Procedure
 
-1. Create a feature branch from `dev` and open a pull request into `dev`.
-2. Wait for CI and inspect the Vercel Preview deployment.
-3. Merge into `dev` after review and verify the shared staging Preview.
-4. For a production batch, update `mobile/package.json` on `dev` using SemVer. `mobile/app.config.js` reads this value automatically.
-5. Run `pnpm verify` and `pnpm build:web`.
-6. Open a release pull request from `dev` into `main` with version, backend readiness, known issues, and rollback target.
-7. Merge after required CI and review checks pass. This immediately deploys Production through Vercel.
-8. Verify the production deployment, stable domain, authentication callback, app shell, and critical read-only flows.
-9. Optionally create a matching `vX.Y.Z` GitHub Release on the merged `main` commit. It is audit metadata, not a deployment trigger.
+For feature work, use this issue-to-release flow:
+
+1. Run `/grill-with-docs` to shape the idea and record domain decisions.
+2. Run `/to-spec` to publish the agreed specification as a GitHub issue. Keep the default triage labels below; a completed spec should be `ready-for-agent`.
+3. Run `/implement` from that issue. Open an implementation PR from the feature branch into `dev` and link the issue in the PR's Development section.
+4. After the feature PR is reviewed and merged into `dev`, include every shipped issue in the separate release PR from `dev` into `main` using `Closes #<issue-number>`.
+5. Merge the release PR after review and production readiness checks, then verify each referenced issue closed. GitHub closes the issues when this PR merges into the default branch, `main`, if repository auto-close is enabled. A closing keyword on the implementation PR into `dev` does not close the issue. If an issue remains open, check the release PR body and the repository's **Auto-close issues with merged linked pull requests** setting; close it manually if the release PR has already merged without a closing keyword.
+
+Use GitHub's default triage labels consistently:
+
+- `needs-triage`: incoming issue has not been assessed.
+- `needs-info`: work is waiting for information from the requester.
+- `ready-for-agent`: the spec is ready for implementation.
+- `ready-for-human`: a human decision or action is needed.
+- `wontfix`: the issue will not be implemented.
+
+Update labels as work changes state. Labels track triage state; PR references track implementation and release. Keep issue closure in the `dev` to `main` release PR.
+
+### Release checklist
+
+1. Wait for CI and inspect the Vercel Preview deployment.
+2. Merge into `dev` after review and verify the shared staging Preview.
+3. For a production batch, update `mobile/package.json` on `dev` using SemVer. `mobile/app.config.js` reads this value automatically.
+4. Run `pnpm verify` and `pnpm build:web`.
+5. Open a release pull request from `dev` into `main` with version, backend readiness, known issues, rollback target, and a `Closes #<issue-number>` entry for each issue being released.
+6. Merge after required CI and review checks pass. This immediately deploys Production through Vercel and closes linked issues when repository auto-close is enabled.
+7. Verify the production deployment, stable domain, authentication callback, app shell, critical read-only flows, and issue closure.
+8. Optionally create a matching `vX.Y.Z` GitHub Release on the merged `main` commit. It is audit metadata, not a deployment trigger.
 
 The semantic application version has one source: `mobile/package.json`. The initial release is `1.0.0`; later releases update that package version only.
 
