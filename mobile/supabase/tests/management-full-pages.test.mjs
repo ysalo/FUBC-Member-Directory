@@ -42,6 +42,7 @@ before(async () => {
     "20260921000000_deacon_duty_schedule.sql", "20260921040000_member_deletion_duty_cleanup.sql",
     "20260921050000_accountless_deacon_schedule.sql",
     "20260923000000_member_patronymic.sql",
+    "20260927000000_account_last_seen.sql",
   ]) await db.exec(await readFile(new URL(`../migrations/${migration}`, import.meta.url), "utf8"));
   await db.query("insert into auth.users(id,email) values($1,'admin@example.com'),($2,'editor@example.com'),($3,'member@example.com')", [ids.admin, ids.editor, ids.member]);
   await db.exec(`update public.profiles set status='active',role='admin' where id='${ids.admin}';
@@ -293,6 +294,30 @@ test("account approval requires a unique linked member and account email is admi
   const approved = (await as("admin", "select * from public.update_account($1,1,'active','member',$2)", [ids.member, person.id])).rows[0];
   assert.equal(approved.status, "active");
   await assert.rejects(as("admin", "select * from public.update_account($1,1,'active','editor',$2)", [ids.editor, person.id]), /already linked/);
+});
+
+test("Last Seen is server-recorded for any account status and remains administrator-only", async () => {
+  const before = Date.now();
+  const recorded = (await as("member", "select public.record_account_use() as recorded_at")).rows[0].recorded_at;
+  assert.ok(Date.parse(recorded) >= before - 1000);
+  assert.ok(Date.parse(recorded) <= Date.now() + 1000);
+  assert.equal(Date.parse((await as("admin", "select last_seen_at from public.management_accounts() where id=$1", [ids.member])).rows[0].last_seen_at), Date.parse(recorded));
+  assert.equal((await as("editor", "select last_seen_at from public.profiles where id=$1", [ids.member])).rows.length, 0);
+  await assert.rejects(as("editor", "select * from public.management_accounts()"), /Not authorized/);
+
+  for (const status of ["denied", "revoked", "pending"]) {
+    await db.query("update public.profiles set status=$2::public.account_status,last_seen_at=null where id=$1", [ids.member, status]);
+    const value = (await as("member", "select public.record_account_use() as recorded_at")).rows[0].recorded_at;
+    assert.ok(value, `${status} accounts can record app use`);
+    assert.equal(Date.parse((await as("admin", "select last_seen_at from public.management_accounts() where id=$1", [ids.member])).rows[0].last_seen_at), Date.parse(value));
+  }
+
+  const future = new Date(Date.now() + 60_000).toISOString();
+  await db.query("update public.profiles set last_seen_at=$2 where id=$1", [ids.member, future]);
+  await as("member", "select public.record_account_use()");
+  assert.equal(Date.parse((await db.query("select last_seen_at from public.profiles where id=$1", [ids.member])).rows[0].last_seen_at), Date.parse(future));
+  await as("editor", "select public.record_account_use()");
+  assert.equal(Date.parse((await db.query("select last_seen_at from public.profiles where id=$1", [ids.member])).rows[0].last_seen_at), Date.parse(future));
 });
 
 test("only an assigned deacon can persist birthday notification preferences", async () => {
