@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigation } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
-import { Platform } from "react-native";
 import { Alert } from "@/features/platform/alert";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
+import { useBrowserExitWarning } from "./use-browser-exit-warning";
 
 /** Keeps drafts in memory and guards route removal. A successful save can call allowLeave. */
 export function useUnsavedChanges(dirty: boolean) {
@@ -33,20 +33,7 @@ export function useUnsavedChanges(dirty: boolean) {
     ]);
   });
 
-  useEffect(() => {
-    if (Platform.OS !== "web" || !dirty) return;
-    const editUrl = window.location.href;
-    const editHistoryState = window.history.state;
-    const listener = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    const restoreUrl = () => {
-      // Expo Router can retain a prevented screen while the browser has already
-      // changed its address. Keep the address on the form until the choice is made.
-      if (!allowed.current) window.history.pushState(editHistoryState, "", editUrl);
-    };
-    window.addEventListener("beforeunload", listener);
-    window.addEventListener("popstate", restoreUrl);
-    return () => { window.removeEventListener("beforeunload", listener); window.removeEventListener("popstate", restoreUrl); };
-  }, [dirty]);
+  useBrowserExitWarning(dirty, allowed);
 
   return {
     allowLeave() { allowed.current = true; setPermitted(true); },

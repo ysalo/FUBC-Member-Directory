@@ -2,7 +2,7 @@ import { Alert } from "@/features/platform/alert";
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import {
@@ -172,6 +172,9 @@ export function MemberFormScreen() {
                       photoError: "Не вдалося вибрати це фото.",
                       saveError: "Не вдалося зберегти учасника.",
                       partialSave: "Учасника збережено, але наступний крок не завершився. Ваші зміни залишилися тут — повторіть збереження.",
+                      photoPartial: "Дані учасника збережено, але фото не оновлено. Повторіть збереження, щоб спробувати ще раз.",
+                      linkPartial: "Учасника та фото збережено, але обліковий запис не пов’язано. Повторіть збереження, щоб завершити зв’язування.",
+                      photoUncertain: "Оновлення фото не вдалося підтвердити. Оновіть сторінку учасника, перш ніж повторювати спробу.",
                   }
                 : {
                       title: editing ? "Edit member" : "New member",
@@ -219,6 +222,9 @@ export function MemberFormScreen() {
                       photoError: "Unable to choose this photo.",
                       saveError: "Unable to save this member.",
                       partialSave: "The member was saved, but the next step failed. Your changes remain here; try saving again.",
+                      photoPartial: "Member details were saved, but the photo was not updated. Save again to retry the photo.",
+                      linkPartial: "The member and photo were saved, but the account was not linked. Save again to retry the link.",
+                      photoUncertain: "The photo update could not be confirmed. Reload this member before trying again.",
                   },
         [editing, locale],
     );
@@ -288,6 +294,7 @@ export function MemberFormScreen() {
         setState("saving");
         setError(null);
         let memberSaved = false;
+        let stage: "details" | "photo" | "link" = "details";
         try {
             const saved = await managementRepository.saveMemberDetails({
                 id: member?.id,
@@ -307,8 +314,9 @@ export function MemberFormScreen() {
             const previousPhotoPath =
                 member?.photoPath ??
                 ("photo_path" in saved ? saved.photo_path : null);
-            setMember({ ...member, id: saved.id, name: fullName, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
+            setMember({ ...member, id: saved.id, name: fullName, patronymic: patronymic.trim() || null, birthday: birthday.trim() || null, membershipJoinedAt: membershipJoinedAt || null, ministryIds, phone: phone.trim() || null, email: email.trim() || null, address: address.trim() || null, isOrphan, isWidow, gender, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
             memberSaved = true;
+            stage = "photo";
             const photoChanged =
                 Boolean(pendingPhoto) ||
                 (photoRemoved && Boolean(previousPhotoPath));
@@ -323,12 +331,17 @@ export function MemberFormScreen() {
                     pendingPhoto?.mimeType,
                     pendingPhoto?.thumbnail,
                 );
+                const updatedPhotoPath = photoResult.person && ("photo_path" in photoResult.person ? photoResult.person.photo_path : photoResult.person.photoPath);
+                setMember(previous => previous ? { ...previous, revision: photoResult.person?.revision ?? saved.revision, photoPath: updatedPhotoPath ?? null, photo: pendingPhoto ? { uri: pendingPhoto.uri } : undefined } : previous);
+                setPendingPhoto(null);
+                setPhotoRemoved(false);
                 if (photoResult.cleanupWarning) Alert.alert(
                     locale === "uk" ? "Фото збережено" : "Photo saved",
                     locale === "uk" ? "Попереднє фото не вдалося видалити. Зверніться до адміністратора." : "The previous photo could not be removed. Please contact an administrator.",
                 );
             }
             if (accountId && saved.id) {
+                stage = "link";
                 const management = await managementRepository.load();
                 await managementRepository.apply(management, {
                     type: "link-account",
@@ -346,7 +359,8 @@ export function MemberFormScreen() {
             }
         } catch (e) {
             setError(
-                memberSaved ? labels.partialSave : e instanceof Error &&
+                e instanceof Error && e.message.includes("photo update could not be confirmed") ? labels.photoUncertain :
+                memberSaved ? stage === "photo" ? labels.photoPartial : stage === "link" ? labels.linkPartial : labels.partialSave : e instanceof Error &&
                     e.message ===
                         "Choose a JPEG, PNG or WebP photo smaller than 5 MB."
                     ? labels.photoSize
@@ -467,9 +481,13 @@ export function MemberFormScreen() {
                             <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
                         </Pressable>
                     ) : (
-                        <Pressable accessibilityRole="link" onPress={() => guard.confirmLeave(() => router.push(`/manage/member/${memberId}/family` as never))}>
+                        <Link href={`/manage/member/${memberId}/family` as never} asChild onPress={(event) => {
+                            if (!dirty) return;
+                            event.preventDefault();
+                            guard.confirmLeave(() => router.push(`/manage/member/${memberId}/family` as never));
+                        }}><Pressable accessibilityRole="link">
                             <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
-                        </Pressable>
+                        </Pressable></Link>
                     )
                 )}
                 {error ? (
@@ -573,7 +591,7 @@ export function MemberFormScreen() {
                         />
                         {matchingFamilyMembers.length ? <View style={styles.field}>
                             <Text style={[styles.label, { color: palette.secondaryText }]}>{getFamilyCopy(locale).matches}</Text>
-                            {matchingFamilyMembers.map((candidate) => <Pressable key={candidate.id} accessibilityRole="button" onPress={() => { guard.allowLeave(); router.replace(`/manage/member/${encodeURIComponent(familyReturn!)}/family?createdId=${encodeURIComponent(candidate.id)}` as never); }} style={[styles.photoButton, { borderColor: palette.line }]}>
+                            {matchingFamilyMembers.map((candidate) => <Pressable key={candidate.id} accessibilityRole="button" onPress={() => guard.confirmLeave(() => router.replace(`/manage/member/${encodeURIComponent(familyReturn!)}/family?createdId=${encodeURIComponent(candidate.id)}` as never))} style={[styles.photoButton, { borderColor: palette.line }]}>
                                 <Text style={{ color: palette.accent }}>{candidate.name}</Text>
                             </Pressable>)}
                         </View> : null}

@@ -74,6 +74,8 @@ test('a partial account save reports which choices still need a retry', async ()
 test('dirty navigation offers keep editing or discard, and web unload uses the browser warning', async () => {
   const guardSource = await readFile(new URL('../src/features/manage/use-unsaved-changes.ts', import.meta.url), 'utf8');
   const guardCode = ts.transpileModule(guardSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const webSource = await readFile(new URL('../src/features/manage/use-browser-exit-warning.web.ts', import.meta.url), 'utf8');
+  const webCode = ts.transpileModule(webSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const dialogs = [], listeners = new Map(), dispatched = [], restored = [];
   let preventRemove;
   const exports = {};
@@ -81,10 +83,13 @@ test('dirty navigation offers keep editing or discard, and web unload uses the b
     ['react', { useRef: (value) => ({ current: value }), useState: (value) => [value, () => {}], useEffect: (effect) => { effect(); } }],
     ['expo-router', { useNavigation: () => ({ dispatch: (action) => dispatched.push(action) }) }],
     ['expo-router/react-navigation', { usePreventRemove: (enabled, callback) => { preventRemove = enabled ? callback : null; } }],
-    ['react-native', { Platform: { OS: 'web' } }],
+    ['./use-browser-exit-warning', { useBrowserExitWarning: (dirty, allowed) => webExports.useBrowserExitWarning(dirty, allowed) }],
     ['@/features/platform/alert', { Alert: { alert: (...args) => dialogs.push(args) } }],
     ['@/features/localization/LocalizationProvider', { useLocalization: () => ({ locale: 'en' }) }],
   ]);
+  const webExports = {};
+  const browser = { location: { href: 'https://example.test/manage/member/new' }, history: { state: {}, pushState: (...args) => restored.push(args) }, addEventListener: (name, listener) => listeners.set(name, listener), removeEventListener: (name) => listeners.delete(name) };
+  new Function('require', 'exports', 'window', webCode)((id) => modules.get(id), webExports, browser);
   new Function('require', 'exports', 'window', guardCode)((id) => modules.get(id), exports, { location: { href: 'https://example.test/manage/member/new' }, history: { state: {}, pushState: (...args) => restored.push(args) }, addEventListener: (name, listener) => listeners.set(name, listener), removeEventListener: (name) => listeners.delete(name) });
   exports.useUnsavedChanges(true);
   assert.ok(listeners.has('beforeunload'));

@@ -9,7 +9,7 @@ const ts = require('typescript');
 const source = await readFile(new URL('../src/features/manage/MemberFormScreen.tsx', import.meta.url), 'utf8');
 const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 
-function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
+function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, failLinkOnce = false, familyReturn, familyCandidates = [] } = {}) {
   const states = [];
   const refs = [];
   let cursor = 0;
@@ -17,6 +17,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
   const pendingEffects = [];
   const saves = [];
   const routes = [];
+  const photos = [], links = [], dialogs = [];
   const hooks = { ...React,
     useState(initial) {
       const index = cursor++;
@@ -31,14 +32,17 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
     async loadMember() { return existing; },
     async listMinistries() { return []; },
     async saveMemberDetails(details) { saves.push(details); if (saveBarrier) await saveBarrier; return { id: existing?.id ?? 'new', revision: 2 }; },
+    async replacePhoto(person) { photos.push(person); return { person: { revision: 3, photo_path: null }, cleanupWarning: null }; },
+    async load() { return { members: familyCandidates, accounts: [] }; },
+    async apply(_state, action) { links.push(action); if (failLinkOnce) { failLinkOnce = false; throw new Error('offline'); } },
   };
   const modules = new Map([
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
     ['react-native', { ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 }, Switch: 'Switch', View: 'View' }],
     ['react-native-safe-area-context', { SafeAreaView: 'SafeAreaView' }],
     ['expo-image-picker', {}],
-    ['expo-router', { useLocalSearchParams: () => ({ memberId: existing?.id }), useRouter: () => ({ canGoBack: () => true, back() {}, replace() {}, push(path) { routes.push(path); } }) }],
-    ['@/features/platform/alert', { Alert: { alert() {} } }],
+    ['expo-router', { Link: ({ children, onPress, href }) => React.cloneElement(children, { onPress, href }), useLocalSearchParams: () => ({ memberId: existing?.id, accountId, familyReturn }), useRouter: () => ({ canGoBack: () => true, back() {}, replace(path) { routes.push(path); }, push(path) { routes.push(path); } }) }],
+    ['@/features/platform/alert', { Alert: { alert: (...args) => dialogs.push(args) } }],
     ['@/features/shell/use-desktop-layout', { useDesktopLayout: () => false }],
     ['@/features/accessibility/app-text', { Text: 'Text', TextInput: 'TextInput' }],
     ['@/features/appearance/AppearanceProvider', { useAppearance: () => ({ palette: {} }) }],
@@ -53,7 +57,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
     ['./MemberAvatar', { MemberAvatar: 'Avatar' }],
     ['./route-params', { managedAccountHref: () => '/manage' }],
     ['./photo-thumbnail', { createPhotoRenditions() {} }],
-    ['./use-unsaved-changes', { useUnsavedChanges: () => ({ allowLeave() {}, confirmLeave(callback) { callback(); } }) }],
+    ['./use-unsaved-changes', { useUnsavedChanges: () => ({ allowLeave() {}, confirmLeave(callback) { dialogs.push(['Unsaved changes', '', [{ text: 'Keep editing' }, { text: 'Discard changes', onPress: callback }]]); } }) }],
   ]);
   const exports = {};
   new Function('require', 'exports', code)((id) => {
@@ -76,7 +80,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
   }
   const text = (node) => node == null ? '' : typeof node === 'string' || typeof node === 'number' ? String(node) : Array.isArray(node) ? node.map(text).join('') : text(node.props?.children);
   const button = (nodes, label) => nodes.find((node) => node.type === 'Pressable' && text(node) === label);
-  return { render, button, text, saves, routes, async load() { render(); for (const effect of pendingEffects.splice(0)) effect(); await new Promise(setImmediate); } };
+  return { render, button, text, saves, routes, photos, links, dialogs, async load() { render(); for (const effect of pendingEffects.splice(0)) effect(); await new Promise(setImmediate); } };
 }
 
 test('new member requires an explicit gender selection and persists the chosen radio value', async () => {
@@ -118,8 +122,7 @@ test('existing member family navigation opens the stable route', async () => {
   await ui.load();
   const link = ui.button(ui.render(), 'Edit family');
   assert.equal(link.props.accessibilityRole, 'link');
-  link.props.onPress();
-  assert.deepEqual(ui.routes, ['/manage/member/saved/family']);
+  assert.equal(link.props.href, '/manage/member/saved/family');
 });
 
 test('pending member saves remove the family destination and restore it after failure', async () => {
@@ -132,4 +135,31 @@ test('pending member saves remove the family destination and restore it after fa
   assert.equal(ui.button(nodes, 'Edit family').props.disabled, true);
   finish(new Error("Save failed")); await new Promise(setImmediate);
   assert.equal(ui.button(ui.render(), 'Edit family').props.disabled, undefined);
+});
+
+test('a failed account link retries without repeating a successful photo removal', async () => {
+  const ui = formFixture({ existing: { id: 'saved', name: 'Saved Member', gender: 'male', revision: 1, photoPath: 'old/photo.jpg', photo: { uri: 'old' } }, accountId: 'account', failLinkOnce: true });
+  await ui.load();
+  ui.button(ui.render(), 'Remove photo').props.onPress();
+  ui.button(ui.render(), 'Save member').props.onPress();
+  await new Promise(setImmediate);
+  assert.equal(ui.photos.length, 1);
+  assert.match(ui.render().map(ui.text).join(' '), /account was not linked/);
+  ui.button(ui.render(), 'Save member').props.onPress();
+  await new Promise(setImmediate);
+  assert.equal(ui.photos.length, 1);
+  assert.equal(ui.saves[1].revision, 3);
+  assert.equal(ui.links.length, 2);
+});
+
+test('selecting an existing relative offers to keep or discard the entered details', async () => {
+  const ui = formFixture({ familyReturn: 'subject', familyCandidates: [{ id: 'match', name: 'Match Person' }] });
+  await ui.load();
+  ui.render().find(node => node.props?.accessibilityLabel === 'First name').props.onChangeText('Match');
+  ui.render().find(node => node.props?.accessibilityLabel === 'Last name').props.onChangeText('Person');
+  ui.button(ui.render(), 'Match Person').props.onPress();
+  assert.deepEqual(ui.routes, []);
+  assert.equal(ui.dialogs.at(-1)[2][0].text, 'Keep editing');
+  ui.dialogs.at(-1)[2][1].onPress();
+  assert.deepEqual(ui.routes, ['/manage/member/subject/family?createdId=match']);
 });

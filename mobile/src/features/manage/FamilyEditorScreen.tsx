@@ -17,6 +17,9 @@ import { useUnsavedChanges } from "./use-unsaved-changes";
 type Category = "parents" | "spouse" | "children" | "siblings";
 const categories: Category[] = ["parents", "spouse", "children", "siblings"];
 const emptyChanges: FamilyChanges = { parentIds: [], spouseId: null, childIds: [], siblingIds: [] };
+function changesFromSnapshot(family: FamilySnapshot): FamilyChanges {
+  return { parentIds: family.parents.map(p => p.id), spouseId: family.spouse?.id ?? null, childIds: family.children.map(p => p.id), siblingIds: family.siblings.filter(p => p.explicit).map(p => p.id) };
+}
 
 export function FamilyEditorScreen() {
   const { memberId, createdId } = useLocalSearchParams<{ memberId: string; createdId?: string }>();
@@ -27,6 +30,9 @@ export function FamilyEditorScreen() {
   const currentIdentity = useRef(identity);
   currentIdentity.current = identity;
   const request = useRef(0);
+  const scroll = useRef<ScrollView>(null);
+  const sectionY = useRef<Partial<Record<Category, number>>>({});
+  const pickerToReveal = useRef<Category | null>(null);
   const isCurrent = (ticket: number) => {
     try { return request.current === ticket && currentIdentity.current === identity && scope !== null && sessionCacheScope() === scope; }
     catch { return false; }
@@ -43,7 +49,7 @@ export function FamilyEditorScreen() {
   const [conflict, setConflict] = useState(false);
   const [category, setCategory] = useState<Category | null>(null);
   const [search, setSearch] = useState("");
-  const original = snapshot && { parentIds: snapshot.parents.map(p => p.id), spouseId: snapshot.spouse?.id ?? null, childIds: snapshot.children.map(p => p.id), siblingIds: snapshot.siblings.filter(p => p.explicit).map(p => p.id) };
+  const original = snapshot && changesFromSnapshot(snapshot);
   const dirty = Boolean(original && JSON.stringify(changes) !== JSON.stringify(original));
   const guard = useUnsavedChanges(dirty);
   async function load() {
@@ -58,7 +64,7 @@ export function FamilyEditorScreen() {
       if (!isCurrent(ticket)) return;
       if (family.memberId !== memberId) throw new Error("Family response belongs to another member");
       setLoaded({ identity, family }); setMembers(catalog.members);
-      const baseline: FamilyChanges = { parentIds: family.parents.map(p => p.id), spouseId: family.spouse?.id ?? null, childIds: family.children.map(p => p.id), siblingIds: family.siblings.filter(p => p.explicit).map(p => p.id) };
+      const baseline = changesFromSnapshot(family);
       const next: FamilyChanges = draft ? { ...draft.changes } : baseline;
       if (draft && createdId && catalog.members.some(p => p.id === createdId)) {
         if (draft.category === "spouse") next.spouseId = createdId;
@@ -112,13 +118,13 @@ export function FamilyEditorScreen() {
   const visibleMembers = snapshot ? members : [];
   const candidates = visibleMembers.filter(p => p.id !== memberId && p.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   return <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.edit}{visibleMembers.find(p => p.id === memberId)?.name ? ` · ${visibleMembers.find(p => p.id === memberId)?.name}` : ""}</Text>
       <View style={styles.actions}>{action(copy.cancel, cancel)}{snapshot && action(copy.save, () => void save(), busy || conflict)}</View>
       {busy && <ActivityIndicator color={palette.accent} />}
       {error && <Text accessibilityRole="alert" style={[styles.body, { color: palette.text }]}>{error}</Text>}
       {(conflict || (!snapshot && !busy)) && action(conflict ? copy.refresh : copy.retry, () => void load())}
-      {snapshot && categories.map(kind => <View key={kind} style={[styles.section, { borderColor: palette.line }]}>
+      {snapshot && categories.map(kind => <View key={kind} onLayout={event => { sectionY.current[kind] = event.nativeEvent.layout.y; }} style={[styles.section, { borderColor: palette.line }]}>
         <Text accessibilityRole="header" style={[styles.heading, { color: palette.text }]}>{copy[kind]}</Text>
         {!ids(kind).length && <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.empty}</Text>}
         {ids(kind).map(id => <View key={id} style={styles.row}>
@@ -129,8 +135,12 @@ export function FamilyEditorScreen() {
           <Text style={[styles.body, { color: palette.text }]}>{memberLabel(sibling.id)} · {copy.inferred}: {sibling.supportingParents.map(parent => `${parent.name}${parent.archived ? ` (${copy.archived})` : ""}`).join(", ")}</Text>
           <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.inferenceHint}</Text>
         </View>)}
-        {action(`${copy.add}: ${copy[kind]}`, () => { setCategory(kind); setSearch(""); setError(null); })}
-        {category === kind && <View style={[styles.picker, { borderTopColor: palette.line }]}>
+        {action(`${copy.add}: ${copy[kind]}`, () => { pickerToReveal.current = kind; setCategory(kind); setSearch(""); setError(null); })}
+        {category === kind && <View onLayout={event => {
+          if (pickerToReveal.current !== kind) return;
+          pickerToReveal.current = null;
+          scroll.current?.scrollTo({ y: (sectionY.current[kind] ?? 0) + event.nativeEvent.layout.y - 24, animated: true });
+        }} style={[styles.picker, { borderTopColor: palette.line }]}>
           <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.search}</Text>
           <TextInput accessibilityLabel={copy.search} placeholder={copy.search} value={search} onChangeText={setSearch} editable={!busy} style={[styles.body, styles.input, { color: palette.text, borderColor: palette.line }]} />
           {candidates.filter(member => !ids(kind).includes(member.id)).map(member => <View key={member.id}>{action(memberLabel(member.id), () => { select(kind, member.id); setCategory(null); })}</View>)}
