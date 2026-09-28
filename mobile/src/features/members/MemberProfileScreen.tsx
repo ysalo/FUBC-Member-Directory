@@ -349,7 +349,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
             ) : null}
         </Section>
     );
-    const ministriesSection = profile.leadershipMinistry || ministries.length ? (
+    const ministriesSection = ministries.length > 0 ? (
         <Section title={copy.ministries}>
             <View style={styles.bodyList}>
                 {profile.leadershipMinistry ? (
