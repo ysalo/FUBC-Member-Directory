@@ -2,7 +2,7 @@ import { Alert } from "@/features/platform/alert";
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
 import {
@@ -432,6 +432,19 @@ export function MemberFormScreen() {
                         </Text>
                     </Pressable>
                 </View>
+                {editing && memberId && (
+                    state === "saving" ? (
+                        <Pressable accessibilityRole="link" accessibilityState={{ disabled: true }} disabled>
+                            <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
+                        </Pressable>
+                    ) : (
+                        <Link href={`/manage/member/${memberId}/family`} asChild>
+                            <Pressable accessibilityRole="link">
+                                <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
+                            </Pressable>
+                        </Link>
+                    )
+                )}
                 {error ? (
                     <Text
                         selectable

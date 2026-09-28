@@ -17,7 +17,7 @@ import type { ManagedAccount, ManagedMember } from "./model";
 
 const words = {
   en: {
-    title: "Delete member permanently?", detail: "This cannot be undone. The member will disappear from the directory and every group.",
+    title: "Delete member permanently?", detail: "This cannot be undone. The member will disappear from the directory and every group. Their family connections will be removed. Inferred connections between remaining relatives, such as siblings who share this parent, may also disappear.",
     account: "Linked sign-in account", accountDetail: "Their sign-in and private account data will also be deleted.", noAccount: "No sign-in account is linked.",
     visits: "Visit history", visitsDetail: "All scheduled and past visits for this member will be deleted, including participant responses and notifications.",
     photo: "Private photo and profile details will be deleted.", prompt: "Type the member’s full name to confirm", confirmation: "Member name",
@@ -28,7 +28,7 @@ const words = {
     failed: "The deletion did not finish. Reload and try again; linked sign-in access may already have been removed.",
   },
   uk: {
-    title: "Видалити учасника назавжди?", detail: "Цю дію неможливо скасувати. Учасник зникне з довідника та всіх груп.",
+    title: "Видалити учасника назавжди?", detail: "Цю дію неможливо скасувати. Учасник зникне з довідника та всіх груп. Його родинні зв’язки буде видалено. Визначені автоматично зв’язки між іншими родичами, наприклад між братами й сестрами зі спільним батьком або матір’ю, також можуть зникнути.",
     account: "Пов’язаний обліковий запис", accountDetail: "Його дані для входу та приватні дані облікового запису також буде видалено.", noAccount: "Обліковий запис для входу не пов’язано.",
     visits: "Історія відвідувань", visitsDetail: "Усі заплановані та минулі відвідування цього учасника буде видалено разом із відповідями та сповіщеннями.",
     photo: "Приватне фото й дані профілю буде видалено.", prompt: "Введіть повне ім’я учасника для підтвердження", confirmation: "Ім’я учасника",

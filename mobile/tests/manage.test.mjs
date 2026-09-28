@@ -199,6 +199,7 @@ function photoRepository(failure, configured = true) {
         if (id === "@/lib/session-cache") return { invalidateData: (...topics) => invalidations.push(topics), createSessionCache: () => ({ load: (key, loader) => loader() }) };
         if (id === "@/lib/photo-cache") return { thumbnailPath: (path) => `${path}.avatar-256.jpg` };
         if (id === "./model") return source;
+        if (id === "@/features/family/family-repository") return { loadFamily: async () => { throw new Error("Family loading is outside this management fixture"); }, saveFamily: async () => { throw new Error("Family saving is outside this management fixture"); } };
         throw new Error(`Unexpected module ${id}`);
     }, exports);
     return { repository: configured ? new exports.SupabaseManagementRepository() : exports.managementRepository, calls, invalidations };

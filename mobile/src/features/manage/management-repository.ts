@@ -1,3 +1,4 @@
+import { emptyFamily, loadFamily, saveFamily, type FamilyChanges } from "@/features/family/family-repository";
 import type { Database, Json, PersonRow } from "@/lib/database";
 import { canManageAccounts, canManageDirectory, canManageGroups, canManageSettings } from "@/lib/permissions";
 import {
@@ -23,6 +24,8 @@ import type {
 export type AccountChangeListener = () => void;
 
 export class SupabaseManagementRepository {
+    loadFamily = loadFamily;
+    saveFamily = saveFamily;
     private readonly accountChangeListeners = new Set<AccountChangeListener>();
     private readonly pendingCountCache = createSessionCache<number>(["accounts"]);
 
@@ -591,6 +594,8 @@ function personData(person: PersonRow) {
     };
 }
 class InMemoryManagementRepository {
+    async loadFamily(memberId: string) { return emptyFamily(memberId); }
+    async saveFamily(_memberId: string, _revision: number, _changes: FamilyChanges): Promise<never> { throw new Error("Family editing requires a configured backend."); }
     private state = structuredClone(initialManagementState);
     private readonly accountChangeListeners = new Set<AccountChangeListener>();
 

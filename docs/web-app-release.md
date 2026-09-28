@@ -2,6 +2,26 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Family Relationships (issue #69)
+
+Feature PR #70 targets `dev` from `feature/family-relationships`. The shared Expo application now has a dedicated Manage Family editor and a linked Family section immediately below profile Contact. Parents and children are inverse connections, spouses and explicit siblings are reciprocal, and shared recorded parents infer siblings without propagating explicit sibling links. English and Ukrainian labels are gender neutral. Inline member creation saves a separate durable Member; Cancel discards only relationship edits.
+
+### Backend prerequisite and rollback
+
+Review and manually apply `mobile/supabase/migrations/20260928010000_member_family.sql` after the existing management/role/gender migrations using the established SQL Editor process. Do not run `supabase db push`; hosted migration history remains unreconciled. No hosted migration or production release was performed by this implementation.
+
+The additive migration introduces guarded `member_family` and `save_member_family` RPCs. Active Administrators and Member Administrators can write; active directory readers can read visible family. Tables deny direct client writes. Atomic saves reject self-links, ancestry cycles, conflicting spouses and stale revisions. A graph-wide revision deliberately requires refresh after any family edit, including an unrelated member's edit, to cover reciprocal changes and shared-parent inference. Permanent deletion cascades incident connections and invalidates stale family drafts; archival retains connections and profile reads hide archived relatives.
+
+Previous clients remain compatible with the additive family schema and RPCs. Roll back the client to the retained Vercel deployment if needed; retain the family tables and recorded facts. Do not drop family data as a UI rollback. Existing prerequisite migrations, including the gender requirement, keep their own compatibility restrictions. Before production, verify the hosted RPCs and role boundaries, disposal-only creation/edit/deletion workflows, archival/restoration, and forward/rollback client behavior.
+
+### Verification and remaining gates
+
+`pnpm verify` passed all 214 tests (201 main, one visitation, 12 group tests), with no skipped tests, including rendered editor/profile workflows, repository contracts, PGlite authorization/graph behavior, and real competing PostgreSQL writes. `pnpm build:web` passed with placeholder public Supabase configuration. `FAMILY_TEST_DATABASE_URL` enables the concurrency suite and requires `psql` plus a disposable server with database-creation permission; the test creates and drops its own database. CI supplies an isolated PostgreSQL 18 service, without deployment credentials.
+
+Local Chromium checks at 390×900 and 1440×900 exercised family saving, profile-relative navigation and reload, archived hiding, deletion-confirmation cancellation, callback failure and protected management deep links. Fixture backend responses isolated these checks from hosted member data. English and Ukrainian/large-text screens were inspected; body/action text scaling was measured, and no horizontal overflow, browser exceptions, or notification-permission calls were observed. Standards review's two findings and spec review's stale member/session draft finding were fixed and re-reviewed; browser validation additionally caught and resolved an SDK 57 link handler that reset locale on navigation. Worker worktrees were cleaned up.
+
+The Vercel Preview URL redirects phone and desktop browsers to Vercel SSO. This confirms a deployment exists but does not validate authenticated Preview behavior. Required before merge: passing CI/review and authorized phone/desktop Preview checks covering family editing, profile links, confirmations, auth callbacks/deep links, and notification isolation after backend readiness. Live OAuth and physical iPhone/native checks were not performed. Production remains a separate reviewed `dev` → protected `main` PR.
+
 ## Required Member Gender (issue #64)
 
 Before enabling this client against an existing Supabase project, review and manually apply `mobile/supabase/migrations/20260928000000_member_gender.sql` through the established SQL Editor process. Do not use `supabase db push`: migration history is unreconciled. The migration assigns Male to every existing Member whose gender is unset, including archived records, preserves any previously recorded values, then enforces a required two-value column. The requester must review and correct those placeholder assignments after migration. Filter results reflect the placeholders until corrected.

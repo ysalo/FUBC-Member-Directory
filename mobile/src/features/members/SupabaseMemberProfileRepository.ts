@@ -1,8 +1,10 @@
+import { loadProfileFamily } from "@/features/family/family-repository";
 import { activeAccount, privatePhotoSources, unwrap } from "@/lib/repository-helpers";
 import { requireSupabase } from "@/lib/supabase";
 import type { MemberProfile, MemberProfileRepository } from "./member-repository";
 
 export class SupabaseMemberProfileRepository implements MemberProfileRepository {
+  getFamily = loadProfileFamily;
   async hydratePhotos(profile: MemberProfile, photoVariant: "avatar" | "original" = "original", part: "portrait" | "deacons" | "all" = "all"): Promise<MemberProfile> {
     activeAccount();
     if (!profile.photoPaths) return profile;
