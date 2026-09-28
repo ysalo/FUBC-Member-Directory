@@ -2,6 +2,12 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Family Relationship Design
+
+The requester accepted the [family relationship design](specs/family-relationships.md) on September 28, 2026. This documentation change does not implement the feature or require a backend deployment. Future implementation must include reviewed relationship storage and authorization, preserve existing member permissions, and verify deletion and rollback compatibility before production release. No hosted migration has been applied.
+
+Local `pnpm verify` and `pnpm build:web` were attempted for the documentation PR but could not start: this checkout has neither `pnpm` available on PATH nor installed dependencies. CI and Preview results must be checked separately. No browser, physical native, or live OAuth checks were performed for this design. Feature implementation will require the repository's full verification, phone/desktop browser checks, authorization and mutation checks, and backend readiness review.
+
 ## Required Member Gender (issue #64)
 
 Before enabling this client against an existing Supabase project, review and manually apply `mobile/supabase/migrations/20260928000000_member_gender.sql` through the established SQL Editor process. Do not use `supabase db push`: migration history is unreconciled. The migration assigns Male to every existing Member whose gender is unset, including archived records, preserves any previously recorded values, then enforces a required two-value column. The requester must review and correct those placeholder assignments after migration. Filter results reflect the placeholders until corrected.

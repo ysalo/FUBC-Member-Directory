@@ -1,0 +1,3 @@
+# Family connections use member identities
+
+Family connections reference existing directory members, with inline member creation when a relative needs a record. We chose this scope over maintaining hidden nonmember relatives, accepting incomplete kinship inference when connecting relatives are absent. Parent and spouse connections support future graph traversal; explicit sibling connections also allow recording siblings whose parents are not members. An explicit sibling connection does not establish shared parents or additional sibling connections. Adding nonmember identities later would require revisiting this boundary.
