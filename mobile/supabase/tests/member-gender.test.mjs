@@ -48,16 +48,17 @@ try {
     await db.query('insert into auth.users(id,email) values($1,$2)', [id, `${name}@example.com`]);
   }
   await db.query("update public.profiles set status='active', role=case when id=$1 then 'admin'::public.app_role when id=$2 then 'editor'::public.app_role else 'member'::public.app_role end", [ids.admin, ids.editor]);
-  const existing = (await db.query("insert into public.people(name,archived_at) values('Old active',null),('Old archived',now()) returning id")).rows;
+  const existing = (await db.query("insert into public.people(name,archived_at) values('Old active with saved value',null),('Old archived',now()),('Old active without value',null) returning id")).rows;
   await db.exec('alter table public.people add column gender text');
   await db.query("update public.people set gender='female' where id=$1", [existing[0].id]);
   await migration('20260928000000_member_gender');
 
-  test('backfill covers archived members and preserves a preexisting value', async () => {
+  test('backfill assigns Male to every unset active and archived Member while preserving a preexisting value', async () => {
     const rows = (await db.query('select id,gender from public.people')).rows;
-    assert.equal(rows.length, 2);
+    assert.equal(rows.length, 3);
     assert.equal(rows.find((row) => row.id === existing[0].id).gender, 'female');
-    assert.ok(['male','female'].includes(rows.find((row) => row.id === existing[1].id).gender));
+    assert.equal(rows.find((row) => row.id === existing[1].id).gender, 'male');
+    assert.equal(rows.find((row) => row.id === existing[2].id).gender, 'male');
   });
   test('management requires gender for creation and rejects invalid or cleared values', async () => {
     const save = 'select id,gender,revision from public.save_person($1,$2,$3::jsonb)';

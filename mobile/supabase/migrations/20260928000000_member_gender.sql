@@ -5,7 +5,7 @@ alter table public.people add column if not exists gender text;
 -- This update runs once during migration, including archived members. Existing values
 -- are retained if a deployment has already populated the column.
 update public.people
-set gender = case when random() < 0.5 then 'male' else 'female' end
+set gender = 'male'
 where gender is null;
 
 alter table public.people
