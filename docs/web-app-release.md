@@ -2,6 +2,14 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Family Relationships (issue #69)
+
+Implementation is in progress on `feature/family-relationships`, targeting `dev`. The feature adds member-only parent, spouse, and explicit sibling connections, derived profile family, and a dedicated Manage editor. The accepted specification is issue #69; the glossary and ADR are in documentation PR #68.
+
+Backend readiness is a release prerequisite: review the additive family migration and apply it manually through the established SQL Editor process before enabling this client. Do not automatically push migrations against the unreconciled project history. Existing clients must remain compatible with the additive schema for rollback. No hosted migration has been applied by this work.
+
+Verification results will be recorded here before delivery. Required gates include repository verification, production web export, security and competing-write tests, review, and phone/desktop Vercel Preview checks. Authenticated family workflows require the reviewed backend migration; live OAuth and physical native checks must be recorded separately when performed.
+
 ## Required Member Gender (issue #64)
 
 Before enabling this client against an existing Supabase project, review and manually apply `mobile/supabase/migrations/20260928000000_member_gender.sql` through the established SQL Editor process. Do not use `supabase db push`: migration history is unreconciled. The migration assigns Male to every existing Member whose gender is unset, including archived records, preserves any previously recorded values, then enforces a required two-value column. The requester must review and correct those placeholder assignments after migration. Filter results reflect the placeholders until corrected.
