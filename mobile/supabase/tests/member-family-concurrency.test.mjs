@@ -5,9 +5,11 @@ import { readFile } from 'node:fs/promises';
 
 // Requires a disposable PostgreSQL server and psql; creates its own database.
 const server = process.env.FAMILY_TEST_DATABASE_URL;
+const safeupdate = process.env.FAMILY_TEST_SAFEUPDATE_LIBRARY;
+const guard = safeupdate ? `load '${safeupdate.replaceAll("'", "''")}';` : '';
 function sql(url, input, onOutput) {
   return new Promise((resolve, reject) => {
-    const child = spawn('psql', [url, '-X', '-qAt', '-v', 'ON_ERROR_STOP=1']);
+    const child = spawn('psql', [url, '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose']);
     let stdout='', stderr='';
     child.stdout.on('data', chunk => { stdout += chunk; onOutput?.(stdout); });
     child.stderr.on('data', chunk => { stderr += chunk; });
@@ -39,9 +41,17 @@ test('real competing reciprocal, spouse and ancestry saves reject stale writers'
     }
     const admin='70000000-0000-4000-8000-000000000001';
     await sql(url.href,`insert into auth.users(id,email) values('${admin}','family@test.invalid'); update public.profiles set status='active',role='admin';`);
-    const actor=`set role authenticated; set request.jwt.claim.sub='${admin}';`;
+    if (guard) await assert.rejects(sql(url.href, `${guard} update public.profiles set revision=revision+1;`), /UPDATE requires a WHERE clause/);
+    const actor=`${guard} set role authenticated; set request.jwt.claim.sub='${admin}';`;
     const revision=()=>sql(url.href,`${actor} select public.member_family((select id from public.people limit 1),true)->>'revision';`);
     const save=(id,rev,{parents=[],children=[],spouse=null,siblings=[]}={})=>`select public.save_member_family('${id}',${rev},ARRAY[${parents.map(x=>`'${x}'`).join(',')}]::uuid[],${spouse?`'${spouse}'`:'null'},ARRAY[${children.map(x=>`'${x}'`).join(',')}]::uuid[],ARRAY[${siblings.map(x=>`'${x}'`).join(',')}]::uuid[]);`;
+    if (guard) {
+      const probe = await sql(url.href, "insert into public.people(name) values('Safeupdate upgrade probe') returning id;");
+      const before = await revision();
+      await assert.rejects(sql(url.href, `${actor} ${save(probe,before)}`), /21000: UPDATE requires a WHERE clause/);
+      assert.equal(await revision(), before, 'rejected save must not advance the revision');
+    }
+    await sql(url.href,await readFile(new URL('../migrations/20260928020000_family_safeupdate.sql',import.meta.url),'utf8'));
     for(const scenario of ['reciprocal','spouse','cycle']) {
       const ids=(await sql(url.href,`insert into public.people(name) values('A'),('B'),('C') returning id;`)).split('\n');
       const [a,b,c]=ids, rev=await revision();
@@ -58,6 +68,11 @@ test('real competing reciprocal, spouse and ancestry saves reject stale writers'
       const after=JSON.parse(await sql(url.href,`${actor} select public.member_family('${b}',true);`));
       if(scenario==='spouse') assert.equal(after.spouse.id,a);
       else { assert.deepEqual(after.parents.map(p=>p.id),[a]); assert.deepEqual(after.children,[]); assert.deepEqual(after.siblings,[]); }
+      await sql(url.href, `${guard} delete from public.people where id='${a}';`);
+      const deleted = JSON.parse(await sql(url.href, `${actor} select public.member_family('${b}',true);`));
+      assert.equal(deleted.spouse, null);
+      assert.deepEqual(deleted.parents, []);
+      assert.ok(deleted.revision > after.revision, 'cascade deletion must still invalidate family drafts');
     }
   } finally { await sql(server,`drop database ${name} with (force);`); }
 });

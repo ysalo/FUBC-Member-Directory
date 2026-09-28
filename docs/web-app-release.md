@@ -2,6 +2,14 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Family save write-guard hotfix
+
+Production reported SQLSTATE `21000`, `UPDATE requires a WHERE clause`, when calling `save_member_family`. The statement-level family trigger incremented the singleton graph revision without a filter. API sessions enforcing `pg-safeupdate` reject that nested UPDATE even though the outer relationship DELETE is filtered. The previous plain PostgreSQL/PGlite tests did not enable this guard.
+
+Manually apply `mobile/supabase/migrations/20260928020000_family_safeupdate.sql` through the SQL Editor after the family migration. It replaces only `app_private.family_changed()` with an explicit `where singleton = true`; keep safeupdate enabled. This applies to existing installations without rerunning the original table-creation migration, preserves saved family facts and privileges, and needs no frontend deployment. No hosted patch was applied by this fix. Do not use `supabase db push` against the unreconciled migration history.
+
+The real PostgreSQL regression loads the upstream safeupdate extension, reproduces the original exact error before applying the corrective migration, then checks successful reciprocal saves, stale-writer rejection, and deletion-trigger invalidation. CI builds the extension from a pinned upstream revision and sets `FAMILY_TEST_SAFEUPDATE_LIBRARY=safeupdate`; local runs can point that variable to an installed library. Client rollback remains compatible; retain the corrected function during rollback. Retry saving family connections after applying the patch. Hosted save/reload and authenticated Preview remain to be verified separately.
+
 ## Family Relationships (issue #69)
 
 Feature PR #70 targets `dev` from `feature/family-relationships`. The shared Expo application now has a dedicated Manage Family editor and a linked Family section immediately below profile Contact. Parents and children are inverse connections, spouses and explicit siblings are reciprocal, and shared recorded parents infer siblings without propagating explicit sibling links. English and Ukrainian labels are gender neutral. Inline member creation saves a separate durable Member; Cancel discards only relationship edits.
