@@ -22,7 +22,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
     const record = () => {
       if (!visible || recording) return;
       recording = true;
-      void requireSupabase().rpc("record_account_use", {}).then(() => {}).catch(() => {}).finally(() => { recording = false; });
+      const finish = () => { recording = false; };
+      void requireSupabase().rpc("record_account_use", {}).then(finish, finish);
     };
     const start = () => {
       if (!visible || timer) return;
