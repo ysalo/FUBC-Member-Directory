@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   desktopContent: { padding: 32, paddingBottom: 48 }, columns: { gap: 0 }, desktopColumns: { flexDirection: "row", gap: 28, alignItems: "flex-start" }, columnDesktop: { flex: 1 }, column: { minWidth: 0 },
   safe: { backgroundColor: "#F1F0EB", flex: 1 },
   content: { paddingBottom: 100, paddingHorizontal: 20, paddingTop: 28 },
-  title: { color: "#292D31", fontSize: 46, fontWeight: "800", letterSpacing: -1.5 },
+  title: { color: "#292D31", fontSize: 30, fontWeight: "800", letterSpacing: -1.5 },
   card: { backgroundColor: "#FAF9F6", borderRadius: 16, marginTop: 24, overflow: "hidden" },
   row: { alignItems: "center", flexDirection: "row", minHeight: 64, paddingHorizontal: 16 },
   appearanceRow: { gap: 10, padding: 16 },

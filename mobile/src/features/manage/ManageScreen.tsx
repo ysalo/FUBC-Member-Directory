@@ -1097,7 +1097,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         paddingTop: 22,
     },
-    title: { fontSize: 42, fontWeight: "800", letterSpacing: -1.3 },
+    title: { fontSize: 30, fontWeight: "800", letterSpacing: -1.3 },
     subtitle: { fontSize: 15, lineHeight: 21, marginTop: 3 },
     flex: { flex: 1, minWidth: 0 },
     add: {

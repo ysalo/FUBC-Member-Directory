@@ -2,6 +2,16 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Required Member Gender (issue #64)
+
+Before enabling this client against an existing Supabase project, review and manually apply `mobile/supabase/migrations/20260928000000_member_gender.sql` through the established SQL Editor process. Do not use `supabase db push`: migration history is unreconciled. The migration backfills all existing Members, including archived records, with random Male or Female placeholders, preserves any existing values, then enforces a required two-value column. The requester must review and correct those placeholder assignments after migration. Filter results reflect the placeholders until corrected.
+
+Apply and verify the migration before a backend-dependent client Preview or production release. Check Member Administrator and Administrator creation and edits, older-client edits that omit gender, rejection of older-client creation, and Directory reads under active and pending accounts. The old client cannot create Members after this migration because it omits required gender. Keep a current compatible client available for rollback or use a reviewed forward fix; reverting only the UI does not restore creation. No hosted migration was applied by this feature work.
+
+Feature delivery is a PR into `dev`. CI, review, authenticated Vercel Preview at phone and desktop widths, callback and direct links, management confirmations, localization and large text, and notification isolation remain release checks. A separate reviewed `dev` to `main` PR is required for production. Physical iPhone and live OAuth verification must be recorded separately when performed.
+
+Local PostgreSQL-compatible tests exercised backfill, validation, omission preservation, authorized management and Directory reads. Rendered screen tests exercised radio selection, missing-selection validation, match-any gender filters and counts. A local web export passed with placeholder public Supabase configuration. Chromium checks at 390×844 and 1440×900 found no horizontal overflow in the built sign-in, failed callback and unauthenticated management deep link, and no notification API calls. A rendered Directory fixture at both widths showed the count beneath controls, accessible gender checkboxes, and text scaling. These checks do not establish authenticated Preview behavior or a live migration.
+
 ## Account Last Seen
 
 The Expo account activity feature is implemented in `mobile/` for native and web. Before deploying a client that reads the new account contract, apply `mobile/supabase/migrations/20260927000000_account_last_seen.sql` to the existing Supabase project through the reviewed SQL Editor workflow. Do not run `supabase db push`; migration history remains unreconciled. The migration adds a nullable server timestamp, extends the Administrator-only `management_accounts()` RPC, and adds authenticated self-recording. No migration has been applied as part of this implementation. Verify administrator access, pending/denied/revoked self-recording, and Member read isolation in Preview before release. UI rollback remains compatible with the database addition.

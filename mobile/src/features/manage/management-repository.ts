@@ -175,6 +175,7 @@ export class SupabaseManagementRepository {
             id: row.id,
             name: row.name,
             patronymic: row.patronymic,
+            gender: row.gender,
             group:
                 groups.find((group) => group.id === row.membership_group_id)
                     ?.name ?? "",
@@ -329,6 +330,7 @@ export class SupabaseManagementRepository {
         address?: string | null;
         isOrphan?: boolean;
         isWidow?: boolean;
+        gender?: "male" | "female";
         membershipJoinedAt?: string | null;
     }) {
         if (!canManageDirectory(activeAccount()))
@@ -339,6 +341,7 @@ export class SupabaseManagementRepository {
                 p_revision: member.revision ?? null,
                 p_data: {
                     name: member.name,
+                    ...(member.gender !== undefined ? { gender: member.gender } : {}),
                     ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                     birth_date: member.birthday ?? null,
                     ...(member.membershipJoinedAt !== undefined ? { membership_joined_at: member.membershipJoinedAt || null } : {}),

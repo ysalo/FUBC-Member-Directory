@@ -63,6 +63,7 @@ async function bulkUiFixture(component, role = "admin") {
         if (id === "./route-params") return routeParams;
         if (id === "./model") return source;
         if (id === "./BulkMemberDeletion") return { BulkMemberDeletion: "BulkMemberDeletion" };
+        if (id === "./LastSeen") return { LastSeen: "LastSeen" };
         if (id === "./member-deletion") return { deleteMembers: (requests) => { calls.push(requests); return pending; } };
         throw new Error(`Unexpected module ${id}`);
     }, exports, { addEventListener: (event, callback) => keyboardListeners.set(event, callback), removeEventListener: (event) => keyboardListeners.delete(event) });
@@ -226,6 +227,16 @@ test("member saves send optional patronymics and preserve omission for other cal
     assert.equal(calls.at(-1).args.p_data.patronymic, null);
     await repository.saveMemberDetails({ name: "Ivan Petrenko" });
     assert.equal(Object.hasOwn(calls.at(-1).args.p_data, "patronymic"), false);
+});
+
+test("member saves persist the selected gender and preserve it when older callers omit it", async () => {
+    const { repository, calls } = photoRepository();
+    await repository.saveMemberDetails({ name: "New Member", gender: "male" });
+    assert.equal(calls.at(-1).args.p_data.gender, "male");
+    await repository.saveMemberDetails({ id: "member", revision: 7, name: "Updated Member", gender: "female" });
+    assert.equal(calls.at(-1).args.p_data.gender, "female");
+    await repository.saveMemberDetails({ id: "member", revision: 8, name: "Older client edit" });
+    assert.equal(Object.hasOwn(calls.at(-1).args.p_data, "gender"), false);
 });
 
 test("photo pairs publish only after both uploads and clean both replaced paths", async () => {
