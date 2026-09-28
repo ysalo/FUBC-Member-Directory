@@ -55,6 +55,7 @@ test('member profiles load active responsible deacons from their membership grou
     new Function('require', 'exports', compiled)((id) => {
       if (id === '@/lib/repository-helpers') return helpers;
       if (id === '@/lib/supabase') return { requireSupabase: () => client };
+      if (id === "@/features/family/family-repository") return { loadProfileFamily: async () => { throw new Error("Family loading is outside this profile fixture"); } };
       throw new Error(`Unexpected import: ${id}`);
     }, exports);
     return { repository: new exports.SupabaseMemberProfileRepository(), calls };

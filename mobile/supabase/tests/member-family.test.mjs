@@ -66,10 +66,10 @@ test('facts invert, infer half siblings, deduplicate and never propagate explici
 });
 test('spouse reciprocity and constraints; cycles and failed saves are atomic',async()=>{
  const [a,b,c,d]=await people('D','E','F','G'); await save(a,{spouse:b}); assert.equal((await read(b)).spouse.id,a);
- await assert.rejects(save(c,{spouse:b}),/already has a spouse/); await save(a); assert.equal((await read(b)).spouse,null);
+ await assert.rejects(save(c,{spouse:b}),error=>error.code==='FM001'); await save(a); assert.equal((await read(b)).spouse,null);
  await save(a,{children:[b]}); await save(b,{parents:[a],children:[c]}); const before=await read(c);
- await assert.rejects(save(c,{parents:[b],children:[a],siblings:[d]}),/ancestry cycle/); assert.deepEqual(await read(c),before);
- for(const changes of [{parents:[a]},{children:[a]},{spouse:a},{siblings:[a]}]) await assert.rejects(save(a,changes),/own relative/);
+ await assert.rejects(save(c,{parents:[b],children:[a],siblings:[d]}),error=>error.code==='FM002'); assert.deepEqual(await read(c),before);
+ for(const changes of [{parents:[a]},{children:[a]},{spouse:a},{siblings:[a]}]) await assert.rejects(save(a,changes),error=>error.code==='FM003');
 });
 test('stale reciprocal and shared-parent snapshots require refresh',async()=>{
  const [a,b,c]=await people('H','I','J'); const before=await read(b); await save(a,{children:[b,c]});
