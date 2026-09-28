@@ -279,8 +279,9 @@ export function ManageScreen() {
                                     accessibilityElementsHidden
                                     color="#FFF"
                                     name="add"
-                                    size={26}
+                                    size={21}
                                 />
+                                <Text style={styles.addText}>{copy.addMember}</Text>
                             </Pressable>
                         </View>
 
@@ -388,6 +389,7 @@ export function ManageScreen() {
                                             name="options-outline"
                                             size={21}
                                         />
+                                        <Text style={{ color: showFormer ? palette.accent : palette.text, fontWeight: "700" }}>{copy.filters}</Text>
                                         {showFormer ? (
                                             <View
                                                 style={[
@@ -1104,10 +1106,13 @@ const styles = StyleSheet.create({
         alignItems: "center",
         borderCurve: "continuous",
         borderRadius: 15,
-        height: 46,
+        flexDirection: "row",
+        gap: 6,
         justifyContent: "center",
-        width: 46,
+        minHeight: 48,
+        paddingHorizontal: 16,
     },
+    addText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
     segmented: {
         borderCurve: "continuous",
         borderRadius: 13,
@@ -1138,9 +1143,11 @@ const styles = StyleSheet.create({
     searchInput: { flex: 1, fontSize: 16, paddingVertical: 10 },
     filterButton: {
         alignItems: "center",
+        flexDirection: "row",
+        gap: 5,
         justifyContent: "center",
         minHeight: 40,
-        minWidth: 40,
+        paddingHorizontal: 4,
         position: "relative",
     },
     filterCount: {

@@ -11,13 +11,15 @@ import { useSession } from "@/features/session/SessionProvider";
 import { sessionCacheScope } from "@/lib/session-cache";
 import { managementRepository } from "./management-repository";
 import type { ManagedMember } from "./model";
+import { clearFamilyDraft, holdFamilyDraft, takeFamilyDraft } from "./family-draft";
+import { useUnsavedChanges } from "./use-unsaved-changes";
 
 type Category = "parents" | "spouse" | "children" | "siblings";
 const categories: Category[] = ["parents", "spouse", "children", "siblings"];
 const emptyChanges: FamilyChanges = { parentIds: [], spouseId: null, childIds: [], siblingIds: [] };
 
 export function FamilyEditorScreen() {
-  const { memberId } = useLocalSearchParams<{ memberId: string }>();
+  const { memberId, createdId } = useLocalSearchParams<{ memberId: string; createdId?: string }>();
   const router = useRouter();
   useSession();
   const scope = (() => { try { return sessionCacheScope(); } catch { return null; } })();
@@ -41,14 +43,14 @@ export function FamilyEditorScreen() {
   const [conflict, setConflict] = useState(false);
   const [category, setCategory] = useState<Category | null>(null);
   const [search, setSearch] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [gender, setGender] = useState<"male" | "female" | null>(null);
+  const original = snapshot && { parentIds: snapshot.parents.map(p => p.id), spouseId: snapshot.spouse?.id ?? null, childIds: snapshot.children.map(p => p.id), siblingIds: snapshot.siblings.filter(p => p.explicit).map(p => p.id) };
+  const dirty = Boolean(original && JSON.stringify(changes) !== JSON.stringify(original));
+  const guard = useUnsavedChanges(dirty);
   async function load() {
     const ticket = ++request.current;
-    setLoaded(null); setMembers([]); setChanges(emptyChanges); setCategory(null); setCreating(false);
-    setFirstName(""); setLastName(""); setGender(null); setConflict(false);
+    const draft = takeFamilyDraft(identity);
+    setLoaded(null); setMembers([]); setChanges(emptyChanges); setCategory(null);
+    setConflict(false);
     setBusy(true); setError(null);
     if (scope === null) { setBusy(false); return; }
     try {
@@ -56,13 +58,23 @@ export function FamilyEditorScreen() {
       if (!isCurrent(ticket)) return;
       if (family.memberId !== memberId) throw new Error("Family response belongs to another member");
       setLoaded({ identity, family }); setMembers(catalog.members);
-      setChanges({ parentIds: family.parents.map(p => p.id), spouseId: family.spouse?.id ?? null, childIds: family.children.map(p => p.id), siblingIds: family.siblings.filter(p => p.explicit).map(p => p.id) });
-      setConflict(false); setCategory(null); setCreating(false);
-    } catch { if (isCurrent(ticket)) setError(copy.loadError); }
+      const baseline: FamilyChanges = { parentIds: family.parents.map(p => p.id), spouseId: family.spouse?.id ?? null, childIds: family.children.map(p => p.id), siblingIds: family.siblings.filter(p => p.explicit).map(p => p.id) };
+      const next: FamilyChanges = draft ? { ...draft.changes } : baseline;
+      if (draft && createdId && catalog.members.some(p => p.id === createdId)) {
+        if (draft.category === "spouse") next.spouseId = createdId;
+        else {
+          const key = draft.category === "parents" ? "parentIds" : draft.category === "children" ? "childIds" : "siblingIds";
+          next[key] = [...new Set([...next[key], createdId])];
+        }
+      }
+      setChanges(next);
+      setConflict(false); setCategory(null);
+    } catch { if (isCurrent(ticket)) { if (draft) holdFamilyDraft(draft); setError(copy.loadError); } }
     finally { if (isCurrent(ticket)) setBusy(false); }
   }
-  useEffect(() => { void load(); return () => { request.current++; }; }, [memberId, scope]);
-  function exit() { router.canGoBack() ? router.back() : router.replace(`/manage/member/${memberId}`); }
+  useEffect(() => { void load(); return () => { request.current++; }; }, [memberId, scope, createdId]);
+  function exit() { clearFamilyDraft(); guard.allowLeave(); router.replace(`/manage/member/${memberId}`); }
+  function cancel() { guard.confirmLeave(exit); }
   function ids(kind: Category) { return kind === "parents" ? changes.parentIds : kind === "children" ? changes.childIds : kind === "siblings" ? changes.siblingIds : changes.spouseId ? [changes.spouseId] : []; }
   function select(kind: Category, id: string, remove = false) {
     setChanges(previous => {
@@ -84,19 +96,11 @@ export function FamilyEditorScreen() {
       setConflict(stale); setError(stale ? copy.conflict : reason);
     } finally { if (isCurrent(ticket)) setBusy(false); }
   }
-  async function createMember() {
-    if (busy || !category || !snapshot || scope === null) return;
-    const ticket = request.current;
-    if (!firstName.trim() || !lastName.trim() || !gender) { setError(copy.required); return; }
-    setBusy(true); setError(null);
-    try {
-      const saved = await managementRepository.saveMemberDetails({ name: `${firstName.trim()} ${lastName.trim()}`, gender });
-      if (!isCurrent(ticket)) return;
-      if (!saved) throw new Error("Member was not returned.");
-      setMembers(previous => [...previous, { ...saved, group: "", archived: false }]);
-      select(category, saved.id); setCreating(false); setCategory(null); setFirstName(""); setLastName(""); setGender(null);
-    } catch { if (isCurrent(ticket)) setError(copy.saveError); }
-    finally { if (isCurrent(ticket)) setBusy(false); }
+  function createMember() {
+    if (!category || !snapshot || busy) return;
+    holdFamilyDraft({ identity, changes, category });
+    guard.allowLeave();
+    router.replace(`/manage/member/new?familyReturn=${encodeURIComponent(memberId)}`);
   }
   function action(label: string, onPress: () => void, disabled = busy) {
     return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={[styles.button, { borderColor: palette.line }, disabled && styles.disabled]}><Text style={[styles.body, { color: palette.accent }]}>{label}</Text></Pressable>;
@@ -107,11 +111,10 @@ export function FamilyEditorScreen() {
   }
   const visibleMembers = snapshot ? members : [];
   const candidates = visibleMembers.filter(p => p.id !== memberId && p.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
-  const matching = visibleMembers.filter(p => p.id !== memberId && firstName.trim() && lastName.trim() && p.name.toLocaleLowerCase() === `${firstName.trim()} ${lastName.trim()}`.toLocaleLowerCase());
   return <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.edit}{visibleMembers.find(p => p.id === memberId)?.name ? ` · ${visibleMembers.find(p => p.id === memberId)?.name}` : ""}</Text>
-      <View style={styles.actions}>{action(copy.cancel, exit)}{snapshot && action(copy.save, () => void save(), busy || conflict)}</View>
+      <View style={styles.actions}>{action(copy.cancel, cancel)}{snapshot && action(copy.save, () => void save(), busy || conflict)}</View>
       {busy && <ActivityIndicator color={palette.accent} />}
       {error && <Text accessibilityRole="alert" style={[styles.body, { color: palette.text }]}>{error}</Text>}
       {(conflict || (!snapshot && !busy)) && action(conflict ? copy.refresh : copy.retry, () => void load())}
@@ -126,27 +129,16 @@ export function FamilyEditorScreen() {
           <Text style={[styles.body, { color: palette.text }]}>{memberLabel(sibling.id)} · {copy.inferred}: {sibling.supportingParents.map(parent => `${parent.name}${parent.archived ? ` (${copy.archived})` : ""}`).join(", ")}</Text>
           <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.inferenceHint}</Text>
         </View>)}
-        {action(`${copy.add}: ${copy[kind]}`, () => { setCategory(kind); setCreating(false); setSearch(""); setError(null); })}
-      </View>)}
-      {snapshot && category && <View style={[styles.section, { borderColor: palette.line }]}>
-        <Text accessibilityRole="header" style={[styles.heading, { color: palette.text }]}>{copy.add}: {copy[category]}</Text>
-        {action(copy.cancel, () => { setCategory(null); setCreating(false); setError(null); })}
-        {creating ? <>
-          <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.createHint}</Text>
-          <TextInput accessibilityLabel={copy.firstName} placeholder={copy.firstName} value={firstName} onChangeText={setFirstName} editable={!busy} style={[styles.body, styles.input, { color: palette.text, borderColor: palette.line }]} />
-          <TextInput accessibilityLabel={copy.lastName} placeholder={copy.lastName} value={lastName} onChangeText={setLastName} editable={!busy} style={[styles.body, styles.input, { color: palette.text, borderColor: palette.line }]} />
-          <View accessibilityRole="radiogroup" accessibilityLabel={copy.gender} aria-required>
-            {(["male", "female"] as const).map(value => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={copy[value]} accessibilityState={{ checked: gender === value, disabled: busy }} disabled={busy} onPress={() => setGender(value)} style={styles.button}><Text style={[styles.body, { color: palette.text }]}>{gender === value ? "◉ " : "○ "}{copy[value]}</Text></Pressable>)}
-          </View>
-          {matching.length > 0 && <Text style={[styles.body, { color: palette.text }]}>{copy.matches}</Text>}
-          {matching.map(member => <View key={member.id}>{action(memberLabel(member.id), () => { select(category, member.id); setCategory(null); setCreating(false); setError(null); })}</View>)}
-          {action(copy.createSelect, () => void createMember())}
-        </> : <>
+        {action(`${copy.add}: ${copy[kind]}`, () => { setCategory(kind); setSearch(""); setError(null); })}
+        {category === kind && <View style={[styles.picker, { borderTopColor: palette.line }]}>
+          <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.search}</Text>
           <TextInput accessibilityLabel={copy.search} placeholder={copy.search} value={search} onChangeText={setSearch} editable={!busy} style={[styles.body, styles.input, { color: palette.text, borderColor: palette.line }]} />
-          {action(copy.create, () => { setCreating(true); setFirstName(""); setLastName(""); setGender(null); })}
-          {candidates.filter(member => !ids(category).includes(member.id)).map(member => <View key={member.id}>{action(memberLabel(member.id), () => { select(category, member.id); setCategory(null); })}</View>)}
-        </>}
-      </View>}
+          {candidates.filter(member => !ids(kind).includes(member.id)).map(member => <View key={member.id}>{action(memberLabel(member.id), () => { select(kind, member.id); setCategory(null); })}</View>)}
+          <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.createHint}</Text>
+          {action(copy.create, createMember)}
+          {action(copy.cancel, () => setCategory(null))}
+        </View>}
+      </View>)}
     </ScrollView>
   </SafeAreaView>;
 }
@@ -158,4 +150,5 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, lineHeight: 23, flexShrink: 1 },
   button: { maxWidth: "100%", flexShrink: 1, minWidth: 0, minHeight: 44, padding: 10, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, justifyContent: "center" },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 8, padding: 12 }, inference: { gap: 6 }, disabled: { opacity: 0.45 },
+  picker: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, gap: 10 },
 });

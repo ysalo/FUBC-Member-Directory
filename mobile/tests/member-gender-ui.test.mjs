@@ -11,10 +11,12 @@ const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKi
 
 function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
   const states = [];
+  const refs = [];
   let cursor = 0;
-  let effectRan = false;
-  let pendingEffect;
+  let refCursor = 0;
+  const pendingEffects = [];
   const saves = [];
+  const routes = [];
   const hooks = { ...React,
     useState(initial) {
       const index = cursor++;
@@ -22,7 +24,8 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
       return [states[index], (next) => { states[index] = typeof next === 'function' ? next(states[index]) : next; }];
     },
     useMemo: (factory) => factory(),
-    useEffect(callback) { if (!effectRan) { pendingEffect = callback; effectRan = true; } },
+    useRef(initial) { const index = refCursor++; return refs[index] ??= { current: initial }; },
+    useEffect(callback) { pendingEffects.push(callback); },
   };
   const managementRepository = {
     async loadMember() { return existing; },
@@ -34,7 +37,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
     ['react-native', { ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 }, Switch: 'Switch', View: 'View' }],
     ['react-native-safe-area-context', { SafeAreaView: 'SafeAreaView' }],
     ['expo-image-picker', {}],
-    ['expo-router', { Link: 'Link', useLocalSearchParams: () => ({ memberId: existing?.id }), useRouter: () => ({ canGoBack: () => true, back() {}, replace() {} }) }],
+    ['expo-router', { useLocalSearchParams: () => ({ memberId: existing?.id }), useRouter: () => ({ canGoBack: () => true, back() {}, replace() {}, push(path) { routes.push(path); } }) }],
     ['@/features/platform/alert', { Alert: { alert() {} } }],
     ['@/features/shell/use-desktop-layout', { useDesktopLayout: () => false }],
     ['@/features/accessibility/app-text', { Text: 'Text', TextInput: 'TextInput' }],
@@ -42,6 +45,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
     ['@/features/forms/NativeDateTimeField', { NativeDateTimeField: 'DateField' }],
     ['@/features/forms/date-field', { acceptsDateFieldValue: () => true, localDateValue: () => '2026-09-27' }],
     ['@/features/localization/LocalizationProvider', { useLocalization: () => ({ locale }) }],
+    ['@/features/family/family-copy', { getFamilyCopy: () => ({ matches: 'Members with matching names' }) }],
     ['@/features/session/SessionProvider', { useSession: () => ({ status: 'ready', account: { role: 'admin' } }) }],
     ['@/lib/permissions', { canManageAccounts: () => true }],
     ['@/lib/phone', { formatPhoneNumber: (value) => value ?? '' }],
@@ -49,6 +53,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
     ['./MemberAvatar', { MemberAvatar: 'Avatar' }],
     ['./route-params', { managedAccountHref: () => '/manage' }],
     ['./photo-thumbnail', { createPhotoRenditions() {} }],
+    ['./use-unsaved-changes', { useUnsavedChanges: () => ({ allowLeave() {}, confirmLeave(callback) { callback(); } }) }],
   ]);
   const exports = {};
   new Function('require', 'exports', code)((id) => {
@@ -57,6 +62,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
   }, exports);
   function render() {
     cursor = 0;
+    refCursor = 0;
     const nodes = [];
     function walk(node) {
       if (node == null || typeof node !== 'object') return;
@@ -70,7 +76,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
   }
   const text = (node) => node == null ? '' : typeof node === 'string' || typeof node === 'number' ? String(node) : Array.isArray(node) ? node.map(text).join('') : text(node.props?.children);
   const button = (nodes, label) => nodes.find((node) => node.type === 'Pressable' && text(node) === label);
-  return { render, button, text, saves, async load() { render(); pendingEffect?.(); await new Promise(setImmediate); } };
+  return { render, button, text, saves, routes, async load() { render(); for (const effect of pendingEffects.splice(0)) effect(); await new Promise(setImmediate); } };
 }
 
 test('new member requires an explicit gender selection and persists the chosen radio value', async () => {
@@ -107,15 +113,13 @@ test('editing loads and can change the saved gender', async () => {
   assert.equal(ui.saves[0].id, 'saved');
 });
 
-test('existing member family navigation exposes a stable link destination', async () => {
+test('existing member family navigation opens the stable route', async () => {
   const ui = formFixture({ existing: { id: 'saved', name: 'Saved Member', gender: 'male', revision: 1 } });
   await ui.load();
-  const link = ui.render().find(node => node.type === 'Link' && ui.text(node) === 'Edit family');
-  assert.equal(link.props.href, '/manage/member/saved/family');
-  assert.equal(link.props.asChild, true);
-  // Expo Router must retain ownership of the navigation handler on web.
-  assert.equal(link.props.onPress, undefined);
-  assert.equal(ui.button(ui.render(), 'Edit family').props.accessibilityRole, 'link');
+  const link = ui.button(ui.render(), 'Edit family');
+  assert.equal(link.props.accessibilityRole, 'link');
+  link.props.onPress();
+  assert.deepEqual(ui.routes, ['/manage/member/saved/family']);
 });
 
 test('pending member saves remove the family destination and restore it after failure', async () => {
@@ -125,8 +129,7 @@ test('pending member saves remove the family destination and restore it after fa
   await ui.load();
   ui.button(ui.render(), 'Save member').props.onPress();
   const nodes = ui.render();
-  assert.equal(nodes.some(node => node.type === 'Link' && node.props.href === '/manage/member/saved/family'), false);
   assert.equal(ui.button(nodes, 'Edit family').props.disabled, true);
   finish(new Error("Save failed")); await new Promise(setImmediate);
-  assert.ok(ui.render().some(node => node.type === 'Link' && node.props.href === '/manage/member/saved/family'));
+  assert.equal(ui.button(ui.render(), 'Edit family').props.disabled, undefined);
 });

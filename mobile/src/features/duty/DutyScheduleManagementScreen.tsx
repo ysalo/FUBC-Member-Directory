@@ -17,6 +17,7 @@ import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
 import { fridayBeforeSunday, moveCandidate, weekendLabel, type DutyCandidate } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
+import { useUnsavedChanges } from "@/features/manage/use-unsaved-changes";
 
 const labels = {
   en: {
@@ -42,7 +43,9 @@ const labels = {
     pickerTitle: "Reassign this weekend",
     pickerSearch: "Search deacons",
     pickerNoMatches: "No deacons match your search.",
-    done: "Done",
+    done: "Cancel",
+    save: "Save assignment",
+    cancelOrder: "Reset order",
   },
   uk: {
     title: "Розклад",
@@ -67,7 +70,9 @@ const labels = {
     pickerTitle: "Змінити диякона на ці вихідні",
     pickerSearch: "Пошук дияконів",
     pickerNoMatches: "Дияконів не знайдено.",
-    done: "Готово",
+    done: "Скасувати",
+    save: "Зберегти призначення",
+    cancelOrder: "Скинути порядок",
   },
 } as const;
 
@@ -83,6 +88,8 @@ export function DutyScheduleManagementScreen() {
   const [state, setState] = useState<{ status: "loading" | "error" | "ready"; year?: DutyYear; message?: string }>({ status: "loading" });
   const [saving, setSaving] = useState(false);
   const [reassignSundayOn, setReassignSundayOn] = useState<string | null>(null);
+  const [draftDeaconId, setDraftDeaconId] = useState<string | null>(null);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [orderedDeacons, setOrderedDeacons] = useState<DutyCandidate[]>([]);
 
   const load = useCallback(() => {
@@ -105,6 +112,8 @@ export function DutyScheduleManagementScreen() {
   const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
 
   const orderedIds = useMemo(() => orderedDeacons.map((deacon) => deacon.personId), [orderedDeacons]);
+  const orderDirty = state.status === "ready" && JSON.stringify(orderedIds) !== JSON.stringify(state.year!.eligibleDeacons.map((deacon) => deacon.personId));
+  useUnsavedChanges(orderDirty || Boolean(reassignSundayOn && draftDeaconId && draftDeaconId !== state.year?.periods.find((period) => period.sundayOn === reassignSundayOn)?.personId));
   const hasGeneratedSchedule = state.status === "ready" && state.year!.periods.length > 0;
 
   const generate = () => {
@@ -119,14 +128,14 @@ export function DutyScheduleManagementScreen() {
 
   const reassigningPeriod = state.status === "ready" ? state.year!.periods.find((period) => period.sundayOn === reassignSundayOn) : undefined;
 
-  const reassign = (deacon: DutyCandidate) => {
-    if (!reassigningPeriod) return;
+  const reassign = () => {
+    if (!reassigningPeriod || !draftDeaconId || saving) return;
     setSaving(true);
-    setReassignSundayOn(null);
+    setAssignmentError(null);
     dutyRepository
-      .reassignPeriod(year, reassigningPeriod.sundayOn, deacon.personId, reassigningPeriod.revision)
-      .then((saved) => setState({ status: "ready", year: saved }))
-      .catch((cause) => setState({ status: "error", message: errorMessage(cause) }))
+      .reassignPeriod(year, reassigningPeriod.sundayOn, draftDeaconId, reassigningPeriod.revision)
+      .then((saved) => { setState({ status: "ready", year: saved }); setReassignSundayOn(null); setDraftDeaconId(null); })
+      .catch((cause) => setAssignmentError(errorMessage(cause)))
       .finally(() => setSaving(false));
   };
 
@@ -204,6 +213,7 @@ export function DutyScheduleManagementScreen() {
                 </View>
               )}
               <Text style={[styles.warning, { color: palette.secondaryText }]}>{copy.replaceWarning.replace("{year}", String(year))}</Text>
+              {orderDirty ? <Pressable accessibilityRole="button" onPress={() => setOrderedDeacons(state.year!.eligibleDeacons)} style={styles.resetOrder}><Text style={{ color: palette.accent }}>{copy.cancelOrder}</Text></Pressable> : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ busy: saving, disabled: saving || orderedDeacons.length === 0 }}
@@ -236,7 +246,7 @@ export function DutyScheduleManagementScreen() {
                       accessibilityHint={copy.reassign}
                       accessibilityRole="button"
                       disabled={saving}
-                      onPress={() => setReassignSundayOn(period.sundayOn)}
+                      onPress={() => { setReassignSundayOn(period.sundayOn); setDraftDeaconId(period.personId); setAssignmentError(null); }}
                       style={({ pressed }) => [styles.row, { backgroundColor: palette.surface, borderColor: palette.line }, pressed && styles.pressed]}
                     >
                       <ProfileAvatar name={name} size={40} source={member?.avatar} />
@@ -254,12 +264,16 @@ export function DutyScheduleManagementScreen() {
       <DeaconPickerSheet
         deacons={state.status === "ready" ? state.year!.eligibleDeacons : []}
         doneLabel={copy.done}
+        saveLabel={copy.save}
+        saving={saving}
+        error={assignmentError}
         memberById={memberById}
         noMatchesLabel={copy.pickerNoMatches}
-        onClose={() => setReassignSundayOn(null)}
-        onSelect={reassign}
+        onClose={() => { setReassignSundayOn(null); setDraftDeaconId(null); setAssignmentError(null); }}
+        onSelect={(deacon) => setDraftDeaconId(deacon.personId)}
+        onSave={reassign}
         searchLabel={copy.pickerSearch}
-        selectedPersonId={reassigningPeriod?.personId ?? null}
+        selectedPersonId={draftDeaconId}
         title={copy.pickerTitle}
         visible={reassignSundayOn !== null}
       />
@@ -290,6 +304,7 @@ const styles = StyleSheet.create({
   reorderControls: { flexDirection: "row", gap: 2 },
   reorderButton: { alignItems: "center", height: 40, justifyContent: "center", width: 34 },
   warning: { fontSize: 12, marginTop: 12 },
+  resetOrder: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center" },
   generateButton: { alignItems: "center", borderRadius: 10, marginTop: 12, paddingVertical: 12 },
   generateText: { color: "#FFF", fontWeight: "800" },
   reassignHint: { fontSize: 12, marginBottom: 12 },

@@ -2,6 +2,16 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Management Usability and Family Avatars (issue #75)
+
+The shared Expo client opens Management on Members with labeled Add member and Filters actions. Member entry has one page with named sections, required-field guidance, and Save/Cancel actions at both ends. Account status, role, and member linking now use explicit saves. Group and ministry editors guard unsaved changes; schedule reassignment requires a selected deacon and Save. Family pickers open in their relationship section, and creating a relative uses the full member form. The family draft is kept only in memory during this handoff; member creation and relationship saving remain separate operations. Profile family uses the existing 64px avatar-link treatment, accessible names, and browser name tooltips.
+
+No database migration, Edge Function deployment, permission expansion, notification change, or offline private-data cache is introduced. The existing family schema and RPCs from issue #69, including the safe-update correction in PR #73, must be present before authenticated Preview or production use. The previous client remains compatible with these UI-only changes; retain the current production deployment as the rollback target. A created member persists if family editing is canceled, so an operator must remove an unintended member through the existing confirmed deletion flow.
+
+Local focused behavior tests cover family draft handoff, category selection, avatar links, account draft/save and partial failure, account linking, and navigation discard. TypeScript and production web export pass with placeholder public Supabase configuration. The production export was checked in Chromium at 390×844 and 1440×900 for unauthenticated management and member deep links, failed OAuth callback, no horizontal overflow, page errors, or notification calls. The unconfigured development fixture was checked at the same widths for the management list and member form, plus a 390×580 form for reachable footer actions and browser Back/Keep editing/Discard behavior. These checks do not establish authenticated service behavior.
+
+Before merging the feature PR into `dev`, run `pnpm verify` and `pnpm build:web`, obtain CI and review approval, and validate the Vercel Preview at phone and desktop widths with authenticated Ukrainian and English management flows. Check real Google OAuth/callback, direct links and reloads, account and family saves, group/ministry/schedule edits, destructive confirmations on disposable records, large text, dark theme, keyboard use, and zero web notification side effects. Physical iPhone/native behavior and live OAuth have not been checked here. Production still requires a separate reviewed `dev` to protected `main` PR after backend readiness and rollback review.
+
 ## Family save write-guard hotfix
 
 Production reported SQLSTATE `21000`, `UPDATE requires a WHERE clause`, when calling `save_member_family`. The statement-level family trigger incremented the singleton graph revision without a filter. API sessions enforcing `pg-safeupdate` reject that nested UPDATE even though the outer relationship DELETE is filtered. The previous plain PostgreSQL/PGlite tests did not enable this guard.

@@ -27,7 +27,7 @@ function fixture({ family = emptyFamily(), locale = 'en', getFamily } = {}) {
   const hooks = { ...React, useCallback: (fn) => fn, useRef(initial) { const i = cursor++; return states[i] ??= { current: initial }; }, useState(initial) { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], (next) => { states[i] = typeof next === 'function' ? next(states[i]) : next; }]; } };
   const modules = new Map([
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
-    ['react-native', { ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', View: 'View', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 } }],
+    ['react-native', { ActivityIndicator: 'ActivityIndicator', Platform: { OS: 'web' }, Pressable: 'Pressable', View: 'View', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 } }],
     ['expo-router', { Link: 'Link', useFocusEffect: (callback) => { focus = callback; } }],
     ['@/features/accessibility/app-text', { Text: 'Text' }],
     ['@/features/appearance/AppearanceProvider', { useAppearance: () => ({ palette: {} }) }],
@@ -43,7 +43,7 @@ function fixture({ family = emptyFamily(), locale = 'en', getFamily } = {}) {
   const render = () => { cursor = 0; return nodesOf(exports.FamilySection({ memberId: subject })); };
   return { render, async load() { render(); focus(); await new Promise(setImmediate); }, async change() { changed(); await new Promise(setImmediate); }, setScope(value) { scope = value; }, setMember(value) { subject = value; }, get calls() { return calls; } };
 }
-for (const locale of ['en', 'uk']) test(`family profile exposes category labels and photo/name links in ${locale}`, async () => {
+for (const locale of ['en', 'uk']) test(`family profile exposes category labels and avatar links in ${locale}`, async () => {
   const family = { ...emptyFamily(), parents: [member('parent', 'Parent Name')], spouse: member('spouse', 'Spouse Name'), children: [member('child', 'Child Name')], siblings: [{ ...member('sibling', 'Sibling Name'), explicit: true, supportingParents: [] }] };
   const ui = fixture({ family, locale }); await ui.load();
   const nodes = ui.render();
@@ -52,11 +52,13 @@ for (const locale of ['en', 'uk']) test(`family profile exposes category labels 
   const links = nodes.filter((node) => node.type === 'Link');
   assert.deepEqual(links.map((node) => node.props.href), ['/members/parent', '/members/spouse', '/members/child', '/members/sibling']);
   for (const [index, name] of ['Parent Name', 'Spouse Name', 'Child Name', 'Sibling Name'].entries()) {
-    assert.equal(text(links[index]), name);
+    assert.equal(text(links[index]), '');
     const content = nodesOf(links[index]);
     assert.equal(content.find((node) => node.type === 'Avatar').props.name, name);
+    assert.equal(content.find((node) => node.type === 'Avatar').props.size, 64);
     assert.equal(content.find((node) => node.type === 'Pressable').props.accessibilityRole, 'link');
-    assert.equal(content.find((node) => node.type === 'Text').props.numberOfLines, undefined);
+    assert.equal(content.find((node) => node.type === 'Pressable').props.title, name);
+    assert.match(content.find((node) => node.type === 'Pressable').props.accessibilityLabel, new RegExp(name));
   }
 });
 test('empty family and archived-only connections leave no panel; empty categories are hidden', async () => {
