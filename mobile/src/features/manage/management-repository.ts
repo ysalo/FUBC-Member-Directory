@@ -90,6 +90,7 @@ export class SupabaseManagementRepository {
                 personId: row.person_id,
                 revision: row.revision,
                 createdAt: row.created_at,
+                lastSeenAt: row.last_seen_at,
             })),
         };
     }
@@ -111,6 +112,7 @@ export class SupabaseManagementRepository {
             personId: row.person_id,
             revision: row.revision,
             createdAt: row.created_at,
+            lastSeenAt: row.last_seen_at,
         }));
         const account = accounts.find(
             (candidate) => candidate.id === accountId,

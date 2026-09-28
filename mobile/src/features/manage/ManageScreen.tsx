@@ -23,6 +23,7 @@ import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
 import { isBackendConfigured } from "@/lib/supabase";
 import { managementRepository } from "./management-repository";
 import { BulkMemberDeletion } from "./BulkMemberDeletion";
+import { LastSeen } from "./LastSeen";
 import { managedAccountRoute } from "./route-params";
 import {
     initialManagementState,
@@ -230,6 +231,8 @@ export function ManageScreen() {
         >
             <FlatList
                 contentInsetAdjustmentBehavior="automatic"
+                refreshing={loading}
+                onRefresh={load}
                 contentContainerStyle={[
                     styles.content,
                     desktop && styles.desktopContent,
@@ -825,6 +828,7 @@ export function ManageScreen() {
                                 >
                                     {account.email}
                                 </Text>
+                                <LastSeen value={account.lastSeenAt} />
                             </View>
                             <Ionicons
                                 accessibilityElementsHidden
@@ -952,6 +956,7 @@ export function ManageScreen() {
                     >
                         {item.email || "—"}
                     </Text>
+                    <LastSeen value={item.lastSeenAt} />
                 </View>
                 <StatusPill
                     label={copy[item.status]}
