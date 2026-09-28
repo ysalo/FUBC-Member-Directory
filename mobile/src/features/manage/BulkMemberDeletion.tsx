@@ -12,14 +12,14 @@ import type { ManagedMember } from "./model";
 const words = {
   en: {
     title: "Delete selected members?", selected: "Selected members", cancel: "Cancel", close: "Close", remove: "Delete permanently",
-    warning: "This cannot be undone. These members, their linked sign-in accounts, private photos, group memberships, and all scheduled and past visits will be deleted, including visit responses and notifications.",
+    warning: "This cannot be undone. These members, their linked sign-in accounts, private photos, group memberships, and all scheduled and past visits will be deleted, including visit responses and notifications. Their family connections will be removed. Inferred connections between remaining relatives, such as siblings who share a deleted parent, may also disappear.",
     prompt: "Type DELETE to confirm", token: "DELETE", busy: "Deleting members...", done: "Deletion complete", deleted: "Deleted", remaining: "Not confirmed deleted",
     stopped: "Deletion stopped. No further members were processed. Close to reload and review the remaining members before trying again. Sign-in access or photos for the failed member may already have been removed.",
     conflict: "The member changed. Review the latest record before deleting it.", self: "You cannot delete your own linked member record.", admin: "Another active administrator is required.", denied: "Only active administrators can delete members.",
   },
   uk: {
     title: "Видалити вибраних учасників?", selected: "Вибрані учасники", cancel: "Скасувати", close: "Закрити", remove: "Видалити назавжди",
-    warning: "Цю дію неможливо скасувати. Буде видалено цих учасників, пов’язані облікові записи для входу, приватні фото, членство в групах і всі заплановані та минулі відвідування разом із відповідями та сповіщеннями.",
+    warning: "Цю дію неможливо скасувати. Буде видалено цих учасників, пов’язані облікові записи для входу, приватні фото, членство в групах і всі заплановані та минулі відвідування разом із відповідями та сповіщеннями. Їхні родинні зв’язки буде видалено. Визначені автоматично зв’язки між іншими родичами, наприклад між братами й сестрами зі спільним видаленим батьком або матір’ю, також можуть зникнути.",
     prompt: "Введіть ВИДАЛИТИ для підтвердження", token: "ВИДАЛИТИ", busy: "Видаляємо учасників...", done: "Видалення завершено", deleted: "Видалено", remaining: "Видалення не підтверджено",
     stopped: "Видалення зупинено. Решту учасників не оброблено. Закрийте вікно, щоб оновити й переглянути решту записів перед повторною спробою. Доступ для входу або фото учасника з помилкою вже могли бути видалені.",
     conflict: "Дані учасника змінилися. Перегляньте актуальний запис перед видаленням.", self: "Ви не можете видалити власний пов’язаний запис учасника.", admin: "Потрібен інший активний адміністратор.", denied: "Лише активні адміністратори можуть видаляти учасників.",

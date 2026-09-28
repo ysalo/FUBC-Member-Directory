@@ -99,7 +99,7 @@ test('member profiles show linked deacon avatars below Contact in both layouts o
   assert.match(profile, /accessibilityLabel=\{`\$\{deacon\.name\}, \$\{copy\.profile\}`\}/);
   assert.match(profile, /<ProfileAvatar name=\{deacon\.name\} size=\{64\} source=\{deacon\.avatar\}/);
   assert.match(profile, /deaconAvatars: \{ flexDirection: "row", flexWrap: "wrap"/);
-  assert.equal([...profile.matchAll(/\{contactSection\}\s*\{deaconsSection\}/g)].length, 2);
+  assert.equal([...profile.matchAll(/\{contactSection\}\s*<FamilySection memberId=\{memberId\} \/>\s*\{deaconsSection\}/g)].length, 2);
 });
 
 test('member profile visit action uses planning language', async () => {
@@ -136,12 +136,13 @@ test('profile loading renders data before photos and ignores old member or sessi
     if (id.endsWith('AppearanceProvider')) return { useAppearance: () => ({ palette: {} }) };
     if (id.endsWith('SessionProvider')) return { useSession: () => ({ status: 'ready', account: { role: 'member' } }) };
     if (id.endsWith('LocalizationProvider')) return { useLocalization: () => ({ locale: 'en' }) };
-    if (id === './member-copy') return { getMemberCopy: () => ({ loading: 'Loading', error: 'Error' }) };
+    if (id === './member-copy') return { getMemberCopy: () => ({ loading: 'Loading', error: 'Error', contact: 'Contact' }) };
     if (id === '@/lib/session-cache') return { sessionCacheScope: () => { if (!scope) throw new Error('Signed out'); return scope; }, subscribeDataChanges: () => () => {} };
     if (id === './member-repository') return { memberProfileRepository: {
       getProfile: memberId => new Promise(resolve => dataRequests.push({ memberId, resolve })),
       hydratePhotos: (profile, variant, part) => new Promise((resolve, reject) => photoRequests.push({ profile, part, resolve, reject })),
     } };
+    if (id === './FamilySection') return { FamilySection: 'FamilySection' };
     if (id === './ProfileAvatar') return { ProfileAvatar: 'ProfileAvatar', hasImageSource: photo => Boolean(photo?.uri), avatarSourceIdentity: photo => photo?.uri ?? '' };
     if (id === '@/lib/permissions') return { canCreateVisit: () => false };
     if (id === '@/lib/member-name') return { formatMemberName };
@@ -160,7 +161,18 @@ test('profile loading renders data before photos and ignores old member or sessi
   assert.equal(render('first').props.loading, undefined);
   for (const layout of [true, false]) {
     desktop = layout;
-    assert.equal(containsInitials(render('first')), false, 'Known portrait must not flash initials while signing');
+    const rendered = render('first');
+    assert.equal(containsInitials(rendered), false, 'Known portrait must not flash initials while signing');
+    const sectionOrder = [];
+    const findSections = node => {
+      if (Array.isArray(node)) return node.forEach(findSections);
+      if (!node || typeof node !== 'object') return;
+      if (node.props?.title === 'Contact') sectionOrder.push('Contact');
+      if (node.type === 'FamilySection') sectionOrder.push('Family');
+      findSections(node.props?.children);
+    };
+    findSections(rendered);
+    assert.deepEqual(sectionOrder, ['Contact', 'Family'], 'Family follows Contact on phone and desktop');
   }
   cleanup();
   render('first'); cleanup = focus();
