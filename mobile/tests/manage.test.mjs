@@ -63,6 +63,7 @@ async function bulkUiFixture(component, role = "admin") {
         if (id === "./route-params") return routeParams;
         if (id === "./model") return source;
         if (id === "./BulkMemberDeletion") return { BulkMemberDeletion: "BulkMemberDeletion" };
+        if (id === "./LastSeen") return { LastSeen: "LastSeen" };
         if (id === "./member-deletion") return { deleteMembers: (requests) => { calls.push(requests); return pending; } };
         throw new Error(`Unexpected module ${id}`);
     }, exports, { addEventListener: (event, callback) => keyboardListeners.set(event, callback), removeEventListener: (event) => keyboardListeners.delete(event) });
