@@ -64,6 +64,7 @@ export type ManagedAccount = {
     name: string;
     email: string;
     createdAt?: string;
+    lastSeenAt?: string | null;
     status: "pending" | "active" | "denied" | "revoked";
     role: "member" | "editor" | "admin";
     personId?: string | null;

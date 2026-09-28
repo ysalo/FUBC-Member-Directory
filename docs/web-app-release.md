@@ -2,6 +2,10 @@
 
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
+## Account Last Seen
+
+The Expo account activity feature is implemented in `mobile/` for native and web. Before deploying a client that reads the new account contract, apply `mobile/supabase/migrations/20260927000000_account_last_seen.sql` to the existing Supabase project through the reviewed SQL Editor workflow. Do not run `supabase db push`; migration history remains unreconciled. The migration adds a nullable server timestamp, extends the Administrator-only `management_accounts()` RPC, and adds authenticated self-recording. No migration has been applied as part of this implementation. Verify administrator access, pending/denied/revoked self-recording, and Member read isolation in Preview before release. UI rollback remains compatible with the database addition.
+
 ## Supabase Advisor Hardening
 
 Implemented on `feature/supabase-advisor-hardening`, based on current `dev`, for feature -> dev -> main delivery. No client contracts or public RPC signatures changed.
