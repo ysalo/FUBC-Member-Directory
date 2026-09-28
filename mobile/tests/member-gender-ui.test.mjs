@@ -9,7 +9,7 @@ const ts = require('typescript');
 const source = await readFile(new URL('../src/features/manage/MemberFormScreen.tsx', import.meta.url), 'utf8');
 const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 
-function formFixture({ existing = null, locale = 'en' } = {}) {
+function formFixture({ existing = null, locale = 'en', saveBarrier } = {}) {
   const states = [];
   let cursor = 0;
   let effectRan = false;
@@ -27,14 +27,14 @@ function formFixture({ existing = null, locale = 'en' } = {}) {
   const managementRepository = {
     async loadMember() { return existing; },
     async listMinistries() { return []; },
-    async saveMemberDetails(details) { saves.push(details); return { id: existing?.id ?? 'new', revision: 2 }; },
+    async saveMemberDetails(details) { saves.push(details); if (saveBarrier) await saveBarrier; return { id: existing?.id ?? 'new', revision: 2 }; },
   };
   const modules = new Map([
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
     ['react-native', { ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 }, Switch: 'Switch', View: 'View' }],
     ['react-native-safe-area-context', { SafeAreaView: 'SafeAreaView' }],
     ['expo-image-picker', {}],
-    ['expo-router', { useLocalSearchParams: () => ({ memberId: existing?.id }), useRouter: () => ({ canGoBack: () => true, back() {}, replace() {} }) }],
+    ['expo-router', { Link: 'Link', useLocalSearchParams: () => ({ memberId: existing?.id }), useRouter: () => ({ canGoBack: () => true, back() {}, replace() {} }) }],
     ['@/features/platform/alert', { Alert: { alert() {} } }],
     ['@/features/shell/use-desktop-layout', { useDesktopLayout: () => false }],
     ['@/features/accessibility/app-text', { Text: 'Text', TextInput: 'TextInput' }],
@@ -105,4 +105,28 @@ test('editing loads and can change the saved gender', async () => {
   await new Promise(setImmediate);
   assert.equal(ui.saves[0].gender, 'female');
   assert.equal(ui.saves[0].id, 'saved');
+});
+
+test('existing member family navigation exposes a stable link destination', async () => {
+  const ui = formFixture({ existing: { id: 'saved', name: 'Saved Member', gender: 'male', revision: 1 } });
+  await ui.load();
+  const link = ui.render().find(node => node.type === 'Link' && ui.text(node) === 'Edit family');
+  assert.equal(link.props.href, '/manage/member/saved/family');
+  assert.equal(link.props.asChild, true);
+  // Expo Router must retain ownership of the navigation handler on web.
+  assert.equal(link.props.onPress, undefined);
+  assert.equal(ui.button(ui.render(), 'Edit family').props.accessibilityRole, 'link');
+});
+
+test('pending member saves remove the family destination and restore it after failure', async () => {
+  let finish;
+  const saveBarrier = new Promise((_resolve, reject) => { finish = reject; });
+  const ui = formFixture({ existing: { id: 'saved', name: 'Saved Member', gender: 'male', revision: 1 }, saveBarrier });
+  await ui.load();
+  ui.button(ui.render(), 'Save member').props.onPress();
+  const nodes = ui.render();
+  assert.equal(nodes.some(node => node.type === 'Link' && node.props.href === '/manage/member/saved/family'), false);
+  assert.equal(ui.button(nodes, 'Edit family').props.disabled, true);
+  finish(new Error("Save failed")); await new Promise(setImmediate);
+  assert.ok(ui.render().some(node => node.type === 'Link' && node.props.href === '/manage/member/saved/family'));
 });
