@@ -49,33 +49,34 @@ export function FamilySection({ memberId }: { memberId: string }) {
         { label: copy.siblings, members: family.siblings },
     ].map((group) => ({ ...group, members: group.members.filter((member) => !member.archived) })).filter((group) => group.members.length > 0) : [];
     if (family && groups.length === 0) return null;
-    return <View style={styles.section}>
+    if (!current || current.failed) return <View style={styles.section}>
         <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.family}</Text>
         <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.line }]}>
-            {!current ? <View accessibilityLabel={memberCopy.loading} style={styles.feedback}><ActivityIndicator color={palette.accent} /></View> : current.failed ?
+            {!current ? <View accessibilityLabel={memberCopy.loading} style={styles.feedback}><ActivityIndicator color={palette.accent} /></View> :
                 <View accessibilityLiveRegion="polite" style={styles.feedback}>
                     <Text style={[styles.name, { color: palette.secondaryText }]}>{copy.loadError}</Text>
                     <Pressable accessibilityRole="button" onPress={load} style={[styles.retry, { backgroundColor: palette.accentSoft }]}>
                         <Text style={[styles.name, { color: palette.accent }]}>{memberCopy.retry}</Text>
                     </Pressable>
-                </View> : groups.map((group) => <View key={group.label} style={styles.category}>
-                    <Text accessibilityRole="header" style={[styles.categoryTitle, { color: palette.secondaryText }]}>{group.label}</Text>
-                    <View style={styles.avatars}>{group.members.map((relative) => <Link key={relative.id} href={`/members/${relative.id}`} asChild>
-                        <Pressable accessibilityRole="link" accessibilityLabel={`${relative.name}, ${memberCopy.profile}`} style={styles.relative} {...(Platform.OS === "web" ? { title: relative.name } : {})}>
-                            <ProfileAvatar name={relative.name} source={relative.photo} size={64} />
-                        </Pressable>
-                    </Link>)}</View>
-                </View>)}
+                </View>}
         </View>
     </View>;
+    return <>{groups.map((group) => <View key={group.label} style={styles.section}>
+        <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{group.label}</Text>
+        <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.line }]}>
+            <View style={styles.avatars}>{group.members.map((relative) => <Link key={relative.id} href={`/members/${relative.id}`} asChild>
+                <Pressable accessibilityRole="link" accessibilityLabel={`${relative.name}, ${memberCopy.profile}`} style={styles.relative} {...(Platform.OS === "web" ? { title: relative.name } : {})}>
+                    <ProfileAvatar name={relative.name} source={relative.photo} size={64} />
+                </Pressable>
+            </Link>)}</View>
+        </View>
+    </View>)}</>;
 }
 
 const styles = StyleSheet.create({
     section: { gap: 8 },
     title: { fontSize: 19, fontWeight: "800" },
-    card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 18 },
-    category: { gap: 6 },
-    categoryTitle: { fontSize: 14, fontWeight: "700" },
+    card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14 },
     avatars: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
     relative: { width: 64, height: 64, borderRadius: 32 },
     name: { fontSize: 16, lineHeight: 23 },
