@@ -264,7 +264,7 @@ export function DutyScheduleScreen() {
                   })}
                 </View>
               ))
-            )}
+            ) : null}
           </>
         )}
       </ScrollView>
