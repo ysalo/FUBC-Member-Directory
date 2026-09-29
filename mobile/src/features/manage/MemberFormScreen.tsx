@@ -139,6 +139,7 @@ export function MemberFormScreen() {
                       membershipDate: "Дата вступу до церкви",
                       membershipDateKnown: "Дата вступу відома",
                       invalidMembershipDate: "Вкажіть коректну дату вступу не пізніше сьогоднішньої.",
+                      invalidBirthday: "Вкажіть коректну дату народження не пізніше сьогоднішньої.",
                       ministry: "Служіння",
                       care: "Статус опіки",
                       gender: "Стать",
@@ -189,6 +190,7 @@ export function MemberFormScreen() {
                       membershipDate: "Member since",
                       membershipDateKnown: "Membership date known",
                       invalidMembershipDate: "Enter a valid membership date no later than today.",
+                      invalidBirthday: "Enter a valid birthday no later than today.",
                       ministry: "Ministries",
                       care: "Care status",
                       gender: "Gender",
@@ -284,6 +286,10 @@ export function MemberFormScreen() {
         }
         if (!gender) {
             setError(labels.genderRequired);
+            return;
+        }
+        if (birthday && !acceptsDateFieldValue(birthday, "date", localDateValue(new Date()))) {
+            setError(labels.invalidBirthday);
             return;
         }
         if (membershipJoinedAt && !acceptsDateFieldValue(membershipJoinedAt, "date", localDateValue(new Date()))) {
@@ -628,6 +634,17 @@ export function MemberFormScreen() {
                             >
                                 {labels.birthday}
                             </Text>
+                            <TextInput
+                                accessibilityLabel={`${labels.birthday}, ${labels.dateHint}`}
+                                editable={state !== "saving"}
+                                keyboardType="numbers-and-punctuation"
+                                maxLength={10}
+                                onChangeText={setBirthday}
+                                placeholder={labels.dateHint}
+                                placeholderTextColor={palette.secondaryText}
+                                style={[styles.input, { backgroundColor: palette.surface, borderColor: palette.line, color: palette.text }]}
+                                value={birthday}
+                            />
                             <NativeDateTimeField
                                 accessibilityLabel={labels.birthday}
                                 accentColor={palette.accent}
@@ -647,7 +664,19 @@ export function MemberFormScreen() {
                                 <Text style={{ color: palette.text, flex: 1 }}>{labels.membershipDateKnown}</Text>
                                 <Switch accessibilityLabel={labels.membershipDateKnown} disabled={state === "saving"} value={Boolean(membershipJoinedAt)} onValueChange={(known) => setMembershipJoinedAt(known ? localDateValue(new Date()) : "")} />
                             </View>
-                            {membershipJoinedAt ? <NativeDateTimeField
+                            {membershipJoinedAt ? <>
+                                <TextInput
+                                    accessibilityLabel={`${labels.membershipDate}, ${labels.dateHint}`}
+                                    editable={state !== "saving"}
+                                    keyboardType="numbers-and-punctuation"
+                                    maxLength={10}
+                                    onChangeText={setMembershipJoinedAt}
+                                    placeholder={labels.dateHint}
+                                    placeholderTextColor={palette.secondaryText}
+                                    style={[styles.input, { backgroundColor: palette.surface, borderColor: palette.line, color: palette.text }]}
+                                    value={membershipJoinedAt}
+                                />
+                                <NativeDateTimeField
                                 accessibilityLabel={labels.membershipDate}
                                 accentColor={palette.accent}
                                 backgroundColor={palette.surface}
@@ -658,7 +687,8 @@ export function MemberFormScreen() {
                                 onChange={setMembershipJoinedAt}
                                 textColor={palette.text}
                                 value={membershipJoinedAt}
-                            /> : null}
+                                />
+                            </> : null}
                         </View>
                         <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.contact}</Text>
                         <Field
