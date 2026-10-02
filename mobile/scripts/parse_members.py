@@ -37,14 +37,44 @@ def parse_name(value: Any) -> dict[str, str] | None:
     parts = text_value(value).split()
     if len(parts) == 2:
         last_name, first_name = parts
-        return {"name": f"{first_name} {last_name}"}
+        return {"name": f"{normalize_apostrophes(first_name)} {normalize_apostrophes(last_name)}"}
     if len(parts) == 3:
         last_name, first_name, patronymic = parts
         return {
-            "name": f"{first_name} {last_name}",
-            "patronymic": patronymic,
+            "name": f"{normalize_apostrophes(first_name)} {normalize_apostrophes(last_name)}",
+            "patronymic": normalize_apostrophes(patronymic),
         }
     return None
+
+
+def normalize_apostrophes(value: str) -> str:
+    """Normalize straight, curly, modifier, and mis-entered quote marks."""
+    return re.sub(r"['’‘ʼ`\"“”]", "’", value)
+
+
+def categorize_issues(issues: list[dict[str, Any]]) -> tuple[dict[str, list[dict[str, Any]]], dict[str, int]]:
+    """Group audit issues under category keys and return category totals."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in issues:
+        issue = str(item.get("issue", "")).casefold()
+        field = str(item.get("field", "")).casefold()
+        if issue.startswith("interpreted "):
+            category = "date_interpretation"
+        elif "missing" in issue:
+            category = "missing_data"
+        elif field in {"birth_date", "membership_joined_at"} or any(token in issue for token in ("date", "numeric date", "invalid date")):
+            category = "date_format"
+        elif field in {"phone", "phone_number"} or "phone" in issue:
+            category = "phone"
+        elif field == "address" or "address" in issue:
+            category = "address_quality"
+        elif "name" in issue:
+            category = "name_parse"
+        else:
+            category = "other"
+        grouped.setdefault(category, []).append(item)
+    grouped = dict(sorted(grouped.items()))
+    return grouped, {category: len(items) for category, items in grouped.items()}
 
 
 def parse_date(value: Any, *, epoch: datetime, number_format: str = "") -> tuple[str | None, str | None]:
@@ -183,21 +213,24 @@ def extract(input_path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
 
         members.append(member)
 
+    categorized_issues, issue_category_counts = categorize_issues(issues)
     audit = {
         "input_file": input_path.name,
         "sheet": sheet.title,
         "records_extracted": len(members),
         "home_phone_audit": phone_audit,
-        "issues": issues,
+        "issues": categorized_issues,
+        "issue_category_counts": issue_category_counts,
     }
     return members, audit
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Extract Ukrainian member records from an XLSX file. Output JSON files are written beside the input."
+        description="Extract Ukrainian member records from an XLSX file."
     )
     parser.add_argument("xlsx_file", type=Path, help="Path to the original .xlsx workbook")
+    parser.add_argument("--output-dir", type=Path, help="Directory for members.json and members_audit.json (default: beside the workbook)")
     args = parser.parse_args()
     input_path = args.xlsx_file.expanduser().resolve()
     if not input_path.is_file():
@@ -211,8 +244,10 @@ def main() -> int:
         print(f"Could not parse workbook: {error}", file=sys.stderr)
         return 1
 
-    members_path = input_path.with_name("members.json")
-    audit_path = input_path.with_name("members_audit.json")
+    output_dir = args.output_dir.expanduser().resolve() if args.output_dir else input_path.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+    members_path = output_dir / "members.json"
+    audit_path = output_dir / "members_audit.json"
     members_path.write_text(json.dumps(members, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     audit_path.write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {len(members)} members to {members_path}")

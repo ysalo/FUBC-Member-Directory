@@ -68,8 +68,15 @@ def convert_audit(source: Path) -> Path:
         raise ValueError(f"{source} must contain an audit JSON object")
 
     rows: list[dict[str, Any]] = []
-    for issue in data.get("issues", []):
-        rows.append({"record_type": "issue", **issue})
+    issues = data.get("issues", [])
+    if isinstance(issues, dict):
+        issue_groups = issues.values()
+    else:
+        # Also accept older audit files that stored a flat issue array.
+        issue_groups = [issues]
+    for group in issue_groups:
+        for issue in group:
+            rows.append({"record_type": "issue", **{key: value for key, value in issue.items() if key != "category"}})
     for phone in data.get("home_phone_audit", []):
         rows.append({"record_type": "phone_source", **phone})
 
