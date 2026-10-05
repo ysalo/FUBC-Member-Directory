@@ -1,3 +1,9 @@
+## Compact surname index (2026-10-05, version 1.4.3)
+
+The directory surname index uses 13px letter spacing (previously 18px) and a 20px strip (previously 30px). The dedicated list gutter shrinks from 42px to 24px, with a 2px gap between member rows and the index touch area. Search and single-section lists reclaim the gutter completely. The centered, borderless index retains tap, keyboard and finger/mouse scrubbing; its responder stays inside the gutter and cannot intercept member row clicks.
+
+No backend change or migration; rollback to 1.4.2 is compatible. Required verification is `pnpm verify`, `pnpm build:web`, and phone/desktop browser checks in light/dark themes with intercepted fixture data, including index bounds, both-direction mouse/touch scrubbing, row-edge member clicks, search, departure confirmations/retry, and public auth callbacks/deep links. Hosted Preview is SSO protected; physical native and live OAuth checks are not claimed. Final validation and deployment evidence belong to the feature/release PRs.
+
 ## Directory surname scrubbing and hidden visitation (2026-10-05, version 1.4.2)
 
 The surname index is transparent, borderless and vertically centered against the scrollable roster. Tapping a letter or dragging a mouse/finger along the index jumps the roster immediately to that section; the full index fits the available roster height. Normal list scrolling remains available with its scrollbar hidden on web and native. Member rows omit disclosure chevrons while retaining profile links and family selection controls.
