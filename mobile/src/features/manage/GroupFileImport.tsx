@@ -4,12 +4,12 @@ import { Text, TextInput } from "@/features/accessibility/app-text";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import type { GroupManagementState } from "./model";
-import { type GroupFile, matchGroupFile, normalizeGroupName, parseGroupFile } from "./group-import";
+import { type GroupFile, groupPersonName, groupPersonBirthDate, matchGroupFile, normalizeGroupName, parseGroupFile } from "./group-import";
 import { pickGroupFile } from "./pick-group-file";
 
 const labels = {
-  en: { choose: "Upload group file", detail: "Choose a JSON group file with verify empty or absent. Match every name to an existing person, then review the group before saving. Missing people are never created.", resolve: "Choose a match", search: "Search existing people", apply: "Use these assignments", duplicate: "Each person must be assigned only once.", failed: "Could not read the group file.", matched: "Matched", pending: "Needs a match", replace: "Choosing a file replaces this import draft." },
-  uk: { choose: "Завантажити файл групи", detail: "Оберіть JSON-файл групи з порожнім або відсутнім verify. Зіставте кожне ім’я з наявним учасником і перевірте групу перед збереженням. Нових учасників не буде створено.", resolve: "Оберіть відповідність", search: "Пошук наявних учасників", apply: "Використати ці призначення", duplicate: "Кожного учасника можна призначити лише один раз.", failed: "Не вдалося прочитати файл групи.", matched: "Зіставлено", pending: "Потрібне зіставлення", replace: "Вибір файлу замінює чернетку імпорту." },
+  en: { choose: "Upload group file", detail: "Choose a JSON group file with verify empty or absent. Match every name to an existing person, then review the group before saving. Missing people are never created.", resolve: "Choose a match", search: "Search existing people", apply: "Use these assignments", duplicate: "Each person must be assigned only once.", failed: "Could not read the group file.", matched: "Matched", pending: "Needs a match", replace: "Choosing a file replaces this import draft.", born: "Born", unknownBirth: "Birth date unavailable" },
+  uk: { choose: "Завантажити файл групи", detail: "Оберіть JSON-файл групи з порожнім або відсутнім verify. Зіставте кожне ім’я з наявним учасником і перевірте групу перед збереженням. Нових учасників не буде створено.", resolve: "Оберіть відповідність", search: "Пошук наявних учасників", apply: "Використати ці призначення", duplicate: "Кожного учасника можна призначити лише один раз.", failed: "Не вдалося прочитати файл групи.", matched: "Зіставлено", pending: "Потрібне зіставлення", replace: "Вибір файлу замінює чернетку імпорту.", born: "Дата народження", unknownBirth: "Дата народження невідома" },
 };
 export function GroupFileImport({ data, disabled, onPending, onApply }: { data: GroupManagementState; disabled: boolean; onPending: (pending: boolean) => void; onApply: (file: GroupFile, deacons: string[], members: string[]) => void }) {
   const { palette } = useAppearance();
@@ -39,20 +39,21 @@ export function GroupFileImport({ data, disabled, onPending, onApply }: { data: 
     {error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{error}</Text> : null}
     {file ? <>
       <Text style={{ color: palette.text, fontWeight: "700" }}>{file.name} · {file.deacons.length} / {file.members.length}</Text>
-      {[...file.deacons, ...file.members].map((name, index) => {
-        const people = index < 2 ? data.deacons : data.members;
+      {[...file.deacons, ...file.members].map((person, index) => {
+        const name = groupPersonName(person), birthDate = groupPersonBirthDate(person);
+        const people = index < file.deacons.length ? data.deacons : data.members;
         const selected = people.find(person => person.personId === ids[index]);
         const candidates = people.filter(person => !query.trim() || normalizeGroupName(person.importName ?? person.name).includes(normalizeGroupName(query)));
         return <View key={index} style={{ gap: 6, padding: 10, borderWidth: 1, borderColor: palette.line, borderRadius: 12 }}>
-          <Pressable accessibilityRole="button" onPress={() => { setEditing(editing === index ? null : index); setQuery(""); }}><Text style={{ color: palette.text }}>{index < 2 ? (locale === "uk" ? "Диякон: " : "Deacon: ") : ""}{name}</Text><Text style={{ color: selected ? palette.secondaryText : palette.danger }}>{selected ? `${copy.matched}: ${selected.importName ?? selected.name}` : copy.pending} · {copy.resolve}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => { setEditing(editing === index ? null : index); setQuery(""); }}><Text style={{ color: palette.text }}>{index < file.deacons.length ? (locale === "uk" ? "Диякон: " : "Deacon: ") : ""}{name}{birthDate ? ` · ${copy.born}: ${birthDate}` : ""}</Text><Text style={{ color: selected ? palette.secondaryText : palette.danger }}>{selected ? `${copy.matched}: ${selected.importName ?? selected.name} · ${selected.birthDate ? `${copy.born}: ${selected.birthDate}` : copy.unknownBirth}` : copy.pending} · {copy.resolve}</Text></Pressable>
           {editing === index ? <>
             <TextInput accessibilityLabel={copy.search} placeholder={copy.search} placeholderTextColor={palette.secondaryText} value={query} onChangeText={setQuery} style={{ color: palette.text, borderWidth: 1, borderColor: palette.line, borderRadius: 10, padding: 10 }} />
-            {candidates.map(person => <Pressable key={person.personId} accessibilityRole="button" disabled={ids.some((id, slot) => slot !== index && id === person.personId)} onPress={() => { setIds(current => current.map((id, slot) => slot === index ? person.personId : id)); setEditing(null); }} style={{ padding: 10, opacity: ids.some((id, slot) => slot !== index && id === person.personId) ? .4 : 1 }}><Text style={{ color: palette.text }}>{person.importName ?? person.name}</Text></Pressable>)}
+            {candidates.map(person => <Pressable key={person.personId} accessibilityRole="button" disabled={ids.some((id, slot) => slot !== index && id === person.personId)} onPress={() => { setIds(current => current.map((id, slot) => slot === index ? person.personId : id)); setEditing(null); }} style={{ padding: 10, opacity: ids.some((id, slot) => slot !== index && id === person.personId) ? .4 : 1 }}><Text style={{ color: palette.text }}>{person.importName ?? person.name} · {person.birthDate ? `${copy.born}: ${person.birthDate}` : copy.unknownBirth}</Text></Pressable>)}
           </> : null}
         </View>;
       })}
       {ids.every(Boolean) && new Set(ids).size !== ids.length ? <Text style={{ color: palette.danger }}>{copy.duplicate}</Text> : null}
-      <Pressable accessibilityRole="button" accessibilityState={{ disabled: !complete }} disabled={!complete} onPress={() => { if (complete) { onApply(file, ids.slice(0, 2) as string[], ids.slice(2) as string[]); setFile(null); onPending(false); } }} style={[button, !complete && { opacity: .5 }]}><Text style={{ color: "#FFF", fontWeight: "700" }}>{copy.apply}</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: !complete }} disabled={!complete} onPress={() => { if (complete) { onApply(file, ids.slice(0, file.deacons.length) as string[], ids.slice(file.deacons.length) as string[]); setFile(null); onPending(false); } }} style={[button, !complete && { opacity: .5 }]}><Text style={{ color: "#FFF", fontWeight: "700" }}>{copy.apply}</Text></Pressable>
     </> : null}
   </View>;
 }

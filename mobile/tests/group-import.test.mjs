@@ -26,3 +26,29 @@ test("upload accepts only absent or empty verify sections and never silently dro
     assert.throws(() => parseGroupFile(JSON.stringify({ ...file, verify })), /verify/);
   }
 });
+
+test("birth dates distinguish identical names without falling back to another person", () => {
+  const data = { groups: [], deacons: [{ name: "Leader One", personId: "one" }], members: [
+    { name: "Same Full Name", personId: "older", birthDate: "1944-08-19" },
+    { name: "Same Full Name", personId: "younger", birthDate: "1977-01-03" },
+  ] };
+  const group = { ...file, deacons: ["Leader One"], members: [{ name: "Same Full Name", birth_date: "1944-08-19" }] };
+  assert.deepEqual(parseGroupFile(JSON.stringify(group)), group);
+  assert.deepEqual(matchGroupFile(group, data), ["one", "older"]);
+  assert.deepEqual(matchGroupFile({ ...group, members: ["Same Full Name"] }, data), ["one", null]);
+  assert.deepEqual(matchGroupFile({ ...group, members: [{ name: "Same Full Name", birth_date: "2000-01-01" }] }, data), ["one", null]);
+  data.members.push({ name: "Same Full Name", personId: "third", birthDate: "1944-08-19" });
+  assert.deepEqual(matchGroupFile(group, data), ["one", null]);
+});
+
+test("same-name people require distinct valid birth dates; missing or mixed identities stay invalid", () => {
+  const group = { ...file, deacons: ["Leader One"], members: [
+    { name: "Same Full Name", birth_date: "1944-08-19" },
+    { name: "Same Full Name", birth_date: "1977-01-03" },
+  ] };
+  assert.deepEqual(parseGroupFile(JSON.stringify(group)), group);
+  for (const members of [[group.members[0], group.members[0]], ["Same Full Name", group.members[0]], [null], [{ name: "Person", birth_date: "1944-02-30" }], [{ name: "Person", birth_date: "08-19" }], [{ name: "Person" }]]) {
+    assert.throws(() => parseGroupFile(JSON.stringify({ ...group, members })));
+  }
+  assert.throws(() => parseGroupFile(JSON.stringify({ ...group, deacons: ["One", "Two", "Three"] })));
+});

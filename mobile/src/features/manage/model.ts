@@ -42,6 +42,7 @@ export type ManagedGroup = {
 
 export type ManagedDeacon = {
     importName?: string;
+    birthDate?: string | null;
     accountId?: string | null;
     personId: string;
     name: string;
@@ -51,6 +52,7 @@ export type ManagedDeacon = {
 
 export type ManagedGroupMember = {
     importName?: string;
+    birthDate?: string | null;
     personId: string;
     name: string;
     currentMembershipGroupId: string | null;
