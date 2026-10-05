@@ -28,6 +28,13 @@ Node 24 `pnpm verify` and `pnpm build:web` passed. Interaction tests cover forwa
 
 # Web Application Release and Deployment
 
+## Group member rows (2026-10-05, version 1.5.1)
+
+Group detail sorts its member roster by structured last name using the shared directory comparator, including Cyrillic ordering and repair of visual Latin letters in Cyrillic surnames. Filtering preserves that surname order. Member and responsible-deacon rows use the shared abbreviated patronymic formatter (for example, Олександр В. Данилюк); names without a patronymic remain unchanged. The existing group queries now include patronymic and retain structured name fields. Search includes the full patronymic, and profile links remain clickable with their row chevrons removed.
+
+No backend change, migration or group-data mutation is required; rollback to 1.5.0 is compatible. Verify/build and phone/desktop browser fixtures cover surname order despite conflicting first-name order, mixed alphabets, patronymic initials, absent patronymics, full-patronymic search, profile navigation and zero overflow/errors/notification calls. Physical native/live OAuth are unverified. Feature and release PRs record final CI, deployment and production evidence.
+
+
 ## Group JSON file upload (2026-10-05)
 
 Manage → Groups → Add group now accepts a versioned JSON file containing the full group heading, two deacons and member names. A nonempty or malformed `verify` section blocks file upload; only an empty array or absent section is accepted. Imports attach existing people and never create members. A review lists every source name alongside its existing-person match; unique complete names match automatically and missing/ambiguous names require manual resolution. All rows must resolve to distinct people before applying assignments to the editor. The file only fills a draft; the existing authorized `save_group` RPC and movement confirmation perform the save. Full surname/first/patronymic identity is fetched for import without changing the editor display names. Invalid files and canceled picking preserve the prior draft, pending imports block saving, and native picker copies are deleted. No backend change or migration is needed; frontend rollback remains compatible.
