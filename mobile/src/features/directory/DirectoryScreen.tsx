@@ -27,12 +27,11 @@ import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { formatPhoneNumber } from "@/lib/phone";
 import { formatMemberName } from "@/lib/member-name";
 
-import { getDirectoryVisitCount, listDirectory } from "./directory-repository";
+import { listDirectory } from "./directory-repository";
 import type { Member } from "./members";
 
 async function loadDirectoryData(fresh: boolean) {
-    const [members, visits] = await Promise.all([listDirectory({ fresh }), getDirectoryVisitCount({ fresh })]);
-    return { members, visits };
+    return { members: await listDirectory({ fresh }) };
 }
 
 export function MemberRow({
@@ -175,12 +174,12 @@ export function MemberRow({
                     </Text>
                 </>
             ) : null}
-            <Ionicons
+            {selection ? <Ionicons
                 accessibilityElementsHidden
                 color={selection?.checked && selection.mode !== "remove" ? palette.accent : palette.secondaryText}
-                name={selection ? selection.mode === "remove" ? "close-circle-outline" : selection.checked ? "checkmark-circle" : "ellipse-outline" : "chevron-forward"}
+                name={selection.mode === "remove" ? "close-circle-outline" : selection.checked ? "checkmark-circle" : "ellipse-outline"}
                 size={px(22)}
-            />
+            /> : null}
         </Pressable>
     );
     return Platform.OS === "web" && !selection ? (
@@ -243,6 +242,10 @@ export function DirectoryScreen() {
     const nativeListRef = useRef<SectionList<Member>>(null);
     const sectionOffsets = useRef<Record<string, number>>({});
     const pendingSection = useRef<number | null>(null);
+    const alphabetRef = useRef<View>(null);
+    const alphabetBounds = useRef({ top: 0, height: 1 });
+    const scrubbedSection = useRef<number | null>(null);
+    const scrubPosition = useRef<number | null>(null);
     const jumpRetry = useRef<ReturnType<typeof setTimeout> | null>(null);
     const jumpAttempts = useRef(0);
     const [query, setQuery] = useState("");
@@ -250,11 +253,11 @@ export function DirectoryScreen() {
     const resource = useWarmResource("directory", loadDirectoryData);
     const directoryMembers = resource.data?.members ?? [];
     const loadState = resource.status;
-    const visitCount = resource.data?.visits ?? 0;
     const loadDirectory = resource.refresh;
     type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor" | "ungrouped" | "male" | "female";
     const [filters, setFilters] = useState<DirectoryFilter[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
+    const [listHeight, setListHeight] = useState(0);
 
     useEffect(() => {
         if (!query) {
@@ -314,20 +317,47 @@ export function DirectoryScreen() {
         if (jumpRetry.current) clearTimeout(jumpRetry.current);
         pendingSection.current = null;
     }, [sections]);
-    const jumpToSection = (index: number) => {
+    const jumpToSection = (index: number, animated = true) => {
         if (jumpRetry.current) clearTimeout(jumpRetry.current);
         jumpAttempts.current = 0;
-        if (Platform.OS === "web") webListRef.current?.scrollTo({ y: sectionOffsets.current[sections[index].title] ?? 0, animated: true });
+        if (Platform.OS === "web") webListRef.current?.scrollTo({ y: sectionOffsets.current[sections[index].title] ?? 0, animated });
         else {
             pendingSection.current = index;
-            nativeListRef.current?.scrollToLocation({ sectionIndex: index, itemIndex: 0, viewPosition: 0, animated: true });
+            nativeListRef.current?.scrollToLocation({ sectionIndex: index, itemIndex: 0, viewPosition: 0, animated });
+        }
+    };
+    const scrubTo = (pageY: number) => {
+        const { top, height } = alphabetBounds.current;
+        const index = Math.max(0, Math.min(sections.length - 1, Math.floor((pageY - top) / height * sections.length)));
+        if (scrubbedSection.current !== index) {
+            scrubbedSection.current = index;
+            jumpToSection(index, false);
         }
     };
     const alphabetIndex = sections.length > 1 ? (
         <View pointerEvents="box-none" style={styles.alphabetOverlay}>
-            <ScrollView testID="directory-alphabet-index" accessibilityLabel={locale === "uk" ? "Покажчик прізвищ" : "Last name index"} showsVerticalScrollIndicator={false} style={[styles.alphabetIndex, { backgroundColor: palette.surface }]} contentContainerStyle={styles.alphabetContent}>
-                {sections.map((section, index) => <Pressable key={section.title} accessibilityRole="button" accessibilityLabel={`${locale === "uk" ? "До прізвищ на" : "Jump to last names starting with"} ${section.title}`} onPress={() => jumpToSection(index)} style={({ pressed }) => [styles.alphabetButton, pressed && { backgroundColor: palette.accentSoft }]}><Text style={{ color: palette.accent, fontSize: 11, fontWeight: "700" }}>{section.title}</Text></Pressable>)}
-            </ScrollView>
+            <View
+                ref={alphabetRef}
+                testID="directory-alphabet-index"
+                accessibilityLabel={locale === "uk" ? "Покажчик прізвищ" : "Last name index"}
+                style={[styles.alphabetIndex, { height: Math.min(sections.length * 18, listHeight * 0.9) }]}
+                onStartShouldSetResponderCapture={() => true}
+                onMoveShouldSetResponderCapture={() => true}
+                onResponderGrant={(event) => {
+                    scrubPosition.current = event.nativeEvent.pageY;
+                    scrubbedSection.current = null;
+                    alphabetRef.current?.measureInWindow((_x, top, _width, height) => {
+                        alphabetBounds.current = { top, height: Math.max(1, height) };
+                        if (scrubPosition.current !== null) scrubTo(scrubPosition.current);
+                    });
+                }}
+                onResponderMove={(event) => { scrubPosition.current = event.nativeEvent.pageY; scrubTo(scrubPosition.current); }}
+                onResponderTerminationRequest={() => false}
+                onResponderRelease={() => { scrubbedSection.current = null; }}
+                onResponderTerminate={() => { scrubbedSection.current = null; scrubPosition.current = null; }}
+            >
+                {sections.map((section, index) => <Pressable key={section.title} accessibilityRole="button" accessibilityLabel={`${locale === "uk" ? "До прізвищ на" : "Jump to last names starting with"} ${section.title}`} onPress={() => jumpToSection(index, false)} style={styles.alphabetButton}><Text style={{ color: palette.accent, fontSize: 11, fontWeight: "700" }}>{section.title}</Text></Pressable>)}
+            </View>
         </View>
     ) : null;
 
@@ -352,36 +382,6 @@ export function DirectoryScreen() {
 
     const summary = (
         <View>
-            {visitCount > 0 ? (
-                <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.push("/visitation")}
-                    style={[
-                        styles.visitAlert,
-                        { backgroundColor: palette.subtle },
-                    ]}
-                >
-                    <Ionicons
-                        accessibilityElementsHidden
-                        color={palette.accent}
-                        name="notifications-outline"
-                        size={px(18)}
-                    />
-                    <Text
-                        style={[styles.visitAlertText, { color: palette.text }]}
-                    >
-                        {locale === "uk"
-                            ? `Відвідування: ${visitCount}`
-                            : `Active visitations: ${visitCount}`}
-                    </Text>
-                    <Ionicons
-                        accessibilityElementsHidden
-                        color={palette.secondaryText}
-                        name="chevron-forward"
-                        size={px(18)}
-                    />
-                </Pressable>
-            ) : null}
             <View
                 accessibilityLabel="Directory totals"
                 style={[
@@ -689,10 +689,11 @@ export function DirectoryScreen() {
                     </View>
                 )}
                 <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
-                <View style={{ flex: 1, position: "relative" }}>
+                <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={{ flex: 1, position: "relative" }}>
                 <ScrollView
                     ref={webListRef}
                     testID="directory-scroll"
+                    showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.webContent}
                     keyboardShouldPersistTaps="handled"
                     style={styles.rosterScroll}
@@ -741,9 +742,10 @@ export function DirectoryScreen() {
         <View style={[styles.safe, { backgroundColor: palette.background }]}>
             {stickyOverview}
             <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
-            <View style={{ flex: 1, position: "relative" }}>
+            <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={{ flex: 1, position: "relative" }}>
             <SectionList
                 ref={nativeListRef}
+                showsVerticalScrollIndicator={false}
                 onScrollToIndexFailed={({ averageItemLength, index }) => {
                     if (++jumpAttempts.current > 8) return;
                     nativeListRef.current?.getScrollResponder()?.scrollTo({ y: averageItemLength * index, animated: false });
@@ -797,10 +799,9 @@ const scale = 1;
 const px = (value: number) => value * scale;
 
 const styles = StyleSheet.create({
-    alphabetOverlay: { position: "absolute", right: 6, top: 8, bottom: 8, justifyContent: "center", alignItems: "center", width: 30 },
-    alphabetIndex: { flexGrow: 0, maxHeight: "90%", width: 30, borderRadius: 18, boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)" },
-    alphabetContent: { alignItems: "center", paddingVertical: 8 },
-    alphabetButton: { minHeight: 18, width: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+    alphabetOverlay: { position: "absolute", right: 6, top: 0, bottom: 0, justifyContent: "center", alignItems: "center", width: 30 },
+    alphabetIndex: { width: 30, alignItems: "center" },
+    alphabetButton: { flex: 1, width: 30, alignItems: "center", justifyContent: "center" },
     skeletonText: { alignSelf: "flex-start", borderRadius: 4 },
     desktopScreen: {
         alignSelf: "center",
@@ -975,17 +976,6 @@ const styles = StyleSheet.create({
         paddingVertical: px(16),
     },
     summaryFooterText: { fontSize: px(13), fontWeight: "600" },
-    visitAlert: {
-        alignItems: "center",
-        borderRadius: px(12),
-        flexDirection: "row",
-        gap: px(8),
-        marginHorizontal: px(18),
-        marginTop: px(14),
-        minHeight: px(44),
-        paddingHorizontal: px(12),
-    },
-    visitAlertText: { flex: 1, fontSize: px(14), fontWeight: "700" },
     empty: {
         alignItems: "center",
         paddingHorizontal: px(30),

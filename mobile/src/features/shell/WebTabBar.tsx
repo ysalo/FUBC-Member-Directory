@@ -6,14 +6,12 @@ import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
-import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
 import { usePendingAccountCount } from "@/features/manage/use-pending-account-count";
-import { canCreateVisit, canManageDirectory } from "@/lib/permissions";
+import { canManageDirectory } from "@/lib/permissions";
 
 const tabs = [
   { labelKey: "directory", path: "/", href: "/(directory)", icon: "list", outlineIcon: "list-outline" },
   { labelKey: "groups", path: "/groups", icon: "people-circle", outlineIcon: "people-circle-outline" },
-  { labelKey: "visitation", path: "/visitation", icon: "home", outlineIcon: "home-outline" },
   { labelKey: "schedule", path: "/schedule", icon: "calendar", outlineIcon: "calendar-outline" },
   { labelKey: "manage", path: "/manage", icon: "settings", outlineIcon: "settings-outline" },
   { labelKey: "menu", path: "/menu", icon: "menu", outlineIcon: "menu-outline" },
@@ -30,11 +28,9 @@ export function WebTabBar() {
   const { copy } = useLocalization();
   const { palette } = useAppearance();
   const session = useSession();
-  const activeVisitationCount = useActiveVisitationCount();
   const pendingAccountCount = usePendingAccountCount();
   const visibleTabs = tabs.filter((tab) =>
-    (tab.labelKey !== "manage" || (session.status === "ready" && canManageDirectory(session.account))) &&
-    (tab.labelKey !== "visitation" || (session.status === "ready" && canCreateVisit(session.account))));
+    (tab.labelKey !== "manage" || (session.status === "ready" && canManageDirectory(session.account))));
   if (Platform.OS === "ios") return null;
 
   return (
@@ -51,11 +47,6 @@ export function WebTabBar() {
           >
             <View style={styles.iconContainer}>
               <TabIcon active={active} activeColor={palette.accent} filled={tab.icon} inactive={palette.secondaryText} outline={tab.outlineIcon} />
-              {tab.labelKey === "visitation" && activeVisitationCount > 0 ? (
-                <View style={[styles.badge, { backgroundColor: palette.accent }]}>
-                  <Text style={styles.badgeText}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</Text>
-                </View>
-              ) : null}
               {tab.labelKey === "manage" && pendingAccountCount > 0 ? (
                 <View accessible accessibilityLabel={`${copy.pendingAccounts}: ${pendingAccountCount}`} style={[styles.badge, { backgroundColor: palette.accent }]}>
                   <Text style={styles.badgeText}>{pendingAccountCount > 99 ? "99+" : pendingAccountCount}</Text>

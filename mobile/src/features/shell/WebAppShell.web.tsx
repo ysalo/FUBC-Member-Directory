@@ -5,15 +5,13 @@ import { type ComponentProps, type PropsWithChildren, useEffect, useState } from
 import { useTextSize } from "@/features/accessibility/TextSizeProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
-import { useActiveVisitationCount } from "@/features/visitation/use-active-visitation-count";
 import { usePendingAccountCount } from "@/features/manage/use-pending-account-count";
 import { dismissAllWebAlerts } from "@/features/platform/alert.web";
-import { canCreateVisit, canManageDirectory } from "@/lib/permissions";
+import { canManageDirectory } from "@/lib/permissions";
 
 const destinations = [
   { key: "directory", href: "/", icon: "list-outline" },
   { key: "groups", href: "/groups", icon: "people-circle-outline" },
-  { key: "visitation", href: "/visitation", icon: "home-outline" },
   { key: "schedule", href: "/schedule", icon: "calendar-outline" },
   { key: "manage", href: "/manage", icon: "settings-outline" },
   { key: "menu", href: "/menu", icon: "menu-outline" },
@@ -29,7 +27,6 @@ export function WebAppShell({ children }: PropsWithChildren) {
   const { copy, locale } = useLocalization();
   const { scale } = useTextSize();
   const session = useSession();
-  const activeVisitationCount = useActiveVisitationCount();
   const pendingAccountCount = usePendingAccountCount();
   const accountId = session.status === "ready" ? session.account.id : null;
   const [online, setOnline] = useState(true);
@@ -54,14 +51,12 @@ export function WebAppShell({ children }: PropsWithChildren) {
         <span className="web-navigation-brand-label">{locale === "uk" ? "Довідник членів церкви" : "Member Directory"}</span>
       </div>
       <div className="web-navigation-links">{destinations.filter((item) =>
-        (item.key !== "manage" || canManageDirectory(account)) &&
-        (item.key !== "visitation" || canCreateVisit(account))).map((item) => {
+        (item.key !== "manage" || canManageDirectory(account))).map((item) => {
         const active = item.href === "/" ? pathname === "/" || pathname.startsWith("/members/") : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const label = copy.tabs[item.key];
         return <Link key={item.key} href={item.href as never} asChild><NavigationAnchor className="web-navigation-link" title={label} aria-current={active ? "page" : undefined}>
           <span className="web-navigation-icon">
             <span aria-hidden="true"><Ionicons name={item.icon} size={24} color="currentColor" /></span>
-            {item.key === "visitation" && activeVisitationCount > 0 ? <span className="web-navigation-badge" aria-label={`${activeVisitationCount} active visitations`}>{activeVisitationCount > 99 ? "99+" : activeVisitationCount}</span> : null}
             {item.key === "manage" && pendingAccountCount > 0 ? <span className="web-navigation-badge" aria-label={`${copy.pendingAccounts}: ${pendingAccountCount}`}>{pendingAccountCount > 99 ? "99+" : pendingAccountCount}</span> : null}
           </span>
           <span className="web-navigation-link-label">{label}</span>

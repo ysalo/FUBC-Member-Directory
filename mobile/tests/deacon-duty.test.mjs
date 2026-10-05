@@ -131,16 +131,15 @@ test('visibleSchedulePeriods hides elapsed weekends but keeps the current Friday
   assert.deepEqual(visibleSchedulePeriods(periods, '2026-09-21', true), periods);
 });
 
-test('Visitation uses a house icon on native and web, never a heart', async () => {
+test('Visitation is hidden from native and web navigation', async () => {
   const [nativeLayout, webTabBar, webShell] = await Promise.all([
     readFile(new URL('../src/app/_layout.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/features/shell/WebTabBar.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/features/shell/WebAppShell.web.tsx', import.meta.url), 'utf8'),
   ]);
-  assert.match(nativeLayout, /name="visitation">\s*<NativeTabs\.Trigger\.Icon sf=\{\{ default: "house", selected: "house\.fill" \}\}/);
-  assert.match(webTabBar, /labelKey: "visitation", path: "\/visitation", icon: "home", outlineIcon: "home-outline"/);
-  assert.match(webShell, /key: "visitation", href: "\/visitation", icon: "home-outline"/);
-  for (const source of [nativeLayout, webTabBar, webShell]) assert.doesNotMatch(source, /heart/i);
+  for (const source of [nativeLayout, webTabBar, webShell]) {
+    assert.doesNotMatch(source, /name="visitation"|labelKey: "visitation"|key: "visitation"|useActiveVisitationCount/);
+  }
 });
 
 test('the schedule tab is registered as /schedule everywhere, not /duty', async () => {
