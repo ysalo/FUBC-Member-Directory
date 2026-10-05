@@ -1,3 +1,9 @@
+## Release 1.6.0 — group import birth dates
+
+Imports can resolve identical full names by exact YYYY-MM-DD birth date. Import review and group assignment rows display full birth dates, and files accept one or two deacons. The manager-only birth-date RPC is deployed; old clients remain compatible. The reusable name-audit script keeps private sources, approved resolutions and omitted-name issues outside Git. Group 2 has already been imported and must not be imported again as part of deployment.
+
+Backend rollback: retain the additive `management_group_birth_dates` RPC. Frontend rollback target: 1.5.1. Local verification and phone/desktop fixtures passed in feature PR #116; live OAuth and physical-device behavior are not claimed. Hosted Preview requires Vercel SSO. Release goes through dev → main and Vercel Git integration.
+
 ## Plain totals at the bottom, hidden during search (2026-10-05, version 1.4.5)
 
 Directory totals use plain secondary-color text without a surface background or border. They remain the full-width final item in the scrollable directory, with flexible space placing them at the viewport bottom for short rosters. Long rosters show them only at the end of the list. Any nonempty search input immediately hides the totals, including no-match searches; clearing the input restores them. An accessible localized clear button appears inside the search box when it contains text, resets both immediate and debounced queries in one press, and restores the directory/totals. Grouped name results, compact surname navigation and full-height layout remain intact on shared web/native screens.
