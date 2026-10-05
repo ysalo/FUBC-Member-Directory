@@ -27,6 +27,7 @@ function remoteGroups({ memberCount = 1, authorized = true, failure = null } = {
   const people = Array.from({ length: memberCount }, (_, index) => ({
     id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
     name: `Member ${String(memberCount - index).padStart(4, "0")}`,
+    patronymic: index === 0 ? "Ivanovych" : null,
     photo_path: index === 0 ? "member.jpg" : null,
     membership_group_id: "one",
     archived_at: null,
@@ -105,6 +106,7 @@ for (const memberCount of [0, 1, 50, 100, 101, 500, 999, 1000]) {
     for (const person of people) {
       const member = result.members.find((item) => item.id === person.id);
       assert.equal(member.name, person.name);
+    assert.equal(member.patronymic, person.patronymic);
       assert.equal(member.isOrphan, person.is_orphan);
       assert.equal(member.isWidow, person.is_widow);
       assert.equal(member.leadershipMinistry, person.leadership_ministry ?? undefined);

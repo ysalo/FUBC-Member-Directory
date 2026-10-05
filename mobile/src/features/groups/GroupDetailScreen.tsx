@@ -14,6 +14,8 @@ import {
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
+import { compareDirectoryNames, directorySurname } from "@/features/directory/directory-order";
+import { formatMemberName } from "@/lib/member-name";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { LeadershipBadge } from "@/features/members/leadership-badge";
@@ -86,8 +88,12 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
             .filter(
                 (member) =>
                     !needle ||
-                    member.name.toLocaleLowerCase(locale).includes(needle),
-            );
+                    formatMemberName(member).toLocaleLowerCase(locale).includes(needle),
+            )
+            .sort((a, b) => compareDirectoryNames(
+                { member: a, surname: directorySurname(a) },
+                { member: b, surname: directorySurname(b) },
+            ));
     }, [filters, group, locale, query]);
     const filterOptions: Array<{ id: GroupMemberFilter; label: string }> = [
         { id: "orphan", label: locale === "uk" ? "Сироти" : "Orphans" },
@@ -772,7 +778,7 @@ function PersonRow({
     locale: "en" | "uk";
     member: Pick<
         GroupMember,
-        "id" | "name" | "photo" | "leadershipMinistry" | "isOrphan" | "isWidow"
+        "id" | "name" | "first_name" | "last_name" | "patronymic" | "photo" | "leadershipMinistry" | "isOrphan" | "isWidow"
     >;
     onPress: () => void;
 }) {
@@ -795,7 +801,7 @@ function PersonRow({
                     selectable
                     style={[styles.personName, { color: palette.text }]}
                 >
-                    {member.name}
+                    {formatMemberName(member, undefined, true)}
                 </Text>
                 {detail ? (
                     <Text
@@ -819,12 +825,6 @@ function PersonRow({
                     isWidow={member.isWidow}
                 />
             </View>
-            <Ionicons
-                accessibilityElementsHidden
-                color={palette.accent}
-                name="chevron-forward"
-                size={18}
-            />
         </Pressable>
     );
 }
