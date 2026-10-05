@@ -247,7 +247,7 @@ test("visit management confirms actions in a contextual popover", async () => {
     assert.doesNotMatch(detail, /<SectionCard title=\{confirming ===/);
 });
 
-test("visitation navigation shows active counts and cards show every invite response", async () => {
+test("navigation hides visitation while retained cards show every invite response", async () => {
     const [layout, tabBar, shell, list] = await Promise.all([
         readFile(new URL("../src/app/_layout.tsx", import.meta.url), "utf8"),
         readFile(new URL("../src/features/shell/WebTabBar.tsx", import.meta.url), "utf8"),
@@ -257,7 +257,7 @@ test("visitation navigation shows active counts and cards show every invite resp
 
     assert.match(layout, /NativeTabs\.Trigger\.Badge/);
     assert.match(layout, /badgeBackgroundColor=\{palette\.accent\}/);
-    assert.match(tabBar, /activeVisitationCount/);
+    assert.doesNotMatch(tabBar, /activeVisitationCount|labelKey: "visitation"/);
     assert.match(tabBar, /opacity: 0\.78/);
     assert.match(tabBar, /right: -9, top: -7/);
     assert.match(tabBar, /iconContainer: \{ alignItems: "center", height: 28,[^}]+width: 32 \}/);

@@ -159,3 +159,8 @@ input:focus, textarea:focus, [contenteditable="true"]:focus {
   outline: none !important;
   box-shadow: none;
 }
+
+[data-testid="directory-alphabet-index"] { touch-action: none; user-select: none; }
+
+[data-testid="directory-scroll"] { scrollbar-width: none; }
+[data-testid="directory-scroll"]::-webkit-scrollbar { display: none; }
