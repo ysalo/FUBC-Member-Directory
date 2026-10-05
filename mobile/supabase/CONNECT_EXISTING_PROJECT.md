@@ -44,3 +44,7 @@ Notification delivery remains a separate backend operation. The current `delete-
 ## Member CSV import deployment (2026-10-04)
 
 Applied `20261004000000_member_name_fields.sql`, then `20261004010000_member_csv_import.sql` through authenticated CLI SQL queries after reviewing the live schema. Deployed only `import-members`, with JWT verification performed inside the endpoint. The user explicitly confirmed this documented project is the intended test database and authorized replacement: 39 old members → 850 CSV members, 134 photo objects deleted through Storage DELETE, six Auth identities and profile access roles/statuses preserved. No image download requests were made. CLI migration history remains unreconciled; do not use `db push`. See [import contract and runbook](../../docs/member-csv-import.md).
+
+## Shared family children deployment (2026-10-04)
+
+Reviewed and manually applied `20261004020000_family_shared_children.sql` through an authenticated CLI SQL query. Existing eight family edges were preserved (two spouse connections already shared their children). A rolled-back authenticated RPC smoke test confirmed reciprocal parent links and removal through either spouse. Function signature, grants and safeupdate remain compatible; CLI migration history remains unreconciled. Do not use `db push`.

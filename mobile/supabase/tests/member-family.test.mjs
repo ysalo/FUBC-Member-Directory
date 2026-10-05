@@ -51,6 +51,8 @@ async function migration(name) {
   await migration('20260928000000_member_gender');
   await migration('20260928010000_member_family');
   await migration('20260928020000_family_safeupdate');
+  await db.exec("insert into public.people(id,name,gender) values('80000000-0000-4000-8000-000000000001','Upgrade A','male'),('80000000-0000-4000-8000-000000000002','Upgrade B','female'),('80000000-0000-4000-8000-000000000003','Upgrade Child','male'); insert into public.member_family_edges values('spouse','80000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000002'),('parent','80000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000003');");
+  await migration('20261004020000_family_shared_children');
 }
 after(async () => db.close());
 const read = async (id, actor='admin', manage=true) => (await as(actor,'select public.member_family($1,$2) family',[id,manage])).rows[0].family;
@@ -90,4 +92,43 @@ test('RPC permissions permit both managers and deny ordinary/inactive/direct wri
  await assert.rejects(as('admin','delete from public.member_family_edges'),/permission denied/);
  for(const status of ['pending','denied','revoked']) { await db.query('update public.profiles set status=$1 where id=$2',[status,ids.editor]); await assert.rejects(save(a,{},undefined,'editor'),/Not authorized/); await assert.rejects(read(a,'editor',false),/Not authorized/); }
  await db.exec('set role anon'); try { await assert.rejects(db.query('select public.member_family($1,false)',[a]),/permission denied/); } finally { await db.exec('reset role'); }
+});
+
+const sortedIds=rows=>rows.map(x=>x.id).sort();
+test('upgrade shares existing married children',async()=>{for(const id of ['80000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000002'])assert.deepEqual(sortedIds((await read(id)).children),['80000000-0000-4000-8000-000000000003']);});
+test('marriage combines both child lists and either spouse can add or remove children',async()=>{
+ const [a,b,c,d,e]=await people('Share A','Share B','Share C','Share D','Share E');
+ await save(a,{children:[c]});await save(b,{children:[d]});await save(a,{spouse:b});
+ for(const p of [a,b])assert.deepEqual(sortedIds((await read(p)).children),[c,d].sort());
+ for(const child of [c,d])assert.deepEqual(sortedIds((await read(child)).parents),[a,b].sort());
+ await save(b,{spouse:a,children:[c,d,e]});assert.deepEqual(sortedIds((await read(a)).children),[c,d,e].sort());
+ await save(a,{spouse:b,children:[d]});assert.deepEqual(sortedIds((await read(b)).children),[d]);
+ for(const child of [c,e])assert.deepEqual((await read(child)).parents,[]);
+ await save(b,{spouse:a});assert.deepEqual((await read(a)).children,[]);
+});
+test('child-side edits add and remove both married parents and preserve other children',async()=>{
+ const [a,b,c,d]=await people('Parent A','Parent B','Child C','Child D');await save(a,{spouse:b,children:[d]});await save(c,{parents:[a]});
+ assert.deepEqual(sortedIds((await read(c)).parents),[a,b].sort());assert.deepEqual(sortedIds((await read(b)).children),[c,d].sort());
+ await save(c,{parents:[b]});assert.deepEqual((await read(c)).parents,[]);
+ for(const p of [a,b])assert.deepEqual(sortedIds((await read(p)).children),[d]);
+ await save(c,{parents:[b]});assert.deepEqual(sortedIds((await read(c)).parents),[a,b].sort());await save(c);
+ for(const p of [a,b])assert.deepEqual(sortedIds((await read(p)).children),[d]);
+});
+test('spouse removal and replacement preserve old parent facts and synchronize the new marriage',async()=>{
+ const [a,b,c,d,e]=await people('Remarry A','Remarry B','Remarry C','Remarry D','Remarry E');await save(a,{spouse:b,children:[d]});await save(a,{children:[d]});
+ assert.equal((await read(b)).spouse,null);assert.deepEqual(sortedIds((await read(b)).children),[d]);
+ await save(c,{children:[e]});await save(a,{spouse:c,children:[d]});
+ for(const p of [a,c])assert.deepEqual(sortedIds((await read(p)).children),[d,e].sort());assert.deepEqual(sortedIds((await read(b)).children),[d]);
+});
+test('cycles created only through the spouse roll back all changes',async()=>{
+ const [a,b,c]=await people('Cycle A','Cycle B','Cycle C');await save(a,{spouse:b});await save(c,{children:[b]});
+ const before=await read(a),other=await read(b);await assert.rejects(save(a,{spouse:b,children:[c]}),e=>e.code==='FM002');
+ assert.deepEqual(await read(a),before);assert.deepEqual(await read(b),other);
+ await assert.rejects(save(a,{spouse:b,children:[b]}),e=>e.code==='FM003');assert.deepEqual(await read(a),before);
+});
+test('shared-child changes reject stale spouse drafts and retain archived children',async()=>{
+ const [a,b,c]=await people('Stale A','Stale B','Stale C');await save(a,{spouse:b});const stale=await read(b);await save(a,{spouse:b,children:[c]});
+ await assert.rejects(save(b,{spouse:a},stale.revision),e=>e.code==='40001');await db.query('update public.people set archived_at=now() where id=$1',[c]);
+ assert.equal((await read(b)).children[0].archived,true);assert.deepEqual((await read(b,'member',false)).children,[]);
+ await save(b,{spouse:a,children:[c]});assert.equal((await read(a)).children[0].id,c);
 });

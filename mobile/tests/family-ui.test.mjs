@@ -7,6 +7,7 @@ const React = require('react');
 const ts = require('typescript');
 const compile = async path => ts.transpileModule(await readFile(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 const source = await compile('../src/features/manage/FamilyEditorScreen.tsx');
+const memberName = {}; new Function('exports', await compile('../src/lib/member-name.ts'))(memberName);
 const copy = {}; new Function('exports', await compile('../src/features/family/family-copy.ts'))(copy);
 function fixture({ locale = 'en', failure = null, loadFamily } = {}) {
   const states = [], refs = []; let cursor = 0, refCursor = 0, effect, cleanup, dependencies, exits = 0, reads = 0, memberId = "0", scope = "account-a", createdId;
@@ -28,6 +29,7 @@ function fixture({ locale = 'en', failure = null, loadFamily } = {}) {
     '@/features/localization/LocalizationProvider': { useLocalization: () => ({ locale }) },
     '@/features/family/family-copy': copy,
     '@/features/session/SessionProvider': { useSession: () => ({ status: 'ready' }) },
+    '@/lib/member-name': memberName,
     '@/lib/session-cache': { sessionCacheScope: () => scope },
     './management-repository': { managementRepository: repository },
     './family-draft': { holdFamilyDraft: (draft) => { handoff = draft; }, takeFamilyDraft: (identity) => { const result = handoff?.identity === identity ? handoff : null; handoff = null; return result; }, clearFamilyDraft: () => { handoff = null; } },
@@ -131,3 +133,17 @@ test('account changes discard an outstanding member response',async()=>{
  await ui.load(); await ui.session('account-b'); old.resolve({...emptySnapshot('0'),spouse:{id:'private',name:'Previous account relative'}}); await ui.flush();
  assert.doesNotMatch(ui.text(),/Previous account relative/); await ui.press('Save family'); assert.equal(ui.saves[0][2].spouseId,null);
 });
+
+for (const locale of ['en', 'uk']) test(`family picker distinguishes and searches patronymics in ${locale}`, async () => {
+ const ui=fixture({locale});
+ ui.members.push({id:'same-a',name:'Іван Саволюк',first_name:'Іван',last_name:'Саволюк',patronymic:'Петрович',archived:false},{id:'same-b',name:'Іван Саволюк',first_name:'Іван',last_name:'Саволюк',patronymic:'Іванович',archived:false});
+ await ui.load(); await ui.press(locale==='uk'?'Додати: Діти':'Add: Children');
+ const labels=()=>ui.render().filter(n=>n.type==='Button').map(n=>n.props.accessibilityLabel);
+ assert.ok(labels().includes('Іван Петрович Саволюк')); assert.ok(labels().includes('Іван Іванович Саволюк'));
+ const search=locale==='uk'?'Пошук учасників':'Search members';ui.input(search,'петрович');
+ assert.ok(labels().includes('Іван Петрович Саволюк'));assert.ok(!labels().includes('Іван Іванович Саволюк'));
+ ui.input(search,'Іван Саволюк');assert.ok(labels().includes('Іван Іванович Саволюк'));
+ await ui.press('Іван Іванович Саволюк');assert.match(ui.text(),/Іван Іванович Саволюк/);
+ await ui.press(locale==='uk'?'Зберегти родину':'Save family');assert.deepEqual(ui.saves[0][2].childIds,['same-b']);
+});
+test('married editor explains shared children',async()=>{const ui=fixture();await ui.load();await ui.press('Add: Spouse');await ui.press('Match Person');assert.match(ui.text(),/Adding or removing a child updates both spouses after saving/);});
