@@ -1,4 +1,4 @@
-import { memberSearchScore } from "@/lib/member-search";
+import { searchMembers } from "@/lib/member-search";
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
@@ -184,19 +184,15 @@ export function ManageScreen() {
                 : accountsAllowed
                   ? orderedAccounts(state.accounts)
                   : [];
-        return source
+        const visible = source
             .filter(
                 (item) =>
                     panel !== "members" ||
                     (item as ManagedMember).archived === showFormer,
-            )
-            .filter(
-                (item) =>
-                    !needle ||
-                    (panel === "members"
-                        ? memberSearchScore(item as ManagedMember, needle) !== null
-                        : `${(item as ManagedAccount).name} ${(item as ManagedAccount).email}`.toLocaleLowerCase(locale).includes(needle)),
             );
+        return panel === "members"
+            ? searchMembers(visible, needle, item => item as ManagedMember)
+            : visible.filter(item => !needle || `${(item as ManagedAccount).name} ${(item as ManagedAccount).email}`.toLocaleLowerCase(locale).includes(needle));
     }, [accountsAllowed, locale, panel, query, showFormer, state]);
     const openAccount = (accountId: string) => {
         router.push(managedAccountRoute(accountId));

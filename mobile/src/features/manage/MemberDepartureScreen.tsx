@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Ionicons } from "@react-native-vector-icons/ionicons";
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Text, TextInput } from "@/features/accessibility/app-text";
@@ -21,6 +23,7 @@ const reasons: Reason[] = ["different_church", "died", "excommunicated", "other"
 export function MemberDepartureScreen() {
   const { memberId } = useLocalSearchParams<{ memberId: string }>();
   const router = useRouter();
+  const desktop = useDesktopLayout();
   const { palette } = useAppearance();
   const { locale } = useLocalization();
   const session = useSession();
@@ -71,23 +74,29 @@ export function MemberDepartureScreen() {
   }
   if (!allowed) return <View style={styles.page}><Text style={{ color: palette.text }}>{copy.denied}</Text></View>;
   const field = { backgroundColor: palette.surface, borderColor: palette.line, color: palette.text };
-  return <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { backgroundColor: palette.background }]}>
-    <Text style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
+  return <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, desktop && styles.desktopPage]} style={{ backgroundColor: palette.background }}>
+    <View style={styles.header}><Text style={[styles.title, { color: palette.text }]}>{copy.title}</Text></View>
     {loading ? <ActivityIndicator color={palette.accent} /> : null}
     {error ? <View><Text accessibilityRole="alert" style={{ color: palette.danger }}>{copy.error}</Text>{!member && <Pressable accessibilityRole="button" onPress={() => setReload(value => value + 1)}><Text style={{ color: palette.accent }}>{copy.retry}</Text></Pressable>}</View> : null}
     {member ? <>
       <Text style={[styles.name, { color: palette.text }]}>{formatMemberName(member)}</Text>
       {!member.archived && <View style={styles.form}>
-        <Text style={{ color: palette.text }}>{copy.date} *</Text>
+        <View style={styles.field}>
+        <Text style={[styles.label, { color: palette.secondaryText }]}>{copy.date} *</Text>
         <NativeDateTimeField accessibilityLabel={copy.date} mode="date" maximumDate={new Date()} value={dateLeft} onChange={setDateLeft} disabled={busy} accentColor={palette.accent} backgroundColor={palette.surface} borderColor={palette.line} textColor={palette.text} />
-        <Text style={{ color: palette.text }}>{copy.reason} *</Text>
-        <View accessibilityRole="radiogroup" accessibilityLabel={copy.reason}>
-          {reasons.map(value => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={copy[value]} accessibilityState={{ checked: reason === value, disabled: busy }} aria-checked={reason === value} disabled={busy} onPress={() => setReason(value)} style={[styles.radio, { borderColor: palette.line, backgroundColor: palette.surface }]}><Text style={{ color: reason === value ? palette.accent : palette.text }}>{reason === value ? "◉" : "○"}  {copy[value]}</Text></Pressable>)}
         </View>
-        {reason === "other" && <><Text style={{ color: palette.text }}>{copy.detail} *</Text><TextInput accessibilityLabel={copy.detail} editable={!busy} maxLength={160} value={otherDetail} onChangeText={setOtherDetail} style={[styles.input, field]} /></>}
-        <Text style={{ color: palette.text }}>{copy.notes}</Text>
+        <View style={styles.field}>
+        <Text style={[styles.label, { color: palette.secondaryText }]}>{copy.reason} *</Text>
+        <View accessibilityRole="radiogroup" accessibilityLabel={copy.reason}>
+          {reasons.map(value => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={copy[value]} accessibilityState={{ checked: reason === value, disabled: busy }} aria-checked={reason === value} disabled={busy} onPress={() => setReason(value)} style={({ pressed }) => [styles.radio, { borderColor: reason === value ? palette.accent : palette.line, backgroundColor: reason === value ? palette.accentSoft : palette.surface }, pressed && { opacity: 0.7 }]}><Ionicons accessibilityElementsHidden name={reason === value ? "radio-button-on" : "radio-button-off"} size={22} color={reason === value ? palette.accent : palette.secondaryText} /><Text style={[styles.radioLabel, { color: palette.text }]}>{copy[value]}</Text></Pressable>)}
+        </View>
+        </View>
+        {reason === "other" && <View style={styles.field}><Text style={[styles.label, { color: palette.secondaryText }]}>{copy.detail} *</Text><TextInput accessibilityLabel={copy.detail} editable={!busy} maxLength={160} value={otherDetail} onChangeText={setOtherDetail} style={[styles.input, field]} /></View>}
+        <View style={styles.field}>
+        <Text style={[styles.label, { color: palette.secondaryText }]}>{copy.notes}</Text>
         <TextInput accessibilityLabel={copy.notes} editable={!busy} multiline maxLength={5000} value={notes} onChangeText={setNotes} style={[styles.input, styles.notes, field]} />
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: !valid || busy }} disabled={!valid || busy} onPress={confirm} style={[styles.button, { backgroundColor: palette.danger, opacity: !valid || busy ? 0.5 : 1 }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{busy ? "…" : copy.save}</Text></Pressable>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: !valid || busy }} disabled={!valid || busy} onPress={confirm} style={[styles.button, { backgroundColor: palette.accent, opacity: !valid || busy ? 0.5 : 1 }]}><Text style={styles.saveText}>{busy ? "…" : copy.save}</Text></Pressable>
       </View>}
       {history.length > 0 && <Text style={[styles.name, { color: palette.text }]}>{copy.history}</Text>}
       {history.map(record => <View key={record.id} style={[styles.record, { backgroundColor: palette.surface, borderColor: palette.line }]}>
@@ -99,7 +108,24 @@ export function MemberDepartureScreen() {
         {record.restored_at ? <Text style={{ color: palette.secondaryText }}>{copy.restored}: {localDateValue(new Date(record.restored_at))}</Text> : null}
       </View>)}
     </> : null}
-    <Pressable accessibilityRole="button" disabled={busy} onPress={() => guard.confirmLeave(() => router.replace(`/manage/member/${encodeURIComponent(memberId)}` as never))} style={styles.button}><Text style={{ color: palette.accent }}>{copy.cancel}</Text></Pressable>
+    <Pressable accessibilityRole="button" disabled={busy} onPress={() => guard.confirmLeave(() => router.replace(`/manage/member/${encodeURIComponent(memberId)}` as never))} style={styles.cancelButton}><Text style={{ color: palette.accent, fontSize: 16 }}>{copy.cancel}</Text></Pressable>
   </ScrollView>;
 }
-const styles = StyleSheet.create({ page: { padding: 22, gap: 16, flexGrow: 1, width: "100%", maxWidth: 800, alignSelf: "center" }, title: { fontSize: 30, fontWeight: "800", marginTop: 20 }, name: { fontSize: 20, fontWeight: "600" }, form: { gap: 12 }, radio: { minHeight: 48, padding: 14, borderWidth: 1, borderRadius: 12, marginBottom: 8 }, input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, minHeight: 48 }, notes: { minHeight: 110, textAlignVertical: "top" }, button: { minHeight: 48, borderRadius: 12, padding: 14, alignItems: "center", justifyContent: "center" }, record: { padding: 16, borderRadius: 12, borderWidth: 1, gap: 8 } });
+const styles = StyleSheet.create({
+  page: { padding: 18, paddingBottom: 48, gap: 16, flexGrow: 1, width: "100%", maxWidth: 800, alignSelf: "center" },
+  desktopPage: { padding: 32, paddingBottom: 48 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: 10 },
+  title: { fontSize: 20, fontWeight: "800" },
+  name: { fontSize: 20, fontWeight: "800" },
+  form: { gap: 16 },
+  field: { gap: 7 },
+  label: { fontSize: 14, fontWeight: "600" },
+  radio: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52, padding: 14, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, marginBottom: 8 },
+  radioLabel: { fontSize: 16, flex: 1 },
+  input: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 17, minHeight: 50 },
+  notes: { minHeight: 92, textAlignVertical: "top" },
+  button: { minHeight: 52, borderRadius: 12, marginTop: 18, alignItems: "center", justifyContent: "center" },
+  saveText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
+  cancelButton: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+  record: { padding: 16, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 8 },
+});

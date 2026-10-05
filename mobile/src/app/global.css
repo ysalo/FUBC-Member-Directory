@@ -153,3 +153,9 @@ input, textarea, select { font-size: max(16px, 1em) !important; }
   .web-navigation-account:hover { color: var(--app-accent); }
   .web-app-content { order: 1; }
 }
+
+/* Text entry keeps its normal field border without an extra focus outline. */
+input:focus, textarea:focus, [contenteditable="true"]:focus {
+  outline: none !important;
+  box-shadow: none;
+}
