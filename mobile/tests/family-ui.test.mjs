@@ -22,13 +22,17 @@ function fixture({ locale = 'en', failure = null, loadFamily } = {}) {
     react: { ...React, useState(initial) { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], value => { states[i] = typeof value === 'function' ? value(states[i]) : value; }]; }, useRef(initial) { const i = refCursor++; return refs[i] ?? (refs[i] = { current: initial }); }, useEffect(callback, next) { if (!dependencies || next.some((value,i) => value !== dependencies[i])) { dependencies = next; effect = callback; } } },
     'react/jsx-runtime': require('react/jsx-runtime'),
     'expo-router': { useLocalSearchParams: () => ({ memberId, createdId }), useRouter: () => ({ canGoBack: () => true, back: () => exits++, replace: (path) => { routes.push(path); exits++; } }) },
-    'react-native': { ActivityIndicator: 'Spinner', Pressable: 'Button', ScrollView: 'Scroll', View: 'View', StyleSheet: { create: value => value, hairlineWidth: 1 } },
+    'react-native': { ActivityIndicator: 'Spinner', KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: 'web' }, Modal: 'Modal', FlatList: ({data,renderItem,ListEmptyComponent}) => React.createElement('List',null,data.length ? data.map(item=>renderItem({item})) : ListEmptyComponent), Pressable: 'Button', ScrollView: 'Scroll', View: 'View', StyleSheet: { create: value => value, hairlineWidth: 1 } },
     'react-native-safe-area-context': { SafeAreaView: 'SafeArea' },
     '@/features/accessibility/app-text': { Text: 'Text', TextInput: 'Input' },
     '@/features/appearance/AppearanceProvider': { useAppearance: () => ({ palette: {} }) },
     '@/features/localization/LocalizationProvider': { useLocalization: () => ({ locale }) },
     '@/features/family/family-copy': copy,
     '@/features/session/SessionProvider': { useSession: () => ({ status: 'ready' }) },
+    '@react-native-vector-icons/ionicons': { Ionicons: 'Icon' },
+    '@/features/shell/use-desktop-layout': { useDesktopLayout: () => false },
+    '@/features/members/ProfileAvatar': { ProfileAvatar: 'Avatar' },
+    '@/features/directory/DirectoryScreen': { MemberRow: ({item,selection,onPress,detail}) => React.createElement('Button',{accessibilityLabel:selection?.label ?? item.name,accessibilityRole:selection?.mode==='remove'?'button':selection?.mode,accessibilityState:{checked:selection?.checked},disabled:selection?.disabled,onPress},memberName.formatMemberName(item),detail) },
     '@/lib/member-name': memberName,
     '@/lib/session-cache': { sessionCacheScope: () => scope },
     './management-repository': { managementRepository: repository },
@@ -37,7 +41,7 @@ function fixture({ locale = 'en', failure = null, loadFamily } = {}) {
   };
   const exports = {}; new Function('require', 'exports', source)(id => { assert.ok(id in modules, id); return modules[id]; }, exports);
   const text = node => node == null ? '' : typeof node !== 'object' ? String(node) : Array.isArray(node) ? node.map(text).join(' ') : text(node.props?.children);
-  function render() { cursor = 0; refCursor = 0; const nodes = []; const walk = node => { if (Array.isArray(node)) return node.forEach(walk); if (!node || typeof node !== 'object') return; nodes.push(node); walk(node.props?.children); }; walk(exports.FamilyEditorScreen()); return nodes; }
+  function render() { cursor = 0; refCursor = 0; const nodes = []; const walk = node => { if (Array.isArray(node)) return node.forEach(walk); if (!node || typeof node !== 'object') return; if(typeof node.type==='function') return walk(node.type(node.props)); nodes.push(node); walk(node.props?.children); }; walk(exports.FamilyEditorScreen()); return nodes; }
   const flush = () => new Promise(setImmediate);
   async function press(label, index = 0) { const button = render().filter(n => n.type === 'Button' && n.props.accessibilityLabel === label)[index]; assert.ok(button, `Missing ${label}`); assert.ok(!button.props.disabled, `Disabled ${label}`); button.props.onPress(); await flush(); }
   function input(label, value) { const field = render().find(n => n.type === 'Input' && n.props.accessibilityLabel === label); assert.ok(field); field.props.onChangeText(value); }
@@ -87,7 +91,7 @@ test('conflict requires refresh; ordinary failures retain changes for retry', as
   const ui = fixture({ failure: { code: '40001' } }); await ui.load(); await ui.press('Remove: Parent Person (Archived) (Parents)'); await ui.press('Save family');
   assert.match(ui.text(), /Family relationships changed/);
   assert.equal(ui.render().find(n => n.props?.accessibilityLabel === 'Save family').props.disabled, true);
-  await ui.press('Refresh and discard edits'); assert.equal(ui.reads, 2); assert.match(ui.text(), /Remove: Parent Person/);
+  await ui.press('Refresh and discard edits'); assert.equal(ui.reads, 2); assert.ok(ui.render().some(n=>n.props?.accessibilityLabel==='Remove: Parent Person (Archived) (Parents)'));
   const retry = fixture({ failure: new Error('offline') }); await retry.load(); await retry.press('Remove: Parent Person (Archived) (Parents)'); await retry.press('Save family'); await retry.press('Save family');
   assert.equal(retry.saves.length, 2); assert.deepEqual(retry.saves[1][2].parentIds, []);
 });
@@ -117,7 +121,7 @@ const emptySnapshot = memberId => ({memberId,revision:5,parents:[],spouse:null,c
 test('failed member transitions clear prior relationships and cannot save the old snapshot', async()=>{
  const ui=fixture({ loadFamily: async id => { if(id==='1') throw new Error('Unavailable'); return emptySnapshot(id); } });
  await ui.load(); await ui.route('1');
- assert.match(ui.text(),/Unable to load family/); assert.doesNotMatch(ui.text(),/Save family/); assert.deepEqual(ui.saves,[]);
+ assert.match(ui.text(),/Unable to load family/); assert.equal(ui.render().find(n=>n.props?.accessibilityLabel==='Save family').props.disabled,true); assert.deepEqual(ui.saves,[]);
 });
 test('out-of-order member loads cannot change the current editor',async()=>{
  const old=deferred();
@@ -147,3 +151,17 @@ for (const locale of ['en', 'uk']) test(`family picker distinguishes and searche
  await ui.press(locale==='uk'?'Зберегти родину':'Save family');assert.deepEqual(ui.saves[0][2].childIds,['same-b']);
 });
 test('married editor explains shared children',async()=>{const ui=fixture();await ui.load();await ui.press('Add: Spouse');await ui.press('Match Person');assert.match(ui.text(),/Adding or removing a child updates both spouses after saving/);});
+
+test('family picker stays open for multiple selections and exposes checked rows',async()=>{
+ const ui=fixture();ui.members.push({id:'other',name:'Other Relative',archived:false});await ui.load();await ui.press('Add: Children');
+ await ui.press('Match Person');await ui.press('Other Relative');
+ const checked=ui.render().filter(n=>n.type==='Button'&&n.props.accessibilityRole==='checkbox'&&n.props.accessibilityState?.checked);
+ assert.deepEqual(checked.map(n=>n.props.accessibilityLabel).sort(),['Match Person','Other Relative']);
+ assert.match(ui.text(),/2 selected/);await ui.press('Done');
+ assert.ok(!ui.render().some(n=>n.type==='Input'));
+ await ui.press('Save family');assert.deepEqual(ui.saves[0][2].childIds,['3','other']);
+});
+test('family picker toggles a selected row off and preserves edits when dismissed',async()=>{
+ const ui=fixture();await ui.load();await ui.press('Add: Children');await ui.press('Match Person');await ui.press('Match Person');
+ await ui.press('Done');await ui.press('Save family');assert.deepEqual(ui.saves[0][2].childIds,[]);
+});
