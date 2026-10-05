@@ -1,5 +1,14 @@
 # Web Application Release and Deployment
 
+## Family patronymics and shared children (2026-10-04)
+
+Family selection now displays and searches the full first name, patronymic and surname, retaining first/surname search compatibility. Management catalog hydration retains patronymics; selected relatives and supporting parents use the same formatter. Married editors explain that child additions/removals apply to both spouses.
+
+Reviewed and manually applied `20261004020000_family_shared_children.sql` using an authenticated SQL query against the existing project, without `db push` or migration-history reconciliation. The writer keeps its signature, authorization, graph revision lock and safeupdate guard. New marriages combine existing children; edits to either spouse synchronize their child lists. Child-side parent edits include/remove both married parents. Unlinking spouses retains existing parent facts. A graph-wide ancestry check rolls back cycles introduced through propagation. The upgrade unions existing married-child facts; the hosted graph already shared its children, so its eight existing edges remained unchanged. The previous writer and graph were saved locally before applying the patch. Older clients use the same RPC and gain the shared-child behavior; a frontend rollback does not require a database rollback.
+
+Node 24 `pnpm verify` passed (235 main tests, one optional local concurrency skip; visitation 1; groups 12), and `pnpm build:web` passed. Regression coverage includes distinct patronymics in English/Ukrainian, search and selection, marriage union, child additions/removals from both spouses and child-side parent edits, spouse changes, archival, stale snapshots and spouse-only ancestry cycles. The real PostgreSQL CI suite additionally covers concurrent shared-child saves with safeupdate enabled. A hosted authenticated RPC smoke test used disposable records in a rolled-back transaction and confirmed both parents and shared removals without retaining test data. Live OAuth and physical native checks have not been performed.
+
+
 ## Separate Member Name Fields
 
 The member editor and server writer now round-trip `first_name`, `last_name`, and optional `patronymic`. Directory and profile formatting use the stored parts, preserving compound given names and surnames. Group, management, and visitation queries select the separate fields. The legacy `name` column is maintained by a database trigger as a display projection for existing RPCs, linked account synchronization, deletion confirmations, and older clients.

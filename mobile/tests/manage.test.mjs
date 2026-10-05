@@ -956,3 +956,20 @@ test("account deletion preserves structured edge function failures", async () =>
     assert.match(edge, /if \(countError\) throw countError/);
     assert.match(edge, /\.catch\(\(\) => false\)/);
 });
+
+test('management catalog keeps patronymics for family member disambiguation', async () => {
+ const row={id:'person',name:'Іван Саволюк',first_name:'Іван',last_name:'Саволюк',patronymic:'Петрович',photo_path:null,archived_at:null};
+ const client={from(table){const query={select(){return query;},order(){return Promise.resolve({data:[row],error:null});},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};return query;},rpc:async()=>({data:[],error:null})};
+ const exports={};new Function('require','exports',managementCode)(id=>{
+  if(id==='@/lib/supabase')return {isBackendConfigured:true,requireSupabase:()=>client};
+  if(id==='@/lib/permissions')return {canManageDirectory:()=>true,canManageAccounts:()=>false};
+  if(id==='@/lib/repository-helpers')return {activeAccount:()=>({}),unwrap:r=>r.data,privatePhotoSources:async()=>new Map()};
+  if(id==='@/lib/session-cache')return {createSessionCache:()=>({load:(key,loader)=>loader()})};
+  if(id==='@/lib/photo-cache')return {};
+  if(id==='./model')return source;
+  if(id==='@/features/family/family-repository')return {};
+  throw new Error(id);
+ },exports);
+ const {members}=await new exports.SupabaseManagementRepository().load();
+ assert.equal(members[0].patronymic,'Петрович');assert.equal(members[0].first_name,'Іван');assert.equal(members[0].last_name,'Саволюк');
+});
