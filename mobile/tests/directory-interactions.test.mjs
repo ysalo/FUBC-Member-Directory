@@ -1,3 +1,4 @@
+import * as directoryOrder from "../src/features/directory/directory-order.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -45,6 +46,7 @@ function directoryFixture() {
     ['@/features/members/ProfileAvatar', { ProfileAvatar: 'ProfileAvatar' }],
     ['@/lib/phone', { formatPhoneNumber: (value) => value }],
     ['@/lib/member-name', { formatMemberName: (value) => typeof value === "string" ? value : value.name }],
+    ['./directory-order', directoryOrder],
     ['./directory-repository', { listDirectory() {}, getDirectoryVisitCount() {} }],
   ]);
   const exports = {};
@@ -101,4 +103,12 @@ test('Directory checkbox presses keep match-any membership, clear, and update th
   nodes = ui.render();
   assert.equal(ui.ids(nodes).length, 4);
   assert.match(nodes.map(ui.text).join(' '), /Showing 4 of 4 members/);
+});
+
+test('Directory uses explicit surnames, Cyrillic lookalikes and Latin sections after Ukrainian names',()=>{
+  const names=[{name:'Andrew Waltmen',last_name:'Waltmen'},{name:'Микола Cавчук',last_name:'Cавчук'},{name:'Олег Pощук',last_name:'Pощук'},{name:'Анна Романюк',last_name:'Романюк'},{name:'Олена Савчук',last_name:'Савчук'},{name:'Іван Яремчук',last_name:'Яремчук'},{name:'Mary Van Buren',last_name:'Van Buren'}];
+  const ordered=names.map(member=>({member,surname:directoryOrder.directorySurname(member)})).sort(directoryOrder.compareDirectoryNames);
+  assert.deepEqual(ordered.map(row=>row.surname),['Романюк','Рощук','Савчук','Савчук','Яремчук','Van Buren','Waltmen']);
+  assert.equal(directoryOrder.directorySurname({name:'Mary Van Buren',last_name:'Van Buren'}),'Van Buren');
+  assert.equal(directoryOrder.directorySurname({name:'Andrew Waltmen'}),'Waltmen');
 });

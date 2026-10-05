@@ -1,3 +1,4 @@
+import * as directoryOrder from "../src/features/directory/directory-order.ts";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -50,6 +51,7 @@ function renderScreen({ screen = "directory", loading = true, desktop = false, s
     ["@/features/session/SessionProvider", { useSession: () => ({ status: "ready", account: actor }) }],
     ["@/features/shell/WebTabBar", { WebTabBar: () => null }],
     ["@/features/duty/DutySummary", { DutySummary: () => null }],
+    ["./directory-order", directoryOrder],
     ["./directory-repository", {}],
     ["./repository", { visitationDemoMode: false }],
     ["./copy", { visitationCopy }],
