@@ -68,7 +68,6 @@ input, textarea, select { font-size: max(16px, 1em) !important; }
 ::-webkit-scrollbar-thumb { background: var(--app-secondaryText); border: 2px solid var(--app-background); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: var(--app-background); }
 
-[data-testid="directory-scroll"],
 [data-testid="visitation-scroll"] { scrollbar-gutter: stable; }
 
 .web-app-shell {
@@ -162,5 +161,5 @@ input:focus, textarea:focus, [contenteditable="true"]:focus {
 
 [data-testid="directory-alphabet-index"] { touch-action: none; user-select: none; }
 
-[data-testid="directory-scroll"] { scrollbar-width: none; }
+[data-testid="directory-scroll"] { scrollbar-width: none; scrollbar-gutter: auto; }
 [data-testid="directory-scroll"]::-webkit-scrollbar { display: none; }

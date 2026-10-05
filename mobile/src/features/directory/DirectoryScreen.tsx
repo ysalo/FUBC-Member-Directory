@@ -381,8 +381,9 @@ export function DirectoryScreen() {
         );
 
     const summary = (
-        <View>
+        <View style={{ paddingBottom: Platform.OS === "android" ? 66 + insets.bottom : 0 }}>
             <View
+                testID="directory-summary"
                 accessibilityLabel="Directory totals"
                 style={[
                     styles.summaryFooter,
@@ -689,7 +690,7 @@ export function DirectoryScreen() {
                     </View>
                 )}
                 <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
-                <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={{ flex: 1, position: "relative" }}>
+                <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={styles.rosterViewport}>
                 <ScrollView
                     ref={webListRef}
                     testID="directory-scroll"
@@ -729,10 +730,10 @@ export function DirectoryScreen() {
                                   ))}
                               </View>
                           ))}
-                    {summary}
                 </ScrollView>
                 {alphabetIndex}
                 </View>
+                {summary}
                 <WebTabBar />
             </View>
         );
@@ -742,7 +743,7 @@ export function DirectoryScreen() {
         <View style={[styles.safe, { backgroundColor: palette.background }]}>
             {stickyOverview}
             <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
-            <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={{ flex: 1, position: "relative" }}>
+            <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={styles.rosterViewport}>
             <SectionList
                 ref={nativeListRef}
                 showsVerticalScrollIndicator={false}
@@ -784,12 +785,12 @@ export function DirectoryScreen() {
                 )}
                 removeClippedSubviews={false}
                 sections={sections}
-                ListFooterComponent={summary}
                 stickySectionHeadersEnabled={false}
                 windowSize={15}
             />
             {alphabetIndex}
             </View>
+            {summary}
             <WebTabBar />
         </View>
     );
@@ -827,10 +828,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "600",
     },
-    webContent: { paddingBottom: 28 },
-    safe: { backgroundColor: "#F1F0EB", flex: 1 },
-    rosterScroll: { flex: 1 },
-    content: { paddingBottom: px(102) },
+    webContent: { paddingBottom: 16 },
+    safe: { backgroundColor: "#F1F0EB", flex: 1, minHeight: 0, width: "100%" },
+    rosterViewport: { flex: 1, minHeight: 0, position: "relative", width: "100%" },
+    rosterScroll: { flex: 1, minHeight: 0 },
+    content: { paddingBottom: px(16) },
     stickyOverview: {
         backgroundColor: "#F1F0EB",
         borderBottomColor: "#D8D5CE",
@@ -971,7 +973,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: px(16),
         justifyContent: "center",
-        marginTop: px(16),
+        flexShrink: 0,
         paddingHorizontal: px(12),
         paddingVertical: px(16),
     },
