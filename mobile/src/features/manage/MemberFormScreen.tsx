@@ -383,6 +383,7 @@ export function MemberFormScreen() {
     function confirmMembershipChange() {
         if (!member || state === "saving") return;
         const active = member.archived;
+        if (!active) { guard.confirmLeave(() => router.push(`/manage/member/${encodeURIComponent(member.id)}/departure` as never)); return; }
         Alert.alert(
             active ? labels.restoreTitle : labels.leaveTitle,
             active ? labels.restoreDetail : labels.leaveDetail,
@@ -837,6 +838,7 @@ export function MemberFormScreen() {
                                     );
                                 })}
                         </View>
+                        {editing && member ? <Pressable accessibilityRole="link" onPress={() => guard.confirmLeave(() => router.push(`/manage/member/${encodeURIComponent(member.id)}/departure` as never))} style={styles.membershipAction}><Text style={{ color: palette.accent }}>{locale === "uk" ? "Історія виходу з членства" : "Departure history"}</Text></Pressable> : null}
                         {editing && member ? (
                             <Pressable
                                 accessibilityRole="button"

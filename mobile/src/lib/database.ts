@@ -5,6 +5,7 @@ export type PersonRow = { id: string; name: string; first_name: string; last_nam
 export type GroupRow = { id: string; name: string; kind: "membership" | "responsibility"; archived_at: string | null; revision: number };
 export type MinistryRow = { id: string; name: string; name_uk: string; system_key: LeadershipMinistry; archived_at: string | null; revision: number; created_at: string };
 export type VisitRow = { id: string; planner_id: string | null; person_id: string; scheduled_at: string; location: string; notes: string; status: "open" | "cancelled" | "completed"; completed_at: string | null; archived_at: string | null; revision: number; submission_id: string; created_at: string; updated_fields: Array<"scheduledAt" | "location" | "notes"> };
+export type MemberDepartureRow = { id: string; person_id: string | null; first_name: string; last_name: string; patronymic: string | null; date_left: string; reason: "different_church" | "died" | "excommunicated" | "other"; other_detail: string | null; notes: string; recorded_by: string | null; created_at: string; restored_at: string | null; legacy: boolean };
 type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 /** Maintained with the clean baseline. Regenerate from the approved catalog before deployment. */
 export type Database = {
@@ -12,6 +13,7 @@ export type Database = {
     Tables: {
       profiles: Table<ProfileRow & { last_seen_at: string | null }>;
       people: Table<PersonRow>;
+      member_departures: Table<MemberDepartureRow>;
       ministries: Table<MinistryRow>;
       person_ministries: Table<{ person_id: string; ministry_id: string }>;
       deacon_groups: Table<GroupRow>;
@@ -32,6 +34,7 @@ export type Database = {
       person_leadership_ministries: { Row: { person_id: string; leadership_ministry: Exclude<LeadershipMinistry, null> }; Relationships: [] };
     };
     Functions: {
+      record_member_departure: { Args: { p_person_id: string; p_revision: number; p_date_left: string; p_reason: MemberDepartureRow["reason"]; p_other_detail: string | null; p_notes: string }; Returns: MemberDepartureRow };
       member_family: { Args: { p_person_id: string; p_manage?: boolean }; Returns: Json };
       save_member_family: { Args: { p_person_id: string; p_revision: number; p_parent_ids: string[]; p_spouse_id: string | null; p_child_ids: string[]; p_sibling_ids: string[] }; Returns: Json };
       mobile_contract_version: { Args: Record<string, never>; Returns: string };

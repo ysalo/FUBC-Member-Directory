@@ -1,5 +1,5 @@
 import { emptyFamily, loadFamily, saveFamily, type FamilyChanges } from "@/features/family/family-repository";
-import type { Database, Json, PersonRow } from "@/lib/database";
+import type { MemberDepartureRow, Database, Json, PersonRow } from "@/lib/database";
 import { canManageAccounts, canManageDirectory, canManageGroups, canManageSettings } from "@/lib/permissions";
 import {
     activeAccount,
@@ -54,16 +54,18 @@ export class SupabaseManagementRepository {
                 "Directory management is unavailable for this account.",
             );
         const client = requireSupabase();
-        const [peopleResult, groupsResult, accountsResult] = await Promise.all([
+        const [peopleResult, groupsResult, accountsResult, departuresResult] = await Promise.all([
             client.from("people").select("*").order("name"),
             client.from("deacon_groups").select("*"),
             canManageAccounts(actor)
                 ? client.rpc("management_accounts", {})
                 : Promise.resolve({ data: [], error: null }),
+            client.from("member_departures").select("person_id,date_left").is("restored_at", null),
         ]);
         const people = unwrap(peopleResult),
             groups = unwrap(groupsResult);
         const accounts = unwrap(accountsResult);
+        const departures = unwrap(departuresResult);
         // Photos enrich the list but must never prevent an administrator from reaching
         // account approval or directory-management controls.
         const photos = await privatePhotoSources(
@@ -80,7 +82,7 @@ export class SupabaseManagementRepository {
                     groups.find((group) => group.id === row.membership_group_id)
                         ?.name ?? "",
                 archived: Boolean(row.archived_at),
-                leftAt: row.archived_at,
+                leftAt: departures.find(departure => departure.person_id === row.id)?.date_left ?? row.archived_at,
                 revision: row.revision,
                 phone: row.phone,
                 email: row.email,
@@ -168,13 +170,15 @@ export class SupabaseManagementRepository {
         if (!canManageDirectory(activeAccount()))
             throw new Error("Not authorized.");
         const client = requireSupabase();
-        const [personResult, groupsResult, detailsResult] = await Promise.all([
+        const [personResult, groupsResult, detailsResult, departuresResult] = await Promise.all([
             client.from("people").select("*").eq("id", id).maybeSingle(),
             client.from("deacon_groups").select("*"),
             client.rpc("management_member_care_details", { p_person_id: id }),
+            client.from("member_departures").select("date_left").eq("person_id", id).is("restored_at", null).maybeSingle(),
         ]);
         if (personResult.error) throw new Error(personResult.error.message);
         if (!personResult.data) return null;
+        if (departuresResult.error) throw new Error(departuresResult.error.message);
         const row = personResult.data;
         const groups = unwrap(groupsResult);
         const details = unwrap(detailsResult)[0];
@@ -190,7 +194,7 @@ export class SupabaseManagementRepository {
                 groups.find((group) => group.id === row.membership_group_id)
                     ?.name ?? "",
             archived: Boolean(row.archived_at),
-            leftAt: row.archived_at,
+            leftAt: departuresResult.data?.date_left ?? row.archived_at,
             revision: row.revision,
             birthday: details?.birth_date ?? null,
             membershipJoinedAt: row.membership_joined_at,
@@ -370,6 +374,16 @@ export class SupabaseManagementRepository {
         );
         invalidateData("directory", "groups", "duty");
         return saved;
+    }
+    async listMemberDepartures(personId: string): Promise<MemberDepartureRow[]> {
+        if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
+        return unwrap(await requireSupabase().from("member_departures").select("*").eq("person_id", personId).order("created_at", { ascending: false }));
+    }
+    async recordMemberDeparture(member: ManagedMember, departure: { dateLeft: string; reason: MemberDepartureRow["reason"]; otherDetail: string; notes: string }) {
+        if (!canManageDirectory(activeAccount())) throw new Error("Not authorized.");
+        const result = unwrap(await requireSupabase().rpc("record_member_departure", { p_person_id: member.id, p_revision: member.revision!, p_date_left: departure.dateLeft, p_reason: departure.reason, p_other_detail: departure.reason === "other" ? departure.otherDetail.trim() : null, p_notes: departure.notes.trim() }));
+        invalidateData("directory", "groups", "duty");
+        return result;
     }
     async setMembershipActive(member: ManagedMember, active: boolean) {
         if (!canManageDirectory(activeAccount()))
@@ -822,8 +836,22 @@ class InMemoryManagementRepository {
         }
         return structuredClone(saved);
     }
+    private departures: MemberDepartureRow[] = [];
+    async listMemberDepartures(personId: string): Promise<MemberDepartureRow[]> {
+        return structuredClone(this.departures.filter(row => row.person_id === personId).reverse());
+    }
+    async recordMemberDeparture(member: ManagedMember, departure: { dateLeft: string; reason: MemberDepartureRow["reason"]; otherDetail: string; notes: string }) {
+        const current = this.state.members.find(row => row.id === member.id);
+        if (!current || current.archived || current.revision !== member.revision) throw new Error("Conflict: member changed.");
+        const row: MemberDepartureRow = { id: `departure-${Date.now()}-${Math.random().toString(36).slice(2)}`, person_id: member.id, first_name: member.first_name ?? member.name.split(" ")[0], last_name: member.last_name ?? member.name.split(" ").slice(1).join(" "), patronymic: member.patronymic ?? null, date_left: departure.dateLeft, reason: departure.reason, other_detail: departure.reason === "other" ? departure.otherDetail : null, notes: departure.notes, recorded_by: null, created_at: new Date().toISOString(), restored_at: null, legacy: false };
+        await this.setMembershipActive(member, false);
+        this.departures.push(row);
+        this.state.members.find(item => item.id === member.id)!.leftAt = departure.dateLeft;
+        return structuredClone(row);
+    }
     async setMembershipActive(member: ManagedMember, active: boolean) {
         if (member.archived === !active) return structuredClone(member);
+        if (active) this.departures.filter(row => row.person_id === member.id && !row.restored_at).forEach(row => { row.restored_at = new Date().toISOString(); });
         this.state = managementReducer(this.state, {
             type: "toggle-member-archive",
             memberId: member.id,

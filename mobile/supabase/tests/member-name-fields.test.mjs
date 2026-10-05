@@ -54,6 +54,7 @@ try {
   await migration('20260928000000_member_gender');
 
   await migration('20261004000000_member_name_fields');
+  await migration('20261005000000_member_departures');
   test('name fields backfill archived records and preserve multiword names on writes', async () => {
     const old = (await db.query('select first_name,last_name from public.people order by name')).rows;
     assert.equal(old.length, 3);
@@ -86,6 +87,36 @@ try {
     assert.equal(person.first_name,'Legacy');
     assert.equal(person.last_name,'Changed');
     assert.equal(await db.query("select nullif(current_setting('app.member_name_fields',true),'') as value").then(result => result.rows[0].value),null);
+  });
+  test('departures save atomically with name snapshots, management-only access and repeat membership episodes', async () => {
+    const save = async (id, revision, data) => (await as('editor', 'select * from public.save_person($1,$2,$3::jsonb)', [id,revision,JSON.stringify(data)])).rows[0];
+    const depart = async (person, reason = 'other', detail = 'Moved overseas', date = '2026-01-01', actor = 'editor') => (await as(actor, 'select * from public.record_member_departure($1,$2,$3,$4,$5,$6)', [person.id,person.revision,date,reason,detail,'Additional context'])).rows[0];
+    let person = await save(null,null,{first_name:'Anna',last_name:'Petrenko',patronymic:'Ivanivna',gender:'female',phone:'1234567890'});
+    await assert.rejects(depart(person,'other',''), /Describe/);
+    await assert.rejects(depart(person,'invalid'), /Choose a departure reason/);
+    await assert.rejects(depart(person,'other','x'.repeat(161)), /160/);
+    await assert.rejects(depart(person,'other','Two\nlines'), /160/);
+    await assert.rejects(depart(person,'other','Moved','2099-01-01'), /valid departure date/);
+    await assert.rejects(depart(person,'died',null,'2026-01-01','member'), /Not authorized/);
+    assert.equal((await db.query('select archived_at from public.people where id=$1',[person.id])).rows[0].archived_at,null);
+    const record = await depart(person);
+    assert.equal(record.first_name,'Anna'); assert.equal(record.last_name,'Petrenko'); assert.equal(record.patronymic,'Ivanivna');
+    assert.equal(record.reason,'other'); assert.equal(record.other_detail,'Moved overseas'); assert.equal(record.notes,'Additional context'); assert.equal(record.legacy,false);
+    await assert.rejects(depart(person), /Conflict/);
+    const archived = (await db.query('select * from public.people where id=$1',[person.id])).rows[0];
+    assert.ok(archived.archived_at); assert.equal(archived.phone,'1234567890'); assert.equal(archived.patronymic,'Ivanivna'); assert.equal(archived.revision,person.revision + 1);
+    assert.equal((await as('member','select * from public.member_departures')).rows.length,0);
+    assert.equal((await as('editor','select * from public.member_departures where id=$1',[record.id])).rows.length,1);
+    await assert.rejects(as('editor',"update public.member_departures set notes='Unauthorized' where id=$1",[record.id]), /permission denied/);
+    person = await save(person.id,archived.revision,{first_name:'Anna',last_name:'Changed',archived:false});
+    assert.ok((await db.query('select restored_at from public.member_departures where id=$1',[record.id])).rows[0].restored_at);
+    const second = await depart(person,'different_church','Ignored detail');
+    assert.notEqual(record.id,second.id); assert.equal(second.last_name,'Changed'); assert.equal(second.other_detail,null);
+    await db.query('delete from public.people where id=$1',[person.id]);
+    const history = (await db.query('select * from public.member_departures where id=any($1::uuid[])',[[record.id,second.id]])).rows;
+    assert.equal(history.length,2); assert.ok(history.every(row => row.person_id === null));
+    assert.equal(history.find(row => row.id === record.id).last_name,'Petrenko');
+    assert.ok((await db.query('select * from public.member_departures where legacy')).rows.length > 0);
   });
 } catch (error) {
   test('member name migration setup', () => { throw error; });

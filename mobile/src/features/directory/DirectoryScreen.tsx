@@ -1,8 +1,9 @@
+import { memberSearchScore } from "@/lib/member-search";
 import { directorySurname, compareDirectoryNames } from "./directory-order";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Link, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWarmResource } from "@/lib/use-warm-resource";
 import { ResourceRefresh } from "@/features/shell/ResourceRefresh";
 import {
@@ -238,6 +239,12 @@ export function DirectoryScreen() {
     const router = useRouter();
     const { copy, locale } = useLocalization();
     const { palette } = useAppearance();
+    const webListRef = useRef<ScrollView>(null);
+    const nativeListRef = useRef<SectionList<Member>>(null);
+    const sectionOffsets = useRef<Record<string, number>>({});
+    const pendingSection = useRef<number | null>(null);
+    const jumpRetry = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const jumpAttempts = useRef(0);
     const [query, setQuery] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const resource = useWarmResource("directory", loadDirectoryData);
@@ -263,7 +270,6 @@ export function DirectoryScreen() {
         return directoryMembers
             .map((member) => ({
                 member,
-                searchText: `${member.name} ${formatMemberName(member)} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase(),
                 surname: directorySurname(member),
             }))
             .sort(compareDirectoryNames);
@@ -271,7 +277,7 @@ export function DirectoryScreen() {
 
     const filteredDirectory = useMemo(() => {
         const needle = searchQuery.trim().toLocaleLowerCase();
-        return sortedDirectory.filter(({ member, searchText }) =>
+        return sortedDirectory.filter(({ member, surname }) =>
             (filters.length === 0 ||
                 filters.some((filter) =>
                     filter === "orphan"
@@ -283,7 +289,7 @@ export function DirectoryScreen() {
                           : filter === "ungrouped"
                             ? !member.membershipGroupId
                             : member.leadershipMinistry === filter,
-                )) && (!needle || searchText.includes(needle)),
+                )) && (!needle || memberSearchScore({ ...member, last_name: surname }, needle) !== null),
         );
     }, [filters, searchQuery, sortedDirectory]);
 
@@ -301,6 +307,25 @@ export function DirectoryScreen() {
             [],
         );
     }, [filteredDirectory, locale]);
+
+    useEffect(() => () => {
+        if (jumpRetry.current) clearTimeout(jumpRetry.current);
+        pendingSection.current = null;
+    }, [sections]);
+    const jumpToSection = (index: number) => {
+        if (jumpRetry.current) clearTimeout(jumpRetry.current);
+        jumpAttempts.current = 0;
+        if (Platform.OS === "web") webListRef.current?.scrollTo({ y: sectionOffsets.current[sections[index].title] ?? 0, animated: true });
+        else {
+            pendingSection.current = index;
+            nativeListRef.current?.scrollToLocation({ sectionIndex: index, itemIndex: 0, viewPosition: 0, animated: true });
+        }
+    };
+    const alphabetIndex = sections.length > 1 ? (
+        <ScrollView accessibilityLabel={locale === "uk" ? "Покажчик прізвищ" : "Last name index"} style={styles.alphabetIndex} contentContainerStyle={{ alignItems: "center" }}>
+            {sections.map((section, index) => <Pressable key={section.title} accessibilityRole="button" accessibilityLabel={`${locale === "uk" ? "До прізвищ на" : "Jump to last names starting with"} ${section.title}`} onPress={() => jumpToSection(index)} style={styles.alphabetButton}><Text style={{ color: palette.accent, fontSize: 12, fontWeight: "700" }}>{section.title}</Text></Pressable>)}
+        </ScrollView>
+    ) : null;
 
     const filterOptions: Array<{ id: DirectoryFilter; label: string }> = [
         { id: "orphan", label: locale === "uk" ? "Сироти" : "Orphans" },
@@ -660,7 +685,9 @@ export function DirectoryScreen() {
                     </View>
                 )}
                 <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
+                <View style={{ flex: 1, position: "relative" }}>
                 <ScrollView
+                    ref={webListRef}
                     testID="directory-scroll"
                     contentContainerStyle={styles.webContent}
                     keyboardShouldPersistTaps="handled"
@@ -669,7 +696,7 @@ export function DirectoryScreen() {
                     {sections.length === 0
                         ? empty
                         : sections.map((section) => (
-                              <View key={section.title}>
+                              <View key={section.title} onLayout={(event) => { sectionOffsets.current[section.title] = event.nativeEvent.layout.y; }}>
                                   <Text
                                       style={[
                                           styles.sectionLetter,
@@ -699,6 +726,8 @@ export function DirectoryScreen() {
                           ))}
                     {summary}
                 </ScrollView>
+                {alphabetIndex}
+                </View>
                 <WebTabBar />
             </View>
         );
@@ -708,9 +737,19 @@ export function DirectoryScreen() {
         <View style={[styles.safe, { backgroundColor: palette.background }]}>
             {stickyOverview}
             <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
+            <View style={{ flex: 1, position: "relative" }}>
             <SectionList
+                ref={nativeListRef}
+                onScrollToIndexFailed={({ averageItemLength, index }) => {
+                    if (++jumpAttempts.current > 8) return;
+                    nativeListRef.current?.getScrollResponder()?.scrollTo({ y: averageItemLength * index, animated: false });
+                    jumpRetry.current = setTimeout(() => {
+                        const sectionIndex = pendingSection.current;
+                        if (sectionIndex !== null && sections[sectionIndex]) nativeListRef.current?.scrollToLocation({ sectionIndex, itemIndex: 0, animated: true });
+                    }, 150);
+                }}
                 refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={loadDirectory} />}
-                contentContainerStyle={styles.content}
+                contentContainerStyle={[styles.content, { paddingRight: 34 }]}
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={12}
@@ -743,6 +782,8 @@ export function DirectoryScreen() {
                 stickySectionHeadersEnabled={false}
                 windowSize={15}
             />
+            {alphabetIndex}
+            </View>
             <WebTabBar />
         </View>
     );
@@ -752,6 +793,8 @@ const scale = 1;
 const px = (value: number) => value * scale;
 
 const styles = StyleSheet.create({
+    alphabetIndex: { position: "absolute", right: 0, top: 8, bottom: 8, width: 28, backgroundColor: "transparent" },
+    alphabetButton: { minHeight: 22, width: 28, alignItems: "center", justifyContent: "center" },
     skeletonText: { alignSelf: "flex-start", borderRadius: 4 },
     desktopScreen: {
         alignSelf: "center",
@@ -777,7 +820,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "600",
     },
-    webContent: { paddingBottom: 28 },
+    webContent: { paddingBottom: 28, paddingRight: 28 },
     safe: { backgroundColor: "#F1F0EB", flex: 1 },
     rosterScroll: { flex: 1 },
     content: { paddingBottom: px(102) },
