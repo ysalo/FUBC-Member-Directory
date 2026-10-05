@@ -340,7 +340,7 @@ export function DirectoryScreen() {
                 ref={alphabetRef}
                 testID="directory-alphabet-index"
                 accessibilityLabel={locale === "uk" ? "Покажчик прізвищ" : "Last name index"}
-                style={[styles.alphabetIndex, { height: Math.min(sections.length * 18, listHeight * 0.9) }]}
+                style={[styles.alphabetIndex, { height: Math.min(sections.length * 13, listHeight * 0.9) }]}
                 onStartShouldSetResponderCapture={() => true}
                 onMoveShouldSetResponderCapture={() => true}
                 onResponderGrant={(event) => {
@@ -356,7 +356,7 @@ export function DirectoryScreen() {
                 onResponderRelease={() => { scrubbedSection.current = null; }}
                 onResponderTerminate={() => { scrubbedSection.current = null; scrubPosition.current = null; }}
             >
-                {sections.map((section, index) => <Pressable key={section.title} accessibilityRole="button" accessibilityLabel={`${locale === "uk" ? "До прізвищ на" : "Jump to last names starting with"} ${section.title}`} onPress={() => jumpToSection(index, false)} style={styles.alphabetButton}><Text style={{ color: palette.accent, fontSize: 11, fontWeight: "700" }}>{section.title}</Text></Pressable>)}
+                {sections.map((section, index) => <Pressable key={section.title} accessibilityRole="button" accessibilityLabel={`${locale === "uk" ? "До прізвищ на" : "Jump to last names starting with"} ${section.title}`} onPress={() => jumpToSection(index, false)} style={styles.alphabetButton}><Text style={{ color: palette.accent, fontSize: 10, lineHeight: 12, fontWeight: "700" }}>{section.title}</Text></Pressable>)}
             </View>
         </View>
     ) : null;
@@ -381,8 +381,9 @@ export function DirectoryScreen() {
         );
 
     const summary = (
-        <View>
+        <View style={{ paddingBottom: Platform.OS === "android" ? 66 + insets.bottom : 0 }}>
             <View
+                testID="directory-summary"
                 accessibilityLabel="Directory totals"
                 style={[
                     styles.summaryFooter,
@@ -689,12 +690,12 @@ export function DirectoryScreen() {
                     </View>
                 )}
                 <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
-                <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={{ flex: 1, position: "relative" }}>
+                <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={styles.rosterViewport}>
                 <ScrollView
                     ref={webListRef}
                     testID="directory-scroll"
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.webContent}
+                    contentContainerStyle={[styles.webContent, { paddingRight: sections.length > 1 ? 24 : 0 }]}
                     keyboardShouldPersistTaps="handled"
                     style={styles.rosterScroll}
                 >
@@ -729,10 +730,10 @@ export function DirectoryScreen() {
                                   ))}
                               </View>
                           ))}
-                    {summary}
                 </ScrollView>
                 {alphabetIndex}
                 </View>
+                {summary}
                 <WebTabBar />
             </View>
         );
@@ -742,7 +743,7 @@ export function DirectoryScreen() {
         <View style={[styles.safe, { backgroundColor: palette.background }]}>
             {stickyOverview}
             <ResourceRefresh error={resource.error && loadState === "ready"} refreshing={resource.refreshing} onRefresh={loadDirectory} />
-            <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={{ flex: 1, position: "relative" }}>
+            <View onLayout={(event) => setListHeight(event.nativeEvent.layout.height)} style={styles.rosterViewport}>
             <SectionList
                 ref={nativeListRef}
                 showsVerticalScrollIndicator={false}
@@ -755,7 +756,7 @@ export function DirectoryScreen() {
                     }, 150);
                 }}
                 refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={loadDirectory} />}
-                contentContainerStyle={[styles.content, { paddingRight: 42 }]}
+                contentContainerStyle={[styles.content, { paddingRight: sections.length > 1 ? 24 : 0 }]}
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={12}
@@ -784,12 +785,12 @@ export function DirectoryScreen() {
                 )}
                 removeClippedSubviews={false}
                 sections={sections}
-                ListFooterComponent={summary}
                 stickySectionHeadersEnabled={false}
                 windowSize={15}
             />
             {alphabetIndex}
             </View>
+            {summary}
             <WebTabBar />
         </View>
     );
@@ -799,9 +800,9 @@ const scale = 1;
 const px = (value: number) => value * scale;
 
 const styles = StyleSheet.create({
-    alphabetOverlay: { position: "absolute", right: 6, top: 0, bottom: 0, justifyContent: "center", alignItems: "center", width: 30 },
-    alphabetIndex: { width: 30, alignItems: "center" },
-    alphabetButton: { flex: 1, width: 30, alignItems: "center", justifyContent: "center" },
+    alphabetOverlay: { position: "absolute", right: 2, top: 0, bottom: 0, justifyContent: "center", alignItems: "center", width: 20 },
+    alphabetIndex: { width: 20, alignItems: "center" },
+    alphabetButton: { flex: 1, width: 20, alignItems: "center", justifyContent: "center" },
     skeletonText: { alignSelf: "flex-start", borderRadius: 4 },
     desktopScreen: {
         alignSelf: "center",
@@ -827,10 +828,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "600",
     },
-    webContent: { paddingBottom: 28, paddingRight: 42 },
-    safe: { backgroundColor: "#F1F0EB", flex: 1 },
-    rosterScroll: { flex: 1 },
-    content: { paddingBottom: px(102) },
+    webContent: { paddingBottom: 16 },
+    safe: { backgroundColor: "#F1F0EB", flex: 1, minHeight: 0, width: "100%" },
+    rosterViewport: { flex: 1, minHeight: 0, position: "relative", width: "100%" },
+    rosterScroll: { flex: 1, minHeight: 0 },
+    content: { paddingBottom: px(16) },
     stickyOverview: {
         backgroundColor: "#F1F0EB",
         borderBottomColor: "#D8D5CE",
@@ -971,7 +973,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: px(16),
         justifyContent: "center",
-        marginTop: px(16),
+        flexShrink: 0,
         paddingHorizontal: px(12),
         paddingVertical: px(16),
     },
