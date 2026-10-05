@@ -389,21 +389,15 @@ export function DirectoryScreen() {
                 : [...current, filter],
         );
 
-    const summary = (
-        <View>
+    const summary = query.trim() ? null : (
+        <View style={{ marginTop: "auto" }}>
             <View
                 testID="directory-summary"
                 accessibilityLabel="Directory totals"
-                style={[
-                    styles.summaryFooter,
-                    {
-                        backgroundColor: palette.surface,
-                        borderTopColor: palette.line,
-                    },
-                ]}
+                style={styles.summaryFooter}
             >
                 <Text
-                    style={[styles.summaryFooterText, { color: palette.text }]}
+                    style={[styles.summaryFooterText, { color: palette.secondaryText }]}
                 >
                     {locale === "uk" ? "Усього" : "Total members"}:{" "}
                     {directoryMembers.length}
@@ -469,7 +463,6 @@ export function DirectoryScreen() {
                 <TextInput
                     accessibilityLabel={copy.directory.searchLabel}
                     autoCapitalize="none"
-                    clearButtonMode="while-editing"
                     onChangeText={(nextQuery) => {
                         setQuery(nextQuery);
                         if (!nextQuery) setSearchQuery("");
@@ -480,6 +473,16 @@ export function DirectoryScreen() {
                     style={[styles.searchInput, { color: palette.text }]}
                     value={query}
                 />
+                {query ? (
+                    <Pressable
+                        accessibilityLabel={locale === "uk" ? "Очистити пошук" : "Clear search"}
+                        accessibilityRole="button"
+                        onPress={() => { setQuery(""); setSearchQuery(""); }}
+                        style={styles.clearSearchButton}
+                    >
+                        <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="close-circle" size={20} />
+                    </Pressable>
+                ) : null}
                 <Pressable
                     accessibilityLabel={locale === "uk" ? "Фільтри" : "Filters"}
                     accessibilityRole="button"
@@ -795,6 +798,7 @@ export function DirectoryScreen() {
                 removeClippedSubviews={false}
                 sections={sections}
                 ListFooterComponent={summary}
+                ListFooterComponentStyle={{ marginTop: "auto" }}
                 stickySectionHeadersEnabled={false}
                 windowSize={15}
             />
@@ -837,11 +841,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "600",
     },
-    webContent: { paddingBottom: 16 },
+    webContent: { flexGrow: 1, paddingBottom: 0 },
     safe: { backgroundColor: "#F1F0EB", flex: 1, minHeight: 0, width: "100%" },
     rosterViewport: { flex: 1, minHeight: 0, position: "relative", width: "100%" },
     rosterScroll: { flex: 1, minHeight: 0 },
-    content: { paddingBottom: px(16) },
+    content: { flexGrow: 1, paddingBottom: px(16) },
     stickyOverview: {
         backgroundColor: "#F1F0EB",
         borderBottomColor: "#D8D5CE",
@@ -879,6 +883,7 @@ const styles = StyleSheet.create({
         fontSize: px(14),
         paddingVertical: px(12),
     },
+    clearSearchButton: { width: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
     filterButton: {
         alignItems: "center",
         justifyContent: "center",
@@ -979,15 +984,14 @@ const styles = StyleSheet.create({
     memberMinistry: { color: "#737477", fontSize: px(16), marginTop: px(2) },
     memberPhone: { fontSize: px(14), marginTop: px(2) },
     summaryFooter: {
-        borderTopWidth: StyleSheet.hairlineWidth,
         flexDirection: "row",
         gap: px(16),
         justifyContent: "center",
         flexShrink: 0,
         paddingHorizontal: px(12),
-        paddingVertical: px(16),
+        paddingVertical: px(12),
     },
-    summaryFooterText: { fontSize: px(13), fontWeight: "600" },
+    summaryFooterText: { fontSize: px(12), fontWeight: "400" },
     empty: {
         alignItems: "center",
         paddingHorizontal: px(30),

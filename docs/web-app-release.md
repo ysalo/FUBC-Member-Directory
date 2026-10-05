@@ -1,3 +1,9 @@
+## Plain totals at the bottom, hidden during search (2026-10-05, version 1.4.5)
+
+Directory totals use plain secondary-color text without a surface background or border. They remain the full-width final item in the scrollable directory, with flexible space placing them at the viewport bottom for short rosters. Long rosters show them only at the end of the list. Any nonempty search input immediately hides the totals, including no-match searches; clearing the input restores them. An accessible localized clear button appears inside the search box when it contains text, resets both immediate and debounced queries in one press, and restores the directory/totals. Grouped name results, compact surname navigation and full-height layout remain intact on shared web/native screens.
+
+No backend change or migration; rollback to 1.4.4 is compatible. Required verification: `pnpm verify`, `pnpm build:web`, and phone/desktop browser fixtures in both themes covering plain footer styling/end position, absent totals during exact/prefix/empty-result searches, restoration on clear, short-roster bottom layout, name groups, member taps, index scrubbing, departure confirmations/retry, callbacks/deep links and no notification side effects. Hosted Preview requires SSO; physical native/live OAuth checks are not claimed. CI, deployment and final production evidence belong to the feature/release PRs.
+
 ## Scrolling totals and grouped name matches (2026-10-05, version 1.4.4)
 
 Directory totals are a full-width footer at the end of the scrollable roster on web and native. They appear when the end of the results is reached rather than remaining pinned above navigation. The compact surname gutter is applied only to surname sections/member rows, leaving totals full width.
