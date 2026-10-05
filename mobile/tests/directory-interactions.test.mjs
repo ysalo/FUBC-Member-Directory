@@ -131,10 +131,10 @@ test('surname index jumps the roster to the measured section without opening a m
   const ui=directoryFixture(),nodes=ui.render(),scrolls=[];
   const roster=nodes.find(node=>node.props?.testID==='directory-scroll');
   roster.props.ref.current={scrollTo:args=>scrolls.push(args)};
-  const sections=nodes.filter(node=>node.props?.onLayout);
+  const sections=nodes.filter(node=>node.props?.onLayout && node.key !== null);
   sections.forEach((node,index)=>node.props.onLayout({nativeEvent:{layout:{y:index*100}}}));
   ui.button(nodes,'Jump to last names starting with G').props.onPress();
-  assert.deepEqual(scrolls,[{y:300,animated:true}]);
+  assert.deepEqual(scrolls,[{y:300,animated:false}]);
 });
 
 
@@ -143,9 +143,22 @@ test('native surname index jumps to the requested section and retries an unmeasu
   const list=nodes.find(node=>node.type==='SectionList');
   list.props.ref.current={scrollToLocation:args=>jumps.push(args),getScrollResponder:()=>({scrollTo:args=>estimates.push(args)})};
   ui.button(nodes,'Jump to last names starting with G').props.onPress();
-  assert.deepEqual(jumps,[{sectionIndex:3,itemIndex:0,viewPosition:0,animated:true}]);
+  assert.deepEqual(jumps,[{sectionIndex:3,itemIndex:0,viewPosition:0,animated:false}]);
   list.props.onScrollToIndexFailed({averageItemLength:80,index:100});
   assert.deepEqual(estimates,[{y:8000,animated:false}]);
   await new Promise(resolve=>setTimeout(resolve,180));
   assert.deepEqual(jumps[1],{sectionIndex:3,itemIndex:0,animated:true});
 });
+
+ test('dragging the surname index scrubs the roster without animated queues',()=>{
+  const ui=directoryFixture(),nodes=ui.render(),scrolls=[];
+  nodes.find(node=>node.props?.testID==='directory-scroll').props.ref.current={scrollTo:args=>scrolls.push(args)};
+  nodes.filter(node=>node.props?.onLayout && node.key !== null).forEach((node,index)=>node.props.onLayout({nativeEvent:{layout:{y:index*100}}}));
+  const rail=nodes.find(node=>node.props?.testID==='directory-alphabet-index');
+  rail.props.ref.current={measureInWindow:callback=>callback(0,100,30,80)};
+  rail.props.onResponderGrant({nativeEvent:{pageY:101}});
+  rail.props.onResponderMove({nativeEvent:{pageY:179}});
+  rail.props.onResponderMove({nativeEvent:{pageY:178}});
+  rail.props.onResponderMove({nativeEvent:{pageY:121}});
+  assert.deepEqual(scrolls,[{y:0,animated:false},{y:300,animated:false},{y:100,animated:false}]);
+ });

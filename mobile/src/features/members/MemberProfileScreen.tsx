@@ -33,7 +33,6 @@ import { CareStatusBadges } from "./care-status-badges";
 import { LeadershipBadge } from "./leadership-badge";
 import { ProfileAvatar, avatarSourceIdentity, hasImageSource } from "./ProfileAvatar";
 import { sessionCacheScope, subscribeDataChanges } from "@/lib/session-cache";
-import { canCreateVisit } from "@/lib/permissions";
 import { contactShareMessage, emailUrl, mapUrls } from "./contact-links";
 
 export function MemberProfileScreen({ memberId }: { memberId: string }) {
@@ -160,8 +159,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
         "вдівець",
         "вдівець/вдова",
     ].includes(profile.maritalStatus?.trim().toLocaleLowerCase() ?? "");
-    const canRequestVisit =
-        session.status === "ready" && canCreateVisit(session.account);
+
     const canEdit =
         session.status === "ready" && session.account.role === "admin";
     const photoIdentity = typeof profile.photo === "object" && "uri" in profile.photo ? profile.photo.uri : avatarSourceIdentity(profile.photo);
@@ -601,33 +599,6 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     </View>
                 )}
                 <View style={[styles.body, desktop && styles.desktopBody]}>
-                    {canRequestVisit ? (
-                        <Pressable
-                            accessibilityRole="button"
-                            onPress={() =>
-                                router.push({
-                                    pathname: "/visitation/new",
-                                    params: { person: memberId },
-                                } as Href)
-                            }
-                            style={({ pressed }) => [
-                                styles.visitButton,
-                                desktop && styles.desktopVisitButton,
-                                { backgroundColor: palette.accent },
-                                pressed && styles.pressed,
-                            ]}
-                        >
-                            <Ionicons
-                                accessibilityElementsHidden
-                                color="#FFF"
-                                name="calendar-outline"
-                                size={21}
-                            />
-                            <Text style={styles.visitButtonText}>
-                                {copy.requestVisit}
-                            </Text>
-                        </Pressable>
-                    ) : null}
                     {desktop ? (
                         <View style={styles.desktopColumns}>
                             <View style={styles.desktopContactColumn}>
@@ -944,7 +915,6 @@ const styles = StyleSheet.create({
     desktopColumns: { flexDirection: "row", alignItems: "flex-start", gap: 28 },
     desktopContactColumn: { flex: 1, minWidth: 0, gap: 24 },
     desktopDetailsColumn: { flex: 1, minWidth: 0 },
-    desktopVisitButton: { alignSelf: "flex-start", paddingHorizontal: 24 },
     root: { flex: 1 },
     screen: { paddingBottom: 112 },
     hero: {
@@ -1005,15 +975,6 @@ const styles = StyleSheet.create({
     },
     heroPillText: { color: "#FFF", fontSize: 13, fontWeight: "700" },
     body: { gap: 18, padding: 18 },
-    visitButton: {
-        alignItems: "center",
-        borderRadius: 14,
-        flexDirection: "row",
-        gap: 9,
-        justifyContent: "center",
-        minHeight: 52,
-    },
-    visitButtonText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
     section: { gap: 8 },
     deaconAvatars: { flexDirection: "column", gap: 12, padding: 12 },
     deaconAvatarLink: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 64 },

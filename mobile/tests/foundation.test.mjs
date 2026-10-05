@@ -405,17 +405,17 @@ test('pending approval screen offers a resilient sign-out action', async () => {
   assert.match(gate, /secondaryActionError/);
 });
 
-test('visitation uses a nested stack and exposes both planning entry points to ministry leaders', async () => {
+test('hidden visitation routes redirect and profiles have no planning action', async () => {
   const [layout, index, list, profile] = await Promise.all([
     readFile(new URL('../src/app/visitation/_layout.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/app/visitation/index.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/features/visitation/VisitationListScreen.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/features/members/MemberProfileScreen.tsx', import.meta.url), 'utf8'),
   ]);
-  assert.match(layout, /<Stack/);
+  assert.match(layout, /<Redirect href="\/"/);
   assert.match(index, /<VisitationListScreen/);
   assert.match(list, /canCreateVisit\(state\.status === "ready" \? state\.snapshot\.actor : account\)/);
   assert.match(list, /router\.push\("\/visitation\/new"/);
-  assert.match(profile, /canCreateVisit\(session\.account\)/);
-  assert.match(profile, /pathname: "\/visitation\/new"/);
+  assert.doesNotMatch(profile, /canCreateVisit\(session\.account\)/);
+  assert.doesNotMatch(profile, /pathname: "\/visitation\/new"/);
 });

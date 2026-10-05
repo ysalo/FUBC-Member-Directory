@@ -1,3 +1,11 @@
+## Directory surname scrubbing and hidden visitation (2026-10-05, version 1.4.2)
+
+The surname index is transparent, borderless and vertically centered against the scrollable roster. Tapping a letter or dragging a mouse/finger along the index jumps the roster immediately to that section; the full index fits the available roster height. Normal list scrolling remains available with its scrollbar hidden on web and native. Member rows omit disclosure chevrons while retaining profile links and family selection controls.
+
+Visitation navigation, badges, directory alerts/count subscriptions and member profile planning actions are hidden on web and native. Direct visitation URLs redirect to Directory. Existing visitation records, repositories and backend permissions are preserved. No migration or backend prerequisite is required; rollback to 1.4.1 remains compatible.
+
+Node 24 `pnpm verify` and `pnpm build:web` passed. Interaction tests cover forward/reverse dragging, section boundaries, deduplicated immediate jumps and native unmeasured-section retry. Chromium fixture checks cover 390×844 and 1440×900 in light/dark themes, mouse and touch scrubbing, index centering, transparent index styling, hidden scrollbars/visitation, profile links, visitation URL redirects, name ranking and departure confirmation/retry/history. Public auth callbacks/deep links are checked separately. Hosted Preview is protected by Vercel SSO; authenticated Preview, live OAuth and physical native checks are not claimed. CI, Preview deployment and final production evidence are recorded in the feature/release PRs.
+
 # Web Application Release and Deployment
 
 ## Directory and departure UI polish (2026-10-05, issue #101)
