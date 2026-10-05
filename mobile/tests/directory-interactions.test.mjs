@@ -11,13 +11,13 @@ const ts = require('typescript');
 const source = await readFile(new URL('../src/features/directory/DirectoryScreen.tsx', import.meta.url), 'utf8');
 const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 
-function directoryFixture(platform = "web") {
-  const members = [
+function directoryFixture(platform = "web", people) {
+  const members = (people ?? [
     { id: 'male-orphan', name: 'Alex Alpha', gender: 'male', isOrphan: true },
     { id: 'female-other', name: 'Beth Beta', gender: 'female', isOrphan: false },
     { id: 'male-other', name: 'Carl Gamma', gender: 'male', isOrphan: false },
     { id: 'female-orphan', name: 'Dana Delta', gender: 'female', isOrphan: true },
-  ].map((member) => ({ ministry: '', ministryUk: '', avatar: {}, phone: null, leadershipMinistry: null, isWidow: false, membershipGroupId: 'group', ...member }));
+  ]).map((member) => ({ ministry: '', ministryUk: '', avatar: {}, phone: null, leadershipMinistry: null, isWidow: false, membershipGroupId: 'group', ...member }));
   const states = [];
   let cursor = 0;
   const hooks = { ...React,
@@ -74,7 +74,7 @@ function directoryFixture(platform = "web") {
   const ids = (nodes) => nodes.filter((node) => node.type === exports.MemberRow).map((node) => node.props.item.id);
   const checkbox = (nodes, label) => nodes.find((node) => node.props?.accessibilityRole === 'checkbox' && node.props.accessibilityLabel === label);
   const button = (nodes, label) => nodes.find((node) => node.type === 'Pressable' && (node.props.accessibilityLabel === label || text(node) === label));
-  return { render, ids, text, checkbox, button, row: (props) => exports.MemberRow(props) };
+  return { render, ids, text, checkbox, button, row: (props) => exports.MemberRow(props), search: (query) => { states[0] = query; states[1] = query; } };
 }
 
 test('Directory checkbox presses keep match-any membership, clear, and update the count', () => {
@@ -162,3 +162,29 @@ test('native surname index jumps to the requested section and retries an unmeasu
   rail.props.onResponderMove({nativeEvent:{pageY:121}});
   assert.deepEqual(scrolls,[{y:0,animated:false},{y:300,animated:false},{y:100,animated:false}]);
  });
+
+test('exact name matches and prefixes form subtle search sections without a surname index',()=>{
+ const people=[{id:'prefix',name:'Alexi Alpha'},{id:'exact',name:'Alex Zulu'},{id:'inside',name:'Calex Beta'}];
+ for(const platform of ['web','ios']) {
+  const ui=directoryFixture(platform,people);ui.search('Alex');let nodes=ui.render();
+  assert.deepEqual(ui.ids(nodes),platform==='web'?['exact','prefix']:[]);
+  assert.equal(nodes.some(node=>node.props?.testID==='directory-alphabet-index'),false);
+  const list=nodes.find(node=>node.type==='SectionList');
+  if(list) assert.deepEqual(list.props.sections.map(section=>[section.title,section.data.map(person=>person.id)]),[['Top matches',['exact']],['Other results',['prefix']]]);
+  else assert.deepEqual(nodes.filter(node=>node.type==='Text'&&['Top matches','Other results'].includes(ui.text(node))).map(ui.text),['Top matches','Other results']);
+  ui.search('Al');nodes=ui.render();
+  if(platform==='ios') assert.deepEqual(nodes.find(node=>node.type==='SectionList').props.sections.map(section=>section.title),['Top matches']);
+  else assert.equal(nodes.some(node=>ui.text(node)==='Other results'),false);
+  ui.search('NoMatch');nodes=ui.render();
+  assert.equal(nodes.some(node=>ui.text(node)==='Top matches'),false);
+ }
+});
+
+test('totals are inside the scrollable footer and remain full width',()=>{
+ const ui=directoryFixture(),nodes=ui.render();
+ const scroll=nodes.find(node=>node.props?.testID==='directory-scroll');
+ assert.equal(scroll.props.contentContainerStyle.paddingRight,undefined);
+ assert.equal(scroll.props.children.at(-1).props.children.props.testID,'directory-summary');
+ const native=directoryFixture('ios').render().find(node=>node.type==='SectionList');
+ assert.equal(native.props.ListFooterComponent.props.children.props.testID,'directory-summary');
+});

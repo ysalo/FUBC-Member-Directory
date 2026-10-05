@@ -1,4 +1,4 @@
-import { normalizeMemberSearch, searchMembers } from "@/lib/member-search";
+import { memberSearchScore, normalizeMemberSearch, searchMembers } from "@/lib/member-search";
 import { directorySurname, compareDirectoryNames } from "./directory-order";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
@@ -298,7 +298,14 @@ export function DirectoryScreen() {
     }, [filters, searchQuery, sortedDirectory]);
 
     const sections = useMemo(() => {
-        if (normalizeMemberSearch(searchQuery)) return filteredDirectory.length ? [{ title: locale === "uk" ? "Результати пошуку" : "Search results", data: filteredDirectory.map(item => item.member) }] : [];
+        if (normalizeMemberSearch(searchQuery)) {
+            const matches = filteredDirectory.map(({ member, surname }) => ({ member, score: memberSearchScore({ ...member, last_name: surname }, searchQuery) }));
+            const bestScore = matches[0]?.score;
+            return [
+                { title: locale === "uk" ? "Найкращі збіги" : "Top matches", data: matches.filter(match => match.score === bestScore).map(match => match.member) },
+                { title: locale === "uk" ? "Інші результати" : "Other results", data: matches.filter(match => match.score !== bestScore).map(match => match.member) },
+            ].filter(section => section.data.length > 0);
+        }
         return filteredDirectory.reduce<Array<{ title: string; data: Member[] }>>(
             (groups, member) => {
                 const title =
@@ -334,7 +341,9 @@ export function DirectoryScreen() {
             jumpToSection(index, false);
         }
     };
-    const alphabetIndex = sections.length > 1 ? (
+    const searching = Boolean(normalizeMemberSearch(searchQuery));
+    const showSurnameIndex = !searching && sections.length > 1;
+    const alphabetIndex = showSurnameIndex ? (
         <View pointerEvents="box-none" style={styles.alphabetOverlay}>
             <View
                 ref={alphabetRef}
@@ -381,7 +390,7 @@ export function DirectoryScreen() {
         );
 
     const summary = (
-        <View style={{ paddingBottom: Platform.OS === "android" ? 66 + insets.bottom : 0 }}>
+        <View>
             <View
                 testID="directory-summary"
                 accessibilityLabel="Directory totals"
@@ -695,17 +704,17 @@ export function DirectoryScreen() {
                     ref={webListRef}
                     testID="directory-scroll"
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={[styles.webContent, { paddingRight: sections.length > 1 ? 24 : 0 }]}
+                    contentContainerStyle={styles.webContent}
                     keyboardShouldPersistTaps="handled"
                     style={styles.rosterScroll}
                 >
                     {sections.length === 0
                         ? empty
                         : sections.map((section) => (
-                              <View key={section.title} onLayout={(event) => { sectionOffsets.current[section.title] = event.nativeEvent.layout.y; }}>
+                              <View key={section.title} style={{ paddingRight: showSurnameIndex ? 24 : 0 }} onLayout={(event) => { sectionOffsets.current[section.title] = event.nativeEvent.layout.y; }}>
                                   <Text
                                       style={[
-                                          styles.sectionLetter,
+                                          searching ? styles.searchSection : styles.sectionLetter,
                                           { color: palette.secondaryText },
                                       ]}
                                   >
@@ -730,10 +739,10 @@ export function DirectoryScreen() {
                                   ))}
                               </View>
                           ))}
+                    {summary}
                 </ScrollView>
                 {alphabetIndex}
                 </View>
-                {summary}
                 <WebTabBar />
             </View>
         );
@@ -756,13 +765,13 @@ export function DirectoryScreen() {
                     }, 150);
                 }}
                 refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={loadDirectory} />}
-                contentContainerStyle={[styles.content, { paddingRight: sections.length > 1 ? 24 : 0 }]}
+                contentContainerStyle={[styles.content, { paddingBottom: Platform.OS === "android" ? 82 + insets.bottom : 16 }]}
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={12}
                 ListEmptyComponent={empty}
                 renderItem={({ item }) => (
-                    <MemberRow
+                    <View style={{ paddingRight: showSurnameIndex ? 24 : 0 }}><MemberRow
                         item={item}
                         locale={locale}
                         ministry={
@@ -771,13 +780,13 @@ export function DirectoryScreen() {
                         onPress={() =>
                             router.push(`/members/${item.id}` as never)
                         }
-                    />
+                    /></View>
                 )}
                 renderSectionHeader={({ section }) => (
                     <Text
                         style={[
-                            styles.sectionLetter,
-                            { color: palette.secondaryText },
+                            searching ? styles.searchSection : styles.sectionLetter,
+                            { color: palette.secondaryText, paddingRight: showSurnameIndex ? 24 : 19 },
                         ]}
                     >
                         {section.title}
@@ -785,12 +794,12 @@ export function DirectoryScreen() {
                 )}
                 removeClippedSubviews={false}
                 sections={sections}
+                ListFooterComponent={summary}
                 stickySectionHeadersEnabled={false}
                 windowSize={15}
             />
             {alphabetIndex}
             </View>
-            {summary}
             <WebTabBar />
         </View>
     );
@@ -943,6 +952,7 @@ const styles = StyleSheet.create({
         minHeight: px(42),
     },
     doneText: { color: "#FFF", fontSize: px(15), fontWeight: "800" },
+    searchSection: { fontSize: 12, fontWeight: "500", paddingHorizontal: 20, paddingTop: 14, paddingBottom: 7 },
     sectionLetter: {
         color: "#4A4C4F",
         fontSize: px(17),
