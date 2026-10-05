@@ -7,7 +7,8 @@ alter table public.people add column first_name text, add column last_name text;
 -- token as the surname; single-token historical records have an unknown surname.
 update public.people set
   first_name = split_part(trim(regexp_replace(name, '\s+', ' ', 'g')), ' ', 1),
-  last_name = regexp_replace(trim(regexp_replace(name, '\s+', ' ', 'g')), '^\S+\s*', '');
+  last_name = regexp_replace(trim(regexp_replace(name, '\s+', ' ', 'g')), '^\S+\s*', '')
+where id is not null;
 alter table public.people
   alter column first_name set not null,
   alter column last_name set not null,

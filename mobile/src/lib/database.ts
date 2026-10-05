@@ -55,6 +55,7 @@ export type Database = {
       group_summary_counts: { Args: { p_group_id: string }; Returns: { total: number; orphans: number; widows: number }[] };
       request_account_deletion: { Args: Record<string, never>; Returns: string };
       mark_visit_viewed: { Args: { p_id: string; p_revision: number }; Returns: undefined };
+      set_person_photo_metadata: { Args: { p_id: string; p_revision: number; p_path: string | null }; Returns: { id: string; revision: number; photo_path: string | null }[] };
       set_person_photo: { Args: { p_id: string; p_revision: number; p_path: string | null }; Returns: PersonRow };
       member_profile_details: { Args: { p_person_id: string }; Returns: { person_id: string; birth_date: string | null; address: string | null; marital_status: string | null; orphan_status: boolean | null; membership_joined_at: string | null }[] };
       visit_person_defaults: { Args: Record<string, never>; Returns: { person_id: string; address: string | null }[] };

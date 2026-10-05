@@ -559,7 +559,7 @@ export class SupabaseManagementRepository {
                 throw cause;
             }
         }
-        const result = await client.rpc("set_person_photo", {
+        const result = await client.rpc("set_person_photo_metadata", {
             p_id: person.id,
             p_revision: person.revision,
             p_path: path,
@@ -589,7 +589,7 @@ export class SupabaseManagementRepository {
                 cleanupWarning = "The previous photo could not be removed. Please contact an administrator.";
             }
         }
-        return { person: unwrap(result), cleanupWarning };
+        return { person: unwrap(result)[0], cleanupWarning };
     }
 }
 function personData(person: PersonRow) {

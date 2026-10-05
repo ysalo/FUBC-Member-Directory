@@ -370,3 +370,7 @@ Do not rebuild an old commit as an untracked deployment. Use a new PR through `d
 - Physically verify iPhone Add to Home Screen, icon, standalone display, safe areas, keyboard-open forms, external links, and relaunch. Check Safari and Chrome independently.
 - Smoke-test native iOS sign-in, tabs, date pickers, and birthday notifications on a device. A successful iOS export is not a device test.
 - Confirm deployment cache headers, callback and record deep links on Vercel, and rollback behavior. Offline behavior requires reconnecting; notifications and offline editing are intentionally absent on web.
+
+## Member CSV import (PR #90)
+
+The administrator import route, name-field schema, transactional replacement, retryable metadata-only photo cleanup and minimal photo-write response ship together in PR #90 into dev. The confirmed test backend has both reviewed migrations and the `import-members` endpoint applied; its directory now matches the 850-row source, with six Auth accounts retained and all 134 old photo objects removed. See [deployment order, reset scope and evidence](member-csv-import.md). No automatic migration push or production frontend release was performed. Live OAuth, physical native checks and authenticated Preview remain separate release gates.

@@ -53,6 +53,7 @@ const labels = {
         schedule: "Schedule",
         scheduleDetail: "Generate and adjust the Friday/Sunday deacon rotation",
         addMember: "Add member",
+        importMembers: "Import members", importDetail: "Review and import a CSV member list",
         loading: "Preparing management tools…",
         loadingDetail: "Loading members and account access.",
         error: "Management tools didn’t load",
@@ -95,6 +96,7 @@ const labels = {
         ministries: "Служіння",
         ministriesDetail: "Назви служінь",
         addMember: "Додати учасника",
+        importMembers: "Імпорт учасників", importDetail: "Перегляд та імпорт списку з CSV",
         loading: "Готуємо інструменти керування…",
         loadingDetail: "Завантажуємо учасників і доступ до облікових записів.",
         error: "Не вдалося завантажити керування",
@@ -517,6 +519,7 @@ export function ManageScreen() {
                                 desktop && styles.desktopShortcuts,
                             ]}
                         >
+                            {accountsAllowed ? <Shortcut detail={copy.importDetail} icon="cloud-upload-outline" label={copy.importMembers} onPress={() => router.push("/manage/import" as Href)} /> : null}
                             <Shortcut
                                 detail={copy.groupsDetail}
                                 icon="people-outline"
