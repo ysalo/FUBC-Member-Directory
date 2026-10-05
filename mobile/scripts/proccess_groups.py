@@ -36,13 +36,17 @@ if str(SCRIPT_DIR) not in sys.path:
 import parse_members  # noqa: E402
 
 
-MEMBER_COLUMNS = ["name", "patronymic", "gender", "email", "phone", "membership_joined_at", "birth_date", "address"]
+MEMBER_COLUMNS = ["first_name", "last_name", "patronymic", "gender", "email", "phone", "membership_joined_at", "birth_date", "address"]
 AUDIT_COLUMNS = ["record_type", "row", "member_name", "field", "issue", "address_value", "home_phone_found", "phone_number_source"]
 SKIP_NAME_RE = re.compile(r"всього|пенсіонер|сімей|одиноких|до\s+\d+", re.IGNORECASE)
 
 
+def given_and_surname(member: dict[str, Any]) -> str:
+    return " ".join(str(member.get(field) or "").strip() for field in ("first_name", "last_name"))
+
+
 def normalized_name(member: dict[str, Any]) -> str:
-    return re.sub(r"\s+", " ", f"{member.get('name', '')} {member.get('patronymic', '')}").strip().casefold()
+    return re.sub(r"\s+", " ", f"{given_and_surname(member)} {member.get('patronymic') or ''}").strip().casefold()
 
 
 def member_key(member: dict[str, Any]) -> str:
@@ -257,8 +261,8 @@ def main() -> int:
                 field_evidence = compare_member_fields(group_member, main_member)
                 field_match_count = sum(item["similar"] for item in field_evidence.values())
                 same_given_and_surname = (
-                    re.sub(r"\s+", " ", str(group_member.get("name", ""))).strip().casefold()
-                    == re.sub(r"\s+", " ", str(main_member.get("name", ""))).strip().casefold()
+                    re.sub(r"\s+", " ", given_and_surname(group_member)).strip().casefold()
+                    == re.sub(r"\s+", " ", given_and_surname(main_member)).strip().casefold()
                 )
                 same_dates = all(
                     group_member.get(field) and main_member.get(field)
@@ -321,10 +325,10 @@ def main() -> int:
         ]
         candidate_name_matches_for_review: list[dict[str, Any]] = []
         for group_member in absent_from_main:
-            group_display_name = re.sub(r"\s+", " ", str(group_member.get("name", ""))).strip().casefold()
+            group_display_name = re.sub(r"\s+", " ", given_and_surname(group_member)).strip().casefold()
             candidates: list[tuple[float, dict[str, Any]]] = []
             for main_member in missing_from_groups:
-                main_display_name = re.sub(r"\s+", " ", str(main_member.get("name", ""))).strip().casefold()
+                main_display_name = re.sub(r"\s+", " ", given_and_surname(main_member)).strip().casefold()
                 score = name_similarity(normalized_name(group_member), normalized_name(main_member))
                 field_evidence = compare_member_fields(group_member, main_member)
                 if group_display_name == main_display_name or score >= 0.75:
@@ -340,8 +344,8 @@ def main() -> int:
                     "field_similarities": compare_member_fields(group_member, candidate),
                     "review_reason": (
                         "Same given-name/surname but patronymic is missing or differs."
-                        if re.sub(r"\s+", " ", str(group_member.get("name", ""))).strip().casefold()
-                        == re.sub(r"\s+", " ", str(candidate.get("name", ""))).strip().casefold()
+                        if re.sub(r"\s+", " ", given_and_surname(group_member)).strip().casefold()
+                        == re.sub(r"\s+", " ", given_and_surname(candidate)).strip().casefold()
                         else "Names are similar but did not meet the automatic fuzzy-match rule."
                     ),
                 })
@@ -362,8 +366,8 @@ def main() -> int:
                 exact_field_count = sum(item["similarity"] == 1.0 for item in evidence.values() if item["compared"])
                 phone_match = evidence["phone"]["similarity"] == 1.0 and evidence["phone"]["compared"]
                 same_given_and_surname = (
-                    re.sub(r"\s+", " ", str(main_member.get("name", ""))).strip().casefold()
-                    == re.sub(r"\s+", " ", str(group_member.get("name", ""))).strip().casefold()
+                    re.sub(r"\s+", " ", given_and_surname(main_member)).strip().casefold()
+                    == re.sub(r"\s+", " ", given_and_surname(group_member)).strip().casefold()
                 )
                 if phone_match or (same_given_and_surname and name_score >= 0.75) or (name_score >= 0.60 and exact_field_count >= 2):
                     potential.append((name_score, exact_field_count, {
@@ -430,7 +434,7 @@ def main() -> int:
             },
         }
         output_dir.mkdir(parents=True, exist_ok=True)
-        report_path = output_dir / "group_audit.json"
+        report_path = group_output_dir / "group_audit.json"
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     except Exception as error:
         print(f"Could not process breakup workbooks: {error}", file=sys.stderr)

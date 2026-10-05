@@ -105,7 +105,7 @@ export function MemberRow({
                     numberOfLines={1}
                     style={[styles.memberName, { color: palette.text }]}
                 >
-                    {formatMemberName(item.name, item.patronymic, true)}
+                    {formatMemberName(item, undefined, true)}
                 </Text>
                 {!desktop && showsMinistry ? (
                     <Text
@@ -252,7 +252,7 @@ export function DirectoryScreen() {
         return directoryMembers
             .map((member) => ({
                 member,
-                searchText: `${member.name} ${formatMemberName(member.name, member.patronymic)} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase(),
+                searchText: `${member.name} ${formatMemberName(member)} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase(),
                 surname: surname(member.name),
             }))
             .sort(

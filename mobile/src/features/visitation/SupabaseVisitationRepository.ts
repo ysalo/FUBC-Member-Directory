@@ -69,7 +69,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
         ] = await Promise.all([
             client
                 .from("people")
-                .select("id,name,phone,photo_path,membership_group_id")
+                .select("id,name,first_name,last_name,phone,photo_path,membership_group_id")
                 .is("archived_at", null)
                 .order("name"),
             client.from("person_leadership_ministries").select("*"),
@@ -94,7 +94,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
             actors: [actor],
             people: people.map((person) => ({
                 id: person.id,
-                name: person.name,
+                name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name),
                 photo: person.photo_path
                     ? photos.get(person.photo_path)
                     : undefined,
@@ -113,7 +113,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
                 return [{
                     accountId: account?.id ?? null,
                     personId: person.id,
-                    name: person.name,
+                    name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name),
                     photo: person.photo_path ? photos.get(person.photo_path) : undefined,
                     leadershipMinistry: leadership,
                     responsibilityGroupId:
@@ -266,7 +266,7 @@ export class SupabaseVisitationRepository implements VisitationRepository {
             ...recipients.map((recipient) => recipient.person_id),
         ])];
         const [peopleResult, leadershipResult] = await Promise.all([
-            client.from("people").select("id,name,phone,photo_path").in("id", personIds),
+            client.from("people").select("id,name,first_name,last_name,phone,photo_path").in("id", personIds),
             client.from("person_leadership_ministries").select("*").in("person_id", personIds),
         ]);
         const people = unwrap(peopleResult), leadership = unwrap(leadershipResult);

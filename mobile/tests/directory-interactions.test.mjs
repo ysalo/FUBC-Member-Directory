@@ -44,7 +44,7 @@ function directoryFixture() {
     ['@/features/members/leadership-badge', { LeadershipBadge: 'LeadershipBadge' }],
     ['@/features/members/ProfileAvatar', { ProfileAvatar: 'ProfileAvatar' }],
     ['@/lib/phone', { formatPhoneNumber: (value) => value }],
-    ['@/lib/member-name', { formatMemberName: (value) => value }],
+    ['@/lib/member-name', { formatMemberName: (value) => typeof value === "string" ? value : value.name }],
     ['./directory-repository', { listDirectory() {}, getDirectoryVisitCount() {} }],
   ]);
   const exports = {};

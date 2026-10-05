@@ -32,19 +32,16 @@ def text_value(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value)).strip()
 
 
-def parse_name(value: Any) -> dict[str, str] | None:
-    """Parse workbook order into the app's full-name and patronymic fields."""
+def parse_name(value: Any) -> dict[str, str | None] | None:
+    """Parse surname, given name, and optional patronymic without combining fields."""
     parts = text_value(value).split()
-    if len(parts) == 2:
-        last_name, first_name = parts
-        return {"name": f"{normalize_apostrophes(first_name)} {normalize_apostrophes(last_name)}"}
-    if len(parts) == 3:
-        last_name, first_name, patronymic = parts
-        return {
-            "name": f"{normalize_apostrophes(first_name)} {normalize_apostrophes(last_name)}",
-            "patronymic": normalize_apostrophes(patronymic),
-        }
-    return None
+    if len(parts) not in (2, 3):
+        return None
+    return {
+        "first_name": normalize_apostrophes(parts[1]),
+        "last_name": normalize_apostrophes(parts[0]),
+        "patronymic": normalize_apostrophes(parts[2]) if len(parts) == 3 else None,
+    }
 
 
 def normalize_apostrophes(value: str) -> str:

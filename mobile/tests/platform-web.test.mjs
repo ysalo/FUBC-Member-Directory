@@ -220,7 +220,7 @@ test("visit planning uses avatar rows, responsive scheduling fields, and optiona
     assert.match(repository, /privatePhotoSources/);
     assert.match(repository, /person_leadership_ministries/);
     assert.match(repository, /accountId: account\?\.id \?\? null/);
-    assert.match(repository, /name: person\.name/);
+    assert.match(repository, /name: .*person\.first_name/);
     assert.match(form, /participantPersonIds/);
     assert.match(copy, /Optional\. Invite pastors or deacons/);
     assert.match(copy, /Необов’язково\. Запросіть пасторів або дияконів/);

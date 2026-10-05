@@ -16,7 +16,7 @@ export class SupabaseGroupsRepository implements GroupsRepository {
     const client = requireSupabase();
     const [groupsResult, peopleResult, membersResult, deaconsResult, deaconAccountsResult] = await Promise.all([
       client.from("deacon_groups").select("*").eq("kind", "membership").is("archived_at", null).order("name"),
-      client.from("people").select("id,name,photo_path,membership_group_id").is("archived_at", null),
+      client.from("people").select("id,name,first_name,last_name,photo_path,membership_group_id").is("archived_at", null),
       client.from("deacon_group_members").select("*"),
       client.from("deacon_group_deacons").select("*").order("slot"),
       client.from("ministry_accounts").select("id,person_id").eq("leadership_ministry", "deacon"),
@@ -43,7 +43,7 @@ export class SupabaseGroupsRepository implements GroupsRepository {
       memberIds: group.kind === "membership" ? people.filter((person) => person.membership_group_id === group.id).map((person) => person.id) : members.filter((item) => item.group_id === group.id && activeIds.has(item.person_id)).map((item) => item.person_id),
       responsibleDeacons: deacons.filter((item) => item.group_id === group.id).flatMap((item) => {
         const person = people.find((candidate) => candidate.id === item.person_id);
-        return person ? [{ id: person.id, name: person.name, photo: person.photo_path ? photos.get(person.photo_path) : undefined, leadershipMinistry: "deacon" as const }] : [];
+        return person ? [{ id: person.id, name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name), photo: person.photo_path ? photos.get(person.photo_path) : undefined, leadershipMinistry: "deacon" as const }] : [];
       }),
     }));
   }
@@ -51,7 +51,7 @@ export class SupabaseGroupsRepository implements GroupsRepository {
     const group = (await this.listGroups()).find((candidate) => candidate.id === groupId);
     if (!group) return null;
     const client = requireSupabase();
-    const members = group.memberIds.length ? unwrap(await client.from("people").select("id,name,photo_path").eq("membership_group_id", group.id).is("archived_at", null).order("name")) : [];
+    const members = group.memberIds.length ? unwrap(await client.from("people").select("id,name,first_name,last_name,photo_path").eq("membership_group_id", group.id).is("archived_at", null).order("name")) : [];
     const batches = Array.from({ length: Math.ceil(members.length / memberSummaryBatchSize) }, (_, index) =>
       members.slice(index * memberSummaryBatchSize, (index + 1) * memberSummaryBatchSize).map((member) => member.id));
     const summaries = (await Promise.all(batches.map(async (ids) => unwrap(await client.rpc("directory_active_members", {})
@@ -61,7 +61,7 @@ export class SupabaseGroupsRepository implements GroupsRepository {
     const responsibleDeacons = group.responsibleDeacons ?? [];
     return { ...group, members: members.map((member) => {
       const summary = summaryById.get(member.id);
-      return { id: member.id, name: member.name, photo: member.photo_path ? photos.get(member.photo_path) : undefined,
+      return { id: member.id, name: (member.first_name !== undefined && member.last_name !== undefined ? [member.first_name, member.last_name].join(" ") : member.name), photo: member.photo_path ? photos.get(member.photo_path) : undefined,
         leadershipMinistry: summary?.leadership_ministry ?? undefined, isOrphan: summary?.is_orphan ?? undefined, isWidow: summary?.is_widow ?? false };
     }), responsibleDeacons };
   }

@@ -12,7 +12,8 @@ from typing import Any
 
 
 MEMBER_COLUMNS = [
-    "name",
+    "first_name",
+    "last_name",
     "patronymic",
     "gender",
     "email",

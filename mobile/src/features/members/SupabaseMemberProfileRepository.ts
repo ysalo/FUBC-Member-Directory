@@ -36,13 +36,13 @@ export class SupabaseMemberProfileRepository implements MemberProfileRepository 
     const deaconIds = deaconAssignmentsResult ? unwrap(deaconAssignmentsResult).map((assignment) => assignment.person_id) : [];
     const ministryIds = ministryLinksResult.error ? [] : (ministryLinksResult.data ?? []).map((link) => link.ministry_id);
     const [deaconResult, ministryResult] = await Promise.all([
-      deaconIds.length ? client.from("people").select("id,name,phone,photo_path").in("id", deaconIds).is("archived_at", null) : null,
+      deaconIds.length ? client.from("people").select("id,name,first_name,last_name,phone,photo_path").in("id", deaconIds).is("archived_at", null) : null,
       ministryIds.length ? client.from("ministries").select("id,name,name_uk,system_key,archived_at").in("id", ministryIds).is("archived_at", null).order("name") : null,
     ]);
     const deaconPeople = deaconResult ? unwrap(deaconResult) : [];
     const responsibleDeacons = [...new Set(deaconIds)].flatMap((deaconId) => {
       const deacon = deaconPeople.find((candidate) => candidate.id === deaconId);
-      return deacon ? [{ id: deacon.id, name: deacon.name, phone: deacon.phone, avatar: {}, ministry: "", ministryUk: "", leadershipMinistry: "deacon" as const, isOrphan: false, isWidow: false }] : [];
+      return deacon ? [{ id: deacon.id, name: (deacon.first_name !== undefined && deacon.last_name !== undefined ? [deacon.first_name, deacon.last_name].join(" ") : deacon.name), phone: deacon.phone, avatar: {}, ministry: "", ministryUk: "", leadershipMinistry: "deacon" as const, isOrphan: false, isWidow: false }] : [];
     });
     const leadershipMinistry = ministryResult && !ministryResult.error ? ministryResult.data.find((ministry) => ministry.system_key)?.system_key ?? null : null;
     let responsibilityGroup: { id: string; name: string } | null = null;
@@ -58,7 +58,7 @@ export class SupabaseMemberProfileRepository implements MemberProfileRepository 
     const ordinaryMinistries = loadedMinistries?.filter((ministry) => !ministry.system_key) ?? [];
     const ministryNames = hasLoadedMinistries ? ordinaryMinistries.map((ministry) => ministry.name) : (person.ministry ? [person.ministry] : []);
     const ministryNamesUk = hasLoadedMinistries ? ordinaryMinistries.map((ministry) => ministry.name_uk || ministry.name) : ministryNames;
-    const profile: MemberProfile = { id: person.id, name: person.name, nameUk: person.name, photo: {}, photoPaths: { portrait: person.photo_path, deacons: Object.fromEntries(deaconPeople.map((deacon) => [deacon.id, deacon.photo_path])) }, phone: person.phone ?? undefined, email: leadershipMinistry ? person.email ?? undefined : undefined, address: details?.address ?? undefined, birthDate: details?.birth_date ?? undefined, membershipJoinedAt: details?.membership_joined_at ?? undefined, maritalStatus: details?.marital_status ?? undefined, isOrphan: details?.orphan_status ?? undefined, leadershipMinistry, membershipGroup: group, membershipGroupUk: group, membershipGroupId: groupRow?.id, responsibleDeacons, responsibilityGroup: responsibilityGroup?.name, responsibilityGroupUk: responsibilityGroup?.name, responsibilityGroupId: responsibilityGroup?.id, ministries: ministryNames, ministriesUk: ministryNamesUk };
+    const profile: MemberProfile = { id: person.id, name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name), nameUk: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name), first_name: person.first_name, last_name: person.last_name, photo: {}, photoPaths: { portrait: person.photo_path, deacons: Object.fromEntries(deaconPeople.map((deacon) => [deacon.id, deacon.photo_path])) }, phone: person.phone ?? undefined, email: leadershipMinistry ? person.email ?? undefined : undefined, address: details?.address ?? undefined, birthDate: details?.birth_date ?? undefined, membershipJoinedAt: details?.membership_joined_at ?? undefined, maritalStatus: details?.marital_status ?? undefined, isOrphan: details?.orphan_status ?? undefined, leadershipMinistry, membershipGroup: group, membershipGroupUk: group, membershipGroupId: groupRow?.id, responsibleDeacons, responsibilityGroup: responsibilityGroup?.name, responsibilityGroupUk: responsibilityGroup?.name, responsibilityGroupId: responsibilityGroup?.id, ministries: ministryNames, ministriesUk: ministryNamesUk };
     profile.patronymic = person.patronymic;
     return deferPhotos ? profile : this.hydratePhotos(profile, photoVariant);
   }

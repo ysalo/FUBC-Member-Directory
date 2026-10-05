@@ -1,5 +1,15 @@
 # Web Application Release and Deployment
 
+## Separate Member Name Fields
+
+The member editor and server writer now round-trip `first_name`, `last_name`, and optional `patronymic`. Directory and profile formatting use the stored parts, preserving compound given names and surnames. Group, management, and visitation queries select the separate fields. The legacy `name` column is maintained by a database trigger as a display projection for existing RPCs, linked account synchronization, deletion confirmations, and older clients.
+
+Before enabling this client, review and manually apply `20261004000000_member_name_fields.sql` through the existing Supabase SQL Editor workflow. Do not use `supabase db push`; hosted migration history is unreconciled. This work does not apply a hosted migration. Existing names are split at their first whitespace boundary; remaining tokens become the surname. Historical single-token names retain an empty surname and require correction when edited. Review compound given names after backfill because their original boundaries cannot be inferred. Previous clients remain compatible through the synchronized display projection. New clients require the migration before deployment.
+
+Workbook exports now contain `first_name,last_name,patronymic` instead of a combined `name`. Regenerated main and group JSON/CSV and audit files are under `/home/ysalo/Documents/processed/main/<workbook>/` and `/home/ysalo/Documents/processed/groups/<workbook>/`; the combined audit is `groups/group_audit.json`. Export counts: main 850, groups 844, six main records unmatched to groups, zero group records unmatched to main. Gender remains null in source exports because the workbooks have no gender column. The separately maintained `members_gender_filled.csv` is not produced by these scripts.
+
+Validation on Node 24: `pnpm verify` passed (208 main tests passed, one optional concurrency test skipped, plus visitation and group suites), including the new PostgreSQL-compatible name migration coverage. `pnpm build:web` passed with placeholder public backend configuration. Updated stale assertions to cover visible family names, the vertical deacon list, and removal of the current duty period before filtering the remaining list. No authenticated Preview, live OAuth, phone/desktop browser workflow, or physical iPhone check was performed. These remain release gates. No production release or hosted database write was performed.
+
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
 ## Management Usability and Family Avatars (issue #75)

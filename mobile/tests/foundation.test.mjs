@@ -13,6 +13,7 @@ import { formatMemberName } from '../src/lib/member-name.ts';
 const require = createRequire(import.meta.url);
 
 test('member names use optional patronymics without changing existing surnames', () => {
+  assert.equal(formatMemberName({name: 'Mary Jane van der Berg', first_name: 'Mary Jane', last_name: 'van der Berg', patronymic: 'Ivanivna'}), 'Mary Jane Ivanivna van der Berg');
   assert.equal(formatMemberName('Ivan Petrenko'), 'Ivan Petrenko');
   assert.equal(formatMemberName('Ivan Petrenko', '  ', true), 'Ivan Petrenko');
   assert.equal(formatMemberName('Ivan van Petrenko', ' Mykolayovych ', true), 'Ivan M. van Petrenko');
@@ -99,7 +100,8 @@ test('member profiles show linked deacon avatars below Contact in both layouts o
   assert.match(profile, /<Link href=\{`\/members\/\$\{deacon\.id\}`\} key=\{deacon\.id\} asChild>/);
   assert.match(profile, /accessibilityLabel=\{`\$\{deacon\.name\}, \$\{copy\.profile\}`\}/);
   assert.match(profile, /<ProfileAvatar name=\{deacon\.name\} size=\{64\} source=\{deacon\.avatar\}/);
-  assert.match(profile, /deaconAvatars: \{ flexDirection: "row", flexWrap: "wrap"/);
+  assert.match(deaconsSection, /<Text numberOfLines=\{2\}[^>]*>\{deacon\.name\}<\/Text>/);
+  assert.match(profile, /deaconAvatars: \{ flexDirection: "column"/);
   assert.equal([...profile.matchAll(/\{contactSection\}[\s\S]*?\{deaconsSection\}[\s\S]*?\{ministriesSection\}[\s\S]*?<FamilySection memberId=\{memberId\} \/>/g)].length, 2);
 });
 
