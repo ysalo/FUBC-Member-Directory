@@ -40,12 +40,18 @@ export function MemberRow({
     locale,
     ministry,
     onPress,
+    detail,
+    fullName = false,
+    selection,
 }: {
     compact?: boolean;
     item: Member;
     locale: "en" | "uk";
     ministry: string;
     onPress: () => void;
+    detail?: string;
+    fullName?: boolean;
+    selection?: { checked: boolean; label: string; disabled?: boolean; mode?: "remove" | "checkbox" | "radio" };
 }) {
     const { palette } = useAppearance();
     const desktop = useDesktopLayout() && !compact;
@@ -67,27 +73,32 @@ export function MemberRow({
         .join(" · ");
     const row = (
         <Pressable
-            accessibilityHint={
+            aria-checked={selection && selection.mode !== "remove" ? selection.checked : undefined}
+            aria-disabled={selection?.disabled}
+            accessibilityLabel={selection?.label}
+            accessibilityState={selection ? { checked: selection.mode === "remove" ? undefined : selection.checked, disabled: selection.disabled } : undefined}
+            disabled={selection?.disabled}
+            accessibilityHint={selection ? undefined :
                 locale === "uk"
                     ? `Відкрити профіль: ${item.name}`
                     : `Opens ${item.name}’s member profile`
             }
-            accessibilityRole={Platform.OS === "web" ? "link" : "button"}
-            onPress={Platform.OS === "web" ? undefined : onPress}
+            accessibilityRole={selection ? selection.mode === "remove" ? "button" : selection.mode ?? "checkbox" : Platform.OS === "web" ? "link" : "button"}
+            onPress={selection || Platform.OS !== "web" ? onPress : undefined}
             style={
                 Platform.OS === "web"
                     ? StyleSheet.flatten([
                           styles.memberRow,
                           desktop && styles.desktopMemberRow,
                           {
-                              backgroundColor: palette.surface,
+                              backgroundColor: selection?.checked && selection.mode !== "remove" ? palette.accentSoft : palette.surface,
                               borderBottomColor: palette.line,
                           },
                       ])
                     : ({ pressed }) => [
                           styles.memberRow,
                           {
-                              backgroundColor: palette.surface,
+                              backgroundColor: selection?.checked && selection.mode !== "remove" ? palette.accentSoft : palette.surface,
                               borderBottomColor: palette.line,
                           },
                           pressed && styles.pressed,
@@ -103,11 +114,12 @@ export function MemberRow({
                 style={[styles.memberCopy, desktop && styles.desktopMemberCopy]}
             >
                 <Text
-                    numberOfLines={1}
+                    numberOfLines={fullName ? 2 : 1}
                     style={[styles.memberName, { color: palette.text }]}
                 >
-                    {formatMemberName(item, undefined, true)}
+                    {formatMemberName(item, undefined, !fullName)}
                 </Text>
+                {detail && <Text style={[styles.memberPhone, { color: palette.secondaryText }]}>{detail}</Text>}
                 {!desktop && showsMinistry ? (
                     <Text
                         numberOfLines={1}
@@ -122,7 +134,7 @@ export function MemberRow({
                 {!desktop && item.phone ? (
                     <Text
                         numberOfLines={1}
-                        selectable
+                        selectable={!selection}
                         style={[
                             styles.memberPhone,
                             { color: palette.secondaryText },
@@ -164,13 +176,13 @@ export function MemberRow({
             ) : null}
             <Ionicons
                 accessibilityElementsHidden
-                color={palette.secondaryText}
-                name="chevron-forward"
+                color={selection?.checked && selection.mode !== "remove" ? palette.accent : palette.secondaryText}
+                name={selection ? selection.mode === "remove" ? "close-circle-outline" : selection.checked ? "checkmark-circle" : "ellipse-outline" : "chevron-forward"}
                 size={px(22)}
             />
         </Pressable>
     );
-    return Platform.OS === "web" ? (
+    return Platform.OS === "web" && !selection ? (
         <Link href={`/members/${item.id}`} asChild>
             {row}
         </Link>

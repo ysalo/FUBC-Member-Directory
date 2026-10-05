@@ -21,6 +21,7 @@ import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { getFamilyCopy } from "@/features/family/family-copy";
 import { useSession } from "@/features/session/SessionProvider";
 import { canManageAccounts } from "@/lib/permissions";
+import { formatMemberName } from "@/lib/member-name";
 import { formatPhoneNumber } from "@/lib/phone";
 import { managementRepository } from "./management-repository";
 import { MemberAvatar } from "./MemberAvatar";
@@ -600,7 +601,7 @@ export function MemberFormScreen() {
                         {matchingFamilyMembers.length ? <View style={styles.field}>
                             <Text style={[styles.label, { color: palette.secondaryText }]}>{getFamilyCopy(locale).matches}</Text>
                             {matchingFamilyMembers.map((candidate) => <Pressable key={candidate.id} accessibilityRole="button" onPress={() => guard.confirmLeave(() => router.replace(`/manage/member/${encodeURIComponent(familyReturn!)}/family?createdId=${encodeURIComponent(candidate.id)}` as never))} style={[styles.photoButton, { borderColor: palette.line }]}>
-                                <Text style={{ color: palette.accent }}>{candidate.name}</Text>
+                                <Text style={{ color: palette.accent }}>{formatMemberName(candidate)}</Text>
                             </Pressable>)}
                         </View> : null}
                         <View style={styles.field} accessibilityRole="radiogroup" accessibilityLabel={labels.gender} aria-required>
