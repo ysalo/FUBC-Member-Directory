@@ -189,7 +189,7 @@ function photoRepository(failure, configured = true) {
         return query;
     }, storage: { from: () => storage }, async rpc(name, args) {
         calls.push({ type: "publish", name, args });
-        return { data: { id: "member", photo_path: args.p_path, revision: 2 }, error: ["conflict", "ambiguous"].includes(failure) ? { message: "Conflict" } : null };
+        return { data: name === "set_person_photo_metadata" ? [{ id: "member", photo_path: args.p_path, revision: 2 }] : { id: "member", photo_path: args.p_path, revision: 2 }, error: ["conflict", "ambiguous"].includes(failure) ? { message: "Conflict" } : null };
     } };
     const exports = {};
     new Function("require", "exports", managementCode)((id) => {
@@ -252,7 +252,9 @@ test("demo management reopens the selected gender and preserves it on older edit
 
 test("photo pairs publish only after both uploads and clean both replaced paths", async () => {
     const { repository, calls, invalidations } = photoRepository();
-    await repository.replacePhoto({ id: "member", revision: 1, photoPath: "member/previous.jpg" }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10));
+    const published = await repository.replacePhoto({ id: "member", revision: 1, photoPath: "member/previous.jpg" }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10));
+    assert.equal(calls[2].name, "set_person_photo_metadata");
+    assert.deepEqual(Object.keys(published.person).sort(), ["id", "photo_path", "revision"]);
     assert.deepEqual(calls.map((call) => call.type), ["upload", "upload", "publish", "remove"]);
     assert.equal(calls[1].path, `${calls[0].path}.avatar-256.jpg`);
     assert.equal(calls[2].args.p_path, calls[0].path);

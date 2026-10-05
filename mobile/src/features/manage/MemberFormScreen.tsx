@@ -73,7 +73,7 @@ export function MemberFormScreen() {
         "loading" | "ready" | "saving" | "error"
     >(editing ? "loading" : "ready");
     const [error, setError] = useState<string | null>(null);
-    const originalName = member ? splitMemberName(member.name) : { firstName: "", lastName: "" };
+    const originalName = member ? { firstName: member.first_name ?? splitMemberName(member.name).firstName, lastName: member.last_name ?? splitMemberName(member.name).lastName } : { firstName: "", lastName: "" };
     const dirty = state === "ready" && (JSON.stringify([firstName, patronymic, lastName, birthday, membershipJoinedAt, phone, email, address, [...ministryIds].sort(), isOrphan, isWidow, gender]) !== JSON.stringify([originalName.firstName, member?.patronymic ?? "", originalName.lastName, member?.birthday ?? "", member?.membershipJoinedAt ?? "", formatPhoneNumber(member?.phone), member?.email ?? "", member?.address ?? "", [...(member?.ministryIds ?? [])].sort(), Boolean(member?.isOrphan), Boolean(member?.isWidow), member?.gender ?? null]) || Boolean(pendingPhoto) || photoRemoved);
     const guard = useUnsavedChanges(dirty);
     const leave = () => familyReturn ? router.replace(`/manage/member/${encodeURIComponent(familyReturn)}/family` as never) : accountId ? router.replace(managedAccountHref(accountId) as never) : router.replace("/manage");
@@ -97,7 +97,7 @@ export function MemberFormScreen() {
                 setMember(found);
                 setMinistries(catalog);
                 if (found) {
-                    const nameParts = splitMemberName(found.name);
+                    const nameParts = { firstName: found.first_name ?? splitMemberName(found.name).firstName, lastName: found.last_name ?? splitMemberName(found.name).lastName };
                     setFirstName(nameParts.firstName);
                     setPatronymic(found.patronymic ?? "");
                     setLastName(nameParts.lastName);
@@ -280,7 +280,7 @@ export function MemberFormScreen() {
     const matchingFamilyMembers = familyReturn && firstName.trim() && lastName.trim() ? familyCandidates.filter((candidate) => candidate.name.toLocaleLowerCase() === fullName.toLocaleLowerCase() && candidate.id !== familyReturn) : [];
     async function save() {
         if (savingRef.current || state === "saving") return;
-        if (!firstName.trim() || (!editing && !lastName.trim())) {
+        if (!firstName.trim() || !lastName.trim()) {
             setError(labels.required);
             return;
         }
@@ -306,6 +306,8 @@ export function MemberFormScreen() {
                 id: member?.id,
                 revision: member?.revision,
                 name: fullName,
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
                 patronymic: patronymic.trim() || null,
                 birthday: birthday.trim() || null,
                 membershipJoinedAt: membershipJoinedAt || null,
@@ -320,7 +322,7 @@ export function MemberFormScreen() {
             const previousPhotoPath =
                 member?.photoPath ??
                 ("photo_path" in saved ? saved.photo_path : null);
-            setMember({ ...member, id: saved.id, name: fullName, patronymic: patronymic.trim() || null, birthday: birthday.trim() || null, membershipJoinedAt: membershipJoinedAt || null, ministryIds, phone: phone.trim() || null, email: email.trim() || null, address: address.trim() || null, isOrphan, isWidow, gender, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
+            setMember({ ...member, id: saved.id, name: fullName, first_name: firstName.trim(), last_name: lastName.trim(), patronymic: patronymic.trim() || null, birthday: birthday.trim() || null, membershipJoinedAt: membershipJoinedAt || null, ministryIds, phone: phone.trim() || null, email: email.trim() || null, address: address.trim() || null, isOrphan, isWidow, gender, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
             memberSaved = true;
             stage = "photo";
             const photoChanged =

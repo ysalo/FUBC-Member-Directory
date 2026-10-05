@@ -8,6 +8,8 @@ export type MemberProfile = {
   id: string;
   name: string;
   nameUk: string;
+  first_name?: string;
+  last_name?: string;
   patronymic?: string | null;
   photo: ImageSourcePropType;
   photoPaths?: { portrait: string | null; deacons: Record<string, string | null> };

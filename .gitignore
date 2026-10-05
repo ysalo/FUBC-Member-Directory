@@ -1,2 +1,5 @@
 .vercel
 .env.local
+
+# Supabase CLI project/link cache
+**/supabase/.temp/

@@ -128,7 +128,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
             />
         );
 
-    const name = formatMemberName(locale === "uk" ? profile.nameUk : profile.name, profile.patronymic);
+    const name = formatMemberName({ ...profile, name: locale === "uk" ? profile.nameUk : profile.name });
     const group =
         locale === "uk" ? profile.membershipGroupUk : profile.membershipGroup;
     const responsibilityGroup =

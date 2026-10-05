@@ -1,5 +1,15 @@
 # Web Application Release and Deployment
 
+## Separate Member Name Fields
+
+The member editor and server writer now round-trip `first_name`, `last_name`, and optional `patronymic`. Directory and profile formatting use the stored parts, preserving compound given names and surnames. Group, management, and visitation queries select the separate fields. The legacy `name` column is maintained by a database trigger as a display projection for existing RPCs, linked account synchronization, deletion confirmations, and older clients.
+
+Before enabling this client, review and manually apply `20261004000000_member_name_fields.sql` through the existing Supabase SQL Editor workflow. Do not use `supabase db push`; hosted migration history is unreconciled. This work does not apply a hosted migration. Existing names are split at their first whitespace boundary; remaining tokens become the surname. Historical single-token names retain an empty surname and require correction when edited. Review compound given names after backfill because their original boundaries cannot be inferred. Previous clients remain compatible through the synchronized display projection. New clients require the migration before deployment.
+
+Workbook exports now contain `first_name,last_name,patronymic` instead of a combined `name`. Regenerated main and group JSON/CSV and audit files are under `/home/ysalo/Documents/processed/main/<workbook>/` and `/home/ysalo/Documents/processed/groups/<workbook>/`; the combined audit is `groups/group_audit.json`. Export counts: main 850, groups 844, six main records unmatched to groups, zero group records unmatched to main. Gender remains null in source exports because the workbooks have no gender column. The separately maintained `members_gender_filled.csv` is not produced by these scripts.
+
+Validation on Node 24: `pnpm verify` passed (208 main tests passed, one optional concurrency test skipped, plus visitation and group suites), including the new PostgreSQL-compatible name migration coverage. `pnpm build:web` passed with placeholder public backend configuration. Updated stale assertions to cover visible family names, the vertical deacon list, and removal of the current duty period before filtering the remaining list. No authenticated Preview, live OAuth, phone/desktop browser workflow, or physical iPhone check was performed. These remain release gates. No production release or hosted database write was performed.
+
 The application uses Vercel's GitHub integration. GitHub Actions verifies code; it does not hold Vercel credentials or deploy the application.
 
 ## Management Usability and Family Avatars (issue #75)
@@ -360,3 +370,13 @@ Do not rebuild an old commit as an untracked deployment. Use a new PR through `d
 - Physically verify iPhone Add to Home Screen, icon, standalone display, safe areas, keyboard-open forms, external links, and relaunch. Check Safari and Chrome independently.
 - Smoke-test native iOS sign-in, tabs, date pickers, and birthday notifications on a device. A successful iOS export is not a device test.
 - Confirm deployment cache headers, callback and record deep links on Vercel, and rollback behavior. Offline behavior requires reconnecting; notifications and offline editing are intentionally absent on web.
+
+## Member CSV import (PR #90)
+
+The administrator import route, name-field schema, transactional replacement, retryable metadata-only photo cleanup and minimal photo-write response ship together in PR #90 into dev. The confirmed test backend has both reviewed migrations and the `import-members` endpoint applied; its directory now matches the 850-row source, with six Auth accounts retained and all 134 old photo objects removed. See [deployment order, reset scope and evidence](member-csv-import.md). No automatic migration push or production frontend release was performed. Live OAuth, physical native checks and authenticated Preview remain separate release gates.
+
+## Directory alphabet correction and release (PR #90)
+
+Directory now uses stored `last_name`, preserving compound surnames. Latin lookalikes embedded in Cyrillic names are normalized for ordering/section headers. Ukrainian surnames use Ukrainian collation in both app languages; English surnames follow in their own A–Z sections, placing Andrew Waltmen under W. Corrected `Cавчук` → `Савчук` and `Pощук` → `Рощук` for the two specified members in the hosted DB and both maintained main CSVs; backed up the preceding CSVs. Originals remain untouched. No directory reimport or photo download was performed.
+
+Node 24 verification passed (225 main tests, one optional skip; visitation 1 and groups 12), and the public-config web build passed. Browser fixtures at 390×844 and 1440×900 confirmed Р/С/Я/W section and member order, no overflow, page errors, Storage requests or notification permission calls. The fixture includes the original mixed-script surnames to verify defensive ordering. Hosted Preview requires Vercel SSO; authenticated Preview, live OAuth and physical native checks are not claimed. Backend name/import prerequisites are already deployed and remain compatible with older clients. Requested release sequence: merge the checked feature PR into dev, then create/check/merge a separate dev → main PR through Git integration.
