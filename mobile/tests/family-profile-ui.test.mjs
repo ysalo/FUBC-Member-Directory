@@ -52,8 +52,11 @@ for (const locale of ['en', 'uk']) test(`family profile exposes category labels 
   const links = nodes.filter((node) => node.type === 'Link');
   assert.deepEqual(links.map((node) => node.props.href), ['/members/parent', '/members/spouse', '/members/child', '/members/sibling']);
   for (const [index, name] of ['Parent Name', 'Spouse Name', 'Child Name', 'Sibling Name'].entries()) {
-    assert.equal(text(links[index]), '');
+    assert.equal(text(links[index]), name);
     const content = nodesOf(links[index]);
+    const label = content.find((node) => node.type === 'Text');
+    assert.equal(text(label), name);
+    assert.equal(label.props.numberOfLines, 2);
     assert.equal(content.find((node) => node.type === 'Avatar').props.name, name);
     assert.equal(content.find((node) => node.type === 'Avatar').props.size, 64);
     assert.equal(content.find((node) => node.type === 'Pressable').props.accessibilityRole, 'link');

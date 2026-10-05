@@ -176,7 +176,8 @@ test('schedule deacons use the shared Manage-style member card', async () => {
   assert.doesNotMatch(deaconRow, /Link asChild|Platform\.OS === "web"/);
   assert.match(deaconRow, /accessibilityRole="button"\s+onPress=\{onPress\}/);
   assert.match(schedule, /monthIndex > 0 \? <View style=\{\[styles\.monthSeparator/);
-  assert.match(schedule, /periodsForPerson\(state\.year!\.periods, filterPersonId\)/);
+  assert.match(schedule, /remainingPeriods = [\s\S]*state\.year!\.periods\.filter\(\(period\) => period\.sundayOn !== active\?\.sundayOn\)/);
+  assert.match(schedule, /periodsForPerson\(remainingPeriods, filterPersonId\)/);
   assert.match(schedule, /visibleSchedulePeriods\(filteredPeriods, today, showPastDates\)/);
   assert.match(schedule, /viewerNext = .*nextPeriodForPerson\(state\.year!\.periods, viewerPersonId, today\)/);
   assert.doesNotMatch(schedule, /nextDutyFor|selectedTag/);

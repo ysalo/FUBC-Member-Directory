@@ -1,3 +1,4 @@
+import { directorySurname, compareDirectoryNames } from "./directory-order";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Link, useRouter } from "expo-router";
@@ -105,7 +106,7 @@ export function MemberRow({
                     numberOfLines={1}
                     style={[styles.memberName, { color: palette.text }]}
                 >
-                    {formatMemberName(item.name, item.patronymic, true)}
+                    {formatMemberName(item, undefined, true)}
                 </Text>
                 {!desktop && showsMinistry ? (
                     <Text
@@ -247,20 +248,14 @@ export function DirectoryScreen() {
 
 
     const sortedDirectory = useMemo(() => {
-        const surname = (name: string) =>
-            name.trim().split(/\s+/).at(-1) ?? name;
         return directoryMembers
             .map((member) => ({
                 member,
-                searchText: `${member.name} ${formatMemberName(member.name, member.patronymic)} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase(),
-                surname: surname(member.name),
+                searchText: `${member.name} ${formatMemberName(member)} ${member.ministry} ${member.ministryUk}`.toLocaleLowerCase(),
+                surname: directorySurname(member),
             }))
-            .sort(
-                (a, b) =>
-                    a.surname.localeCompare(b.surname, locale) ||
-                    a.member.name.localeCompare(b.member.name, locale),
-            );
-    }, [directoryMembers, locale]);
+            .sort(compareDirectoryNames);
+    }, [directoryMembers]);
 
     const filteredDirectory = useMemo(() => {
         const needle = searchQuery.trim().toLocaleLowerCase();

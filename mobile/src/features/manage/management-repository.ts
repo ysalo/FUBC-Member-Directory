@@ -73,6 +73,8 @@ export class SupabaseManagementRepository {
             members: people.map((row) => ({
                 id: row.id,
                 name: row.name,
+                first_name: row.first_name,
+                last_name: row.last_name,
                 group:
                     groups.find((group) => group.id === row.membership_group_id)
                         ?.name ?? "",
@@ -142,6 +144,8 @@ export class SupabaseManagementRepository {
                 {
                     id: row.id,
                     name: row.name,
+                    first_name: row.first_name,
+                    last_name: row.last_name,
                     group:
                         groups.find(
                             (group) => group.id === row.membership_group_id,
@@ -177,6 +181,8 @@ export class SupabaseManagementRepository {
         return {
             id: row.id,
             name: row.name,
+            first_name: row.first_name,
+            last_name: row.last_name,
             patronymic: row.patronymic,
             gender: row.gender,
             group:
@@ -325,6 +331,8 @@ export class SupabaseManagementRepository {
         id?: string | null;
         revision?: number | null;
         name: string;
+        first_name?: string;
+        last_name?: string;
         patronymic?: string | null;
         birthday?: string | null;
         ministryIds?: string[];
@@ -343,7 +351,9 @@ export class SupabaseManagementRepository {
                 p_id: member.id ?? null,
                 p_revision: member.revision ?? null,
                 p_data: {
-                    name: member.name,
+                    ...(member.first_name !== undefined && member.last_name !== undefined
+                        ? { first_name: member.first_name.trim(), last_name: member.last_name.trim() }
+                        : { name: member.name }),
                     ...(member.gender !== undefined ? { gender: member.gender } : {}),
                     ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                     birth_date: member.birthday ?? null,
@@ -414,7 +424,7 @@ export class SupabaseManagementRepository {
                 .order("name"),
             client
                 .from("people")
-                .select("id,name,photo_path,membership_group_id")
+                .select("id,name,first_name,last_name,photo_path,membership_group_id")
                 .is("archived_at", null),
             client.from("deacon_group_members").select("*"),
             client.from("deacon_group_deacons").select("*").order("slot"),
@@ -459,7 +469,7 @@ export class SupabaseManagementRepository {
         }));
         const deacons: ManagedDeacon[] = deaconPeople.map((person) => ({
             personId: person.id,
-            name: person.name,
+            name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name),
             currentGroupId:
                 assignments.find(
                     (assignment) => assignment.person_id === person.id,
@@ -470,7 +480,7 @@ export class SupabaseManagementRepository {
         }));
         const members: ManagedGroupMember[] = people.map((person) => ({
             personId: person.id,
-            name: person.name,
+            name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name),
             currentMembershipGroupId: person.membership_group_id,
             currentResponsibilityGroupId:
                 responsibilityMembers.find(
@@ -549,7 +559,7 @@ export class SupabaseManagementRepository {
                 throw cause;
             }
         }
-        const result = await client.rpc("set_person_photo", {
+        const result = await client.rpc("set_person_photo_metadata", {
             p_id: person.id,
             p_revision: person.revision,
             p_path: path,
@@ -579,12 +589,12 @@ export class SupabaseManagementRepository {
                 cleanupWarning = "The previous photo could not be removed. Please contact an administrator.";
             }
         }
-        return { person: unwrap(result), cleanupWarning };
+        return { person: unwrap(result)[0], cleanupWarning };
     }
 }
 function personData(person: PersonRow) {
     return {
-        name: person.name,
+        ...(person.last_name ? { first_name: person.first_name, last_name: person.last_name } : { name: person.name }),
         ministry: person.ministry,
         ministry_uk: person.ministry_uk,
         phone: person.phone,
@@ -759,6 +769,8 @@ class InMemoryManagementRepository {
         id?: string | null;
         revision?: number | null;
         name: string;
+        first_name?: string;
+        last_name?: string;
         patronymic?: string | null;
         birthday?: string | null;
         ministryIds?: string[];
@@ -773,7 +785,9 @@ class InMemoryManagementRepository {
             : undefined;
         if (saved)
             Object.assign(saved, {
-                name: member.name,
+                name: member.first_name !== undefined && member.last_name !== undefined ? [member.first_name, member.last_name].join(" ") : member.name,
+                ...(member.first_name !== undefined ? { first_name: member.first_name } : {}),
+                ...(member.last_name !== undefined ? { last_name: member.last_name } : {}),
                 ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                 birthday: member.birthday ?? null,
                 ...(member.membershipJoinedAt !== undefined ? { membershipJoinedAt: member.membershipJoinedAt || null } : {}),
@@ -787,7 +801,9 @@ class InMemoryManagementRepository {
         else {
             saved = {
                 id: `member-${Date.now()}`,
-                name: member.name,
+                name: member.first_name !== undefined && member.last_name !== undefined ? [member.first_name, member.last_name].join(" ") : member.name,
+                first_name: member.first_name,
+                last_name: member.last_name,
                 patronymic: member.patronymic?.trim() || null,
                 gender: member.gender ?? null,
                 group: "",
