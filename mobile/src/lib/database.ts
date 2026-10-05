@@ -34,6 +34,7 @@ export type Database = {
       person_leadership_ministries: { Row: { person_id: string; leadership_ministry: Exclude<LeadershipMinistry, null> }; Relationships: [] };
     };
     Functions: {
+      management_group_birth_dates: { Args: Record<string, never>; Returns: { person_id: string; birth_date: string | null }[] };
       record_member_departure: { Args: { p_person_id: string; p_revision: number; p_date_left: string; p_reason: MemberDepartureRow["reason"]; p_other_detail: string | null; p_notes: string }; Returns: MemberDepartureRow };
       member_family: { Args: { p_person_id: string; p_manage?: boolean }; Returns: Json };
       save_member_family: { Args: { p_person_id: string; p_revision: number; p_parent_ids: string[]; p_spouse_id: string | null; p_child_ids: string[]; p_sibling_ids: string[] }; Returns: Json };
