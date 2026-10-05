@@ -1,3 +1,11 @@
+## Scrolling totals and grouped name matches (2026-10-05, version 1.4.4)
+
+Directory totals are a full-width footer at the end of the scrollable roster on web and native. They appear when the end of the results is reached rather than remaining pinned above navigation. The compact surname gutter is applied only to surname sections/member rows, leaving totals full width.
+
+Search results use subtle localized Top matches and Other results headings. The best name score forms the first group (exact name tokens before prefixes); remaining matching scores follow with surname order preserved within each group. Empty groups are omitted and prefix-only searches retain their best matches at the top. Substring/fuzzy matching remains excluded. Search never shows the surname index or reserves its gutter, including when both result sections exist; full-height layout and profile tap targets remain intact.
+
+No backend change or migration; rollback to 1.4.3 is compatible. Validate with `pnpm verify`, `pnpm build:web`, and phone/desktop browser fixtures in both themes covering footer scroll visibility/full width, exact/prefix grouping, prefix-only and empty queries, index scrubbing, member taps, full-height search, departure confirmations/retry, callbacks/deep links and notification side effects. Hosted Preview is SSO protected; physical native/live OAuth checks are not claimed. Feature/release PRs carry final CI, Preview and production evidence.
+
 ## Compact surname index (2026-10-05, version 1.4.3)
 
 The directory surname index uses 13px letter spacing (previously 18px) and a 20px strip (previously 30px). The dedicated list gutter shrinks from 42px to 24px, with a 2px gap between member rows and the index touch area. Search and single-section lists reclaim the gutter completely. Directory screen/list flex bounds stay full width and full height for short and empty searches; the hidden browser scrollbar does not reserve a gutter. The totals footer now stays below the roster and spans its full width; the index is centered between the header and footer. The centered, borderless index retains tap, keyboard and finger/mouse scrubbing; its responder stays inside the gutter and cannot intercept member row clicks.
