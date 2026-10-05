@@ -439,7 +439,7 @@ export class SupabaseManagementRepository {
                 .order("name"),
             client
                 .from("people")
-                .select("id,name,first_name,last_name,photo_path,membership_group_id")
+                .select("id,name,first_name,last_name,patronymic,photo_path,membership_group_id")
                 .is("archived_at", null),
             client.from("deacon_group_members").select("*"),
             client.from("deacon_group_deacons").select("*").order("slot"),
@@ -484,6 +484,7 @@ export class SupabaseManagementRepository {
         }));
         const deacons: ManagedDeacon[] = deaconPeople.map((person) => ({
             personId: person.id,
+            importName: person.last_name && person.first_name ? [person.last_name, person.first_name, person.patronymic].filter(Boolean).join(" ") : person.name,
             name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name),
             currentGroupId:
                 assignments.find(
@@ -495,6 +496,7 @@ export class SupabaseManagementRepository {
         }));
         const members: ManagedGroupMember[] = people.map((person) => ({
             personId: person.id,
+            importName: person.last_name && person.first_name ? [person.last_name, person.first_name, person.patronymic].filter(Boolean).join(" ") : person.name,
             name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name),
             currentMembershipGroupId: person.membership_group_id,
             currentResponsibilityGroupId:
