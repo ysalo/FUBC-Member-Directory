@@ -188,3 +188,27 @@ test('totals are inside the scrollable footer and remain full width',()=>{
  const native=directoryFixture('ios').render().find(node=>node.type==='SectionList');
  assert.equal(native.props.ListFooterComponent.props.children.props.testID,'directory-summary');
 });
+
+test('totals disappear immediately on any search input and return after clearing',()=>{
+ for(const platform of ['web','ios']) {
+  const ui=directoryFixture(platform);ui.render();
+  for(const query of ['Alex','NoMatch','!']) {
+   ui.search(query);const nodes=ui.render();
+   if(platform==='web') assert.equal(nodes.some(node=>node.props?.testID==='directory-summary'),false);
+   else assert.equal(nodes.find(node=>node.type==='SectionList').props.ListFooterComponent,null);
+  }
+  ui.search('');const nodes=ui.render();
+  if(platform==='web') assert.ok(nodes.some(node=>node.props?.testID==='directory-summary'));
+  else assert.ok(nodes.find(node=>node.type==='SectionList').props.ListFooterComponent);
+ }
+});
+
+test('clear search restores the full directory and totals in one press',()=>{
+ const ui=directoryFixture();ui.search('Alex');let nodes=ui.render();
+ assert.deepEqual(ui.ids(nodes),['male-orphan']);
+ ui.button(nodes,'Clear search').props.onPress();nodes=ui.render();
+ assert.equal(ui.ids(nodes).length,4);
+ assert.ok(nodes.some(node=>node.props?.testID==='directory-summary'));
+ assert.equal(ui.button(nodes,'Clear search'),undefined);
+ assert.equal(nodes.find(node=>node.type==='TextInput').props.value,'');
+});
