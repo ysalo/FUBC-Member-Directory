@@ -24,6 +24,20 @@ export function moveCandidate(candidates: readonly DutyCandidate[], personId: st
   return reordered;
 }
 
+/** The generation roster keeps the chosen order while omitting excluded people. */
+export function includedCandidates(candidates: readonly DutyCandidate[], excludedIds: readonly string[]): DutyCandidate[] {
+  const excluded = new Set(excludedIds);
+  return candidates.filter(candidate => !excluded.has(candidate.personId));
+}
+
+/** Reorders participating deacons across excluded rows, which keep their positions. */
+export function moveIncludedCandidate(candidates: readonly DutyCandidate[], excludedIds: readonly string[], personId: string, offset: -1 | 1): DutyCandidate[] {
+  const excluded = new Set(excludedIds);
+  const moved = moveCandidate(includedCandidates(candidates, excludedIds), personId, offset);
+  let index = 0;
+  return candidates.map(candidate => excluded.has(candidate.personId) ? candidate : moved[index++]);
+}
+
 function isSunday(year: number, month: number, day: number): boolean {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay() === 0;
 }

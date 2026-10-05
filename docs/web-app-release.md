@@ -1,5 +1,14 @@
 # Web Application Release and Deployment
 
+## Schedule generation exclusions (2026-10-04)
+
+Manage → Schedule now has an Include in rotation checkbox for every eligible deacon. Unchecked deacons stay visible with an excluded label and are omitted from the ordered roster passed to the existing `generate_duty_schedule` RPC. Arrows move included deacons past excluded rows; ordinal labels reflect the actual generated order. The included count and empty-roster guidance update immediately, generation is disabled when everyone is excluded, and Reset rotation choices restores the current saved draft. Successful generation retains current choices and clears the unsaved-state guard.
+
+Exclusions are per-generation draft choices, not permanent eligibility or ministry changes. Choices stay in the current editor after generating; reopening/loading the roster starts with all eligible deacons. Existing generated weekends stay unchanged until Generate/Regenerate is pressed. Manual weekend reassignment can still choose any eligible deacon. No migration, new storage or permission change is required; the current backend already accepts a subset and validates eligibility. Frontend rollback remains compatible.
+
+Node 24 `pnpm verify` passed (243 main tests, one optional local concurrency skip; visitation 1; groups 12), and `pnpm build:web` passed. Domain and rendered screen coverage checks subset ordering, reordering across excluded rows, reset, re-inclusion, no empty generation, retained choices, cleared dirty state and unauthorized access. Chromium fixtures at 390×844 and 1440×900 generated every weekend using the selected subset, then re-included a deacon, with no overflow, page errors, ministry writes or notification permission calls. A hosted authenticated generation test with temporary deacons and a future year was fully rolled back; it confirmed subset ordering, omitted the excluded deacon and left zero test records. Live OAuth and physical native checks have not been performed; protected Preview interaction requires Vercel SSO.
+
+
 ## Family editor usability (2026-10-04)
 
 The family editor now reuses Directory's `MemberRow` for both existing relatives and selection. Directory profile links keep their previous behavior; selection mode uses explicit checkbox/radio semantics, full patronymics, existing photos and initials, and compact remove actions. The screen follows the member editor's header and surface styles, with a reachable save footer and unsaved-change status.
