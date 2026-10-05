@@ -48,3 +48,7 @@ Applied `20261004000000_member_name_fields.sql`, then `20261004010000_member_csv
 ## Shared family children deployment (2026-10-04)
 
 Reviewed and manually applied `20261004020000_family_shared_children.sql` through an authenticated CLI SQL query. Existing eight family edges were preserved (two spouse connections already shared their children). A rolled-back authenticated RPC smoke test confirmed reciprocal parent links and removal through either spouse. Function signature, grants and safeupdate remain compatible; CLI migration history remains unreconciled. Do not use `db push`.
+
+## Member departures deployment (2026-10-05)
+
+Reviewed and manually applied `20261005000000_member_departures.sql` through an authenticated CLI SQL query. The additive table, manager-only RLS, atomic departure RPC and archive/restore transition trigger preserve previous-client behavior and durable name snapshots. There were zero existing archived members to backfill. A rolled-back authenticated smoke transaction checked validation, preserved contact details, restoration, repeated departures and ordinary-member denial. All 850 members remained unchanged; zero test departures persisted. Migration history remains unreconciled; do not use `db push`. Keep the additive migration when rolling back the frontend.

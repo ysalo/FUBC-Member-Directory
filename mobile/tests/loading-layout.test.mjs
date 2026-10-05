@@ -1,3 +1,4 @@
+import * as memberSearch from "../src/lib/member-search.ts";
 import * as directoryOrder from "../src/features/directory/directory-order.ts";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -36,6 +37,7 @@ function renderScreen({ screen = "directory", loading = true, desktop = false, s
   const screenReact = { ...React, useState: () => [(screen === "directory" ? directoryState : visitState)[stateIndex++], () => {}] };
   const icon = ({ size, style }) => React.createElement(native.View, { style: [{ width: size, height: size }, style] });
   const modules = new Map([
+    ["@/lib/member-search", memberSearch],
     ["@/lib/use-warm-resource", { useWarmResource: () => ({ data: loading || error ? undefined : { members: directoryMembers ?? members, visits: 0 }, status: error ? "error" : loading ? "loading" : "ready", error, refreshing: false, refresh() {} }) }],
     ["@/features/shell/ResourceRefresh", { ResourceRefresh: () => null }],
     ["react-native", native],

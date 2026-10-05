@@ -1,3 +1,4 @@
+import * as memberSearch from "../src/lib/member-search.ts";
 import * as directoryOrder from "../src/features/directory/directory-order.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,9 +27,11 @@ function directoryFixture() {
       return [states[index], (next) => { states[index] = typeof next === 'function' ? next(states[index]) : next; }];
     },
     useEffect() {},
+    useRef: (value) => ({ current: value }),
     useMemo: (factory) => factory(),
   };
   const modules = new Map([
+    ["@/lib/member-search", memberSearch],
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
     ['react-native', { Platform: { OS: 'web' }, Pressable: 'Pressable', RefreshControl: 'RefreshControl', ScrollView: 'ScrollView', SectionList: 'SectionList', StyleSheet: { create: (styles) => styles, flatten: styles=>Object.assign({},...styles), hairlineWidth: 1 }, View: 'View' }],
     ['react-native-safe-area-context', { useSafeAreaInsets: () => ({ top: 0 }) }],
@@ -122,4 +125,14 @@ test('shared member row uses selection controls without navigating to a profile'
  const profile=ui.row({item,locale:'en',ministry:'',onPress:()=>{}});assert.equal(profile.type,'Link');assert.equal(profile.props.href,'/members/selected');
  const remove=ui.row({item,locale:'en',ministry:'',selection:{checked:true,label:'Remove relative',mode:'remove',disabled:true},onPress:()=>{}});
  assert.equal(remove.props.accessibilityRole,'button');assert.equal(remove.props.disabled,true);
+});
+
+test('surname index jumps the roster to the measured section without opening a member',()=>{
+  const ui=directoryFixture(),nodes=ui.render(),scrolls=[];
+  const roster=nodes.find(node=>node.props?.testID==='directory-scroll');
+  roster.props.ref.current={scrollTo:args=>scrolls.push(args)};
+  const sections=nodes.filter(node=>node.props?.onLayout);
+  sections.forEach((node,index)=>node.props.onLayout({nativeEvent:{layout:{y:index*100}}}));
+  ui.button(nodes,'Jump to last names starting with G').props.onPress();
+  assert.deepEqual(scrolls,[{y:300,animated:true}]);
 });

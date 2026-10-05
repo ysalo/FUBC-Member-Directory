@@ -17,7 +17,7 @@ export default function ManageLayout() {
   const session = useSession();
   const pathname = usePathname();
   const actor = session.status === "ready" ? session.account : null;
-  const memberRoute = pathname === "/manage" || /^\/manage\/member\/[^/]+(?:\/family)?\/?$/.test(pathname);
+  const memberRoute = pathname === "/manage" || /^\/manage\/member\/[^/]+(?:\/(?:family|departure))?\/?$/.test(pathname);
   const groupRoute = pathname === "/manage/groups" || /^\/manage\/group\/[^/]+\/?$/.test(pathname);
   const settingsRoute = pathname === "/manage/schedule" || pathname === "/manage/ministries" || /^\/manage\/ministry\/[^/]+\/?$/.test(pathname);
   if (isBackendConfigured && !(memberRoute ? canManageDirectory(actor) : groupRoute ? canManageGroups(actor) : settingsRoute ? canManageSettings(actor) : canManageAccounts(actor))) return <Redirect href="/" />;
@@ -26,6 +26,7 @@ export default function ManageLayout() {
     <Stack.Screen name="account/[accountId]" options={{ headerShown: true, title: locale === "uk" ? "Обліковий запис" : "Account" }} />
     <Stack.Screen name="account/[accountId]/link" options={{ headerShown: true, title: locale === "uk" ? "Пов’язати учасника" : "Link member" }} />
     <Stack.Screen name="account/[accountId]/delete" options={{ headerShown: true, title: locale === "uk" ? "Видалити обліковий запис" : "Delete account" }} />
+    <Stack.Screen name="member/[memberId]/departure" options={{ headerShown: true, title: locale === "uk" ? "Вихід із членства" : "Leaving membership" }} />
     <Stack.Screen name="member/[memberId]/delete" options={{ headerShown: true, title: locale === "uk" ? "Видалити учасника" : "Delete member" }} />
     <Stack.Screen name="import" options={{ headerShown: true, title: locale === "uk" ? "Імпорт учасників" : "Import members" }} />
     <Stack.Screen name="groups" options={{ headerShown: true, title: locale === "uk" ? "Групи" : "Groups" }} />
