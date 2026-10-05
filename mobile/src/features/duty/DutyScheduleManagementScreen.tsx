@@ -15,7 +15,7 @@ import { errorMessage } from "@/lib/async-state";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
-import { fridayBeforeSunday, moveCandidate, weekendLabel, type DutyCandidate } from "./duty-domain";
+import { fridayBeforeSunday, includedCandidates, moveIncludedCandidate, weekendLabel, type DutyCandidate } from "./duty-domain";
 import { dutyRepository, type DutyYear } from "./duty-repository";
 import { useUnsavedChanges } from "@/features/manage/use-unsaved-changes";
 
@@ -34,7 +34,12 @@ const labels = {
     retry: "Try again",
     noDeacons: "No active deacons are available to schedule yet.",
     rotationOrder: "Rotation order",
-    reorderHint: "Use the arrows to set the repeating order before generating.",
+    reorderHint: "Uncheck deacons to exclude them, then use the arrows to set the repeating order.",
+    include: (name: string) => `Include ${name} in rotation`,
+    excluded: "Excluded from this generation",
+    included: (count: number, total: number) => `${count} of ${total} deacons included`,
+    atLeastOne: "Include at least one deacon to generate the schedule.",
+    exclusionHint: "These choices apply when you generate. Ministry assignments and the current schedule stay unchanged until then.",
     moveUp: (name: string) => `Move ${name} up`,
     moveDown: (name: string) => `Move ${name} down`,
     schedule: "Generated schedule",
@@ -45,7 +50,7 @@ const labels = {
     pickerNoMatches: "No deacons match your search.",
     done: "Cancel",
     save: "Save assignment",
-    cancelOrder: "Reset order",
+    cancelOrder: "Reset rotation choices",
   },
   uk: {
     title: "Розклад",
@@ -61,7 +66,12 @@ const labels = {
     retry: "Спробувати ще раз",
     noDeacons: "Поки немає активних дияконів для розкладу.",
     rotationOrder: "Порядок чергування",
-    reorderHint: "Стрілками встановіть порядок повторення перед створенням.",
+    reorderHint: "Зніміть позначки з дияконів, яких не потрібно включати, і встановіть порядок стрілками.",
+    include: (name: string) => `Включити до черги: ${name}`,
+    excluded: "Не включено до цього розкладу",
+    included: (count: number, total: number) => `Включено дияконів: ${count} із ${total}`,
+    atLeastOne: "Оберіть хоча б одного диякона для створення розкладу.",
+    exclusionHint: "Цей вибір застосовується під час створення розкладу. До того часу служіння та поточний розклад не змінюються.",
     moveUp: (name: string) => `Перемістити ${name} вгору`,
     moveDown: (name: string) => `Перемістити ${name} вниз`,
     schedule: "Створений розклад",
@@ -72,7 +82,7 @@ const labels = {
     pickerNoMatches: "Дияконів не знайдено.",
     done: "Скасувати",
     save: "Зберегти призначення",
-    cancelOrder: "Скинути порядок",
+    cancelOrder: "Скинути вибір черги",
   },
 } as const;
 
@@ -91,6 +101,8 @@ export function DutyScheduleManagementScreen() {
   const [draftDeaconId, setDraftDeaconId] = useState<string | null>(null);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [orderedDeacons, setOrderedDeacons] = useState<DutyCandidate[]>([]);
+  const [excludedIds, setExcludedIds] = useState<string[]>([]);
+  const [savedRotationIds, setSavedRotationIds] = useState<string[]>([]);
 
   const load = useCallback(() => {
     if (!allowed) return;
@@ -100,9 +112,11 @@ export function DutyScheduleManagementScreen() {
       .then((loaded) => {
         setState({ status: "ready", year: loaded });
         setOrderedDeacons(loaded.eligibleDeacons);
+        setExcludedIds([]);
+        setSavedRotationIds(loaded.eligibleDeacons.map(deacon => deacon.personId));
       })
       .catch((cause) => setState({ status: "error", message: errorMessage(cause) }));
-  }, [allowed, year]);
+  }, [allowed, year, actor?.id]);
   useFocusEffect(useCallback(load, [load]));
 
   const [directoryMembers, setDirectoryMembers] = useState<Member[]>([]);
@@ -111,20 +125,32 @@ export function DutyScheduleManagementScreen() {
   }, []));
   const memberById = useMemo(() => new Map(directoryMembers.map((member) => [member.id, member])), [directoryMembers]);
 
-  const orderedIds = useMemo(() => orderedDeacons.map((deacon) => deacon.personId), [orderedDeacons]);
-  const orderDirty = state.status === "ready" && JSON.stringify(orderedIds) !== JSON.stringify(state.year!.eligibleDeacons.map((deacon) => deacon.personId));
+  const participating = useMemo(() => includedCandidates(orderedDeacons, excludedIds), [orderedDeacons, excludedIds]);
+  const orderedIds = useMemo(() => participating.map((deacon) => deacon.personId), [participating]);
+  const orderDirty = state.status === "ready" && JSON.stringify(orderedIds) !== JSON.stringify(savedRotationIds);
   useUnsavedChanges(orderDirty || Boolean(reassignSundayOn && draftDeaconId && draftDeaconId !== state.year?.periods.find((period) => period.sundayOn === reassignSundayOn)?.personId));
   const hasGeneratedSchedule = state.status === "ready" && state.year!.periods.length > 0;
 
   const generate = () => {
-    if (state.status !== "ready" || orderedIds.length === 0) return;
+    if (state.status !== "ready" || saving || orderedIds.length === 0) return;
     setSaving(true);
     dutyRepository
       .saveRotation(year, orderedIds)
-      .then((saved) => setState({ status: "ready", year: saved }))
+      .then((saved) => { setState({ status: "ready", year: saved }); setSavedRotationIds(orderedIds); })
       .catch((cause) => setState({ status: "error", message: errorMessage(cause) }))
       .finally(() => setSaving(false));
   };
+
+  function toggleIncluded(personId: string) {
+    if (saving) return;
+    setExcludedIds(current => current.includes(personId) ? current.filter(id => id !== personId) : [...current, personId]);
+  }
+  function resetRotation() {
+    if (state.status !== "ready" || saving) return;
+    const eligible = state.year!.eligibleDeacons;
+    setOrderedDeacons([...savedRotationIds.flatMap(id => eligible.filter(deacon => deacon.personId === id)), ...eligible.filter(deacon => !savedRotationIds.includes(deacon.personId))]);
+    setExcludedIds(eligible.filter(deacon => !savedRotationIds.includes(deacon.personId)).map(deacon => deacon.personId));
+  }
 
   const reassigningPeriod = state.status === "ready" ? state.year!.periods.find((period) => period.sundayOn === reassignSundayOn) : undefined;
 
@@ -173,53 +199,60 @@ export function DutyScheduleManagementScreen() {
             <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.line }]}>
               <Text style={[styles.eyebrow, { color: palette.secondaryText }]}>{copy.rotationOrder}</Text>
               <Text style={[styles.reorderHint, { color: palette.secondaryText }]}>{copy.reorderHint}</Text>
+              <Text accessibilityLiveRegion="polite" style={[styles.warning, { color: palette.secondaryText }]}>{copy.included(orderedIds.length, orderedDeacons.length)}</Text>
               {orderedDeacons.length === 0 ? (
                 <Text style={{ color: palette.secondaryText }}>{copy.noDeacons}</Text>
               ) : (
                 <View style={styles.orderList}>
-                  {orderedDeacons.map((deacon, index) => (
+                  {orderedDeacons.map((deacon) => {
+                    const index = orderedIds.indexOf(deacon.personId);
+                    const included = index >= 0;
+                    return (
                     <View key={deacon.personId} style={[styles.row, { backgroundColor: palette.background, borderColor: palette.line }]}>
-                      <View style={[styles.orderBadge, { backgroundColor: palette.accentSoft }]}>
-                        <Text style={[styles.orderBadgeText, { color: palette.accent }]}>{index + 1}</Text>
-                      </View>
+                      <Pressable accessibilityRole="checkbox" accessibilityLabel={copy.include(deacon.name)} accessibilityState={{ checked: included, disabled: saving }} aria-checked={included} aria-disabled={saving} disabled={saving} onPress={() => toggleIncluded(deacon.personId)} style={styles.includeControl}>
+                        <Ionicons accessibilityElementsHidden name={included ? "checkbox" : "square-outline"} size={24} color={included ? palette.accent : palette.secondaryText} />
+                        {included && <Text style={[styles.orderBadgeText, { color: palette.secondaryText }]}>{index + 1}</Text>}
+                      </Pressable>
                       <ProfileAvatar name={deacon.name} size={40} source={memberById.get(deacon.personId)?.avatar} />
-                      <Text numberOfLines={1} style={[styles.cardTitle, { color: palette.text, flex: 1 }]}>{deacon.name}</Text>
+                      <View style={styles.deaconCopy}><Text numberOfLines={2} style={[styles.cardTitle, { color: included ? palette.text : palette.secondaryText }]}>{deacon.name}</Text>{!included && <Text style={[styles.excluded, { color: palette.secondaryText }]}>{copy.excluded}</Text>}</View>
                       <View style={styles.reorderControls}>
                         <Pressable
                           accessibilityLabel={copy.moveUp(deacon.name)}
                           accessibilityRole="button"
-                          accessibilityState={{ disabled: saving || index === 0 }}
-                          disabled={saving || index === 0}
+                          accessibilityState={{ disabled: saving || !included || index === 0 }}
+                          disabled={saving || !included || index === 0}
                           hitSlop={4}
-                          onPress={() => setOrderedDeacons((current) => moveCandidate(current, deacon.personId, -1))}
-                          style={({ pressed }) => [styles.reorderButton, { opacity: index === 0 ? 0.3 : pressed ? 0.6 : 1 }]}
+                          onPress={() => setOrderedDeacons((current) => moveIncludedCandidate(current, excludedIds, deacon.personId, -1))}
+                          style={({ pressed }) => [styles.reorderButton, { opacity: !included || index === 0 ? 0.3 : pressed ? 0.6 : 1 }]}
                         >
                           <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-up" size={19} />
                         </Pressable>
                         <Pressable
                           accessibilityLabel={copy.moveDown(deacon.name)}
                           accessibilityRole="button"
-                          accessibilityState={{ disabled: saving || index === orderedDeacons.length - 1 }}
-                          disabled={saving || index === orderedDeacons.length - 1}
+                          accessibilityState={{ disabled: saving || !included || index === participating.length - 1 }}
+                          disabled={saving || !included || index === participating.length - 1}
                           hitSlop={4}
-                          onPress={() => setOrderedDeacons((current) => moveCandidate(current, deacon.personId, 1))}
-                          style={({ pressed }) => [styles.reorderButton, { opacity: index === orderedDeacons.length - 1 ? 0.3 : pressed ? 0.6 : 1 }]}
+                          onPress={() => setOrderedDeacons((current) => moveIncludedCandidate(current, excludedIds, deacon.personId, 1))}
+                          style={({ pressed }) => [styles.reorderButton, { opacity: !included || index === participating.length - 1 ? 0.3 : pressed ? 0.6 : 1 }]}
                         >
                           <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-down" size={19} />
                         </Pressable>
                       </View>
                     </View>
-                  ))}
+                  ); })}
                 </View>
               )}
+              <Text style={[styles.warning, { color: palette.secondaryText }]}>{copy.exclusionHint}</Text>
+              {orderedIds.length === 0 && orderedDeacons.length > 0 && <Text accessibilityRole="alert" style={[styles.warning, { color: palette.danger }]}>{copy.atLeastOne}</Text>}
               <Text style={[styles.warning, { color: palette.secondaryText }]}>{copy.replaceWarning.replace("{year}", String(year))}</Text>
-              {orderDirty ? <Pressable accessibilityRole="button" onPress={() => setOrderedDeacons(state.year!.eligibleDeacons)} style={styles.resetOrder}><Text style={{ color: palette.accent }}>{copy.cancelOrder}</Text></Pressable> : null}
+              {orderDirty ? <Pressable accessibilityRole="button" disabled={saving} onPress={resetRotation} style={styles.resetOrder}><Text style={{ color: palette.accent }}>{copy.cancelOrder}</Text></Pressable> : null}
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ busy: saving, disabled: saving || orderedDeacons.length === 0 }}
-                disabled={saving || orderedDeacons.length === 0}
+                accessibilityState={{ busy: saving, disabled: saving || orderedIds.length === 0 }}
+                disabled={saving || orderedIds.length === 0}
                 onPress={generate}
-                style={[styles.generateButton, { backgroundColor: palette.accent, opacity: saving ? 0.6 : 1 }]}
+                style={[styles.generateButton, { backgroundColor: palette.accent, opacity: saving || orderedIds.length === 0 ? 0.45 : 1 }]}
               >
                 <Text style={styles.generateText}>
                   {saving
@@ -299,7 +332,8 @@ const styles = StyleSheet.create({
   row: { alignItems: "center", borderCurve: "continuous", borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 11, minHeight: 62, padding: 10 },
   pressed: { opacity: 0.72 },
   cardTitle: { fontSize: 15, fontWeight: "700" },
-  orderBadge: { alignItems: "center", borderRadius: 12, height: 24, justifyContent: "center", width: 24 },
+  includeControl: { alignItems: "center", minHeight: 44, width: 44, justifyContent: "center" },
+  deaconCopy: { flex: 1, minWidth: 0 }, excluded: { fontSize: 12, lineHeight: 16, marginTop: 3 },
   orderBadgeText: { fontSize: 12, fontWeight: "800" },
   reorderControls: { flexDirection: "row", gap: 2 },
   reorderButton: { alignItems: "center", height: 40, justifyContent: "center", width: 34 },
