@@ -1,4 +1,4 @@
-// @ts-nocheck — Expo Router's generated route union lags newly added nested management routes.
+import { memberSearchScore } from "@/lib/member-search";
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
@@ -194,11 +194,8 @@ export function ManageScreen() {
                 (item) =>
                     !needle ||
                     (panel === "members"
-                        ? `${(item as ManagedMember).name} ${(item as ManagedMember).group}`
-                        : `${(item as ManagedAccount).name} ${(item as ManagedAccount).email}`
-                    )
-                        .toLocaleLowerCase(locale)
-                        .includes(needle),
+                        ? memberSearchScore(item as ManagedMember, needle) !== null
+                        : `${(item as ManagedAccount).name} ${(item as ManagedAccount).email}`.toLocaleLowerCase(locale).includes(needle)),
             );
     }, [accountsAllowed, locale, panel, query, showFormer, state]);
     const openAccount = (accountId: string) => {
@@ -297,7 +294,7 @@ export function ManageScreen() {
                             {(
                                 [
                                     "members",
-                                    ...(accountsAllowed ? ["accounts"] : []),
+                                    ...(accountsAllowed ? ["accounts" as const] : []),
                                 ] as const
                             ).map((value) => (
                                 <Pressable
@@ -646,7 +643,7 @@ export function ManageScreen() {
         onPress,
     }: {
         detail: string;
-        icon: "people-outline" | "layers-outline" | "calendar-outline";
+        icon: "people-outline" | "layers-outline" | "calendar-outline" | "cloud-upload-outline";
         label: string;
         onPress: () => void;
     }) {
@@ -802,7 +799,6 @@ export function ManageScreen() {
                             ]}
                         >
                             <ProfileAvatar
-                                backgroundColor={palette.elevated}
                                 name={account.name || account.email}
                                 source={
                                     state.members.find(
@@ -811,7 +807,6 @@ export function ManageScreen() {
                                     )?.photo
                                 }
                                 size={38}
-                                textColor={palette.accent}
                             />
                             <View style={styles.flex}>
                                 <Text
@@ -857,7 +852,7 @@ export function ManageScreen() {
     }) {
         const detail =
             item.archived && item.leftAt
-                ? `${locale === "uk" ? "Дата виходу" : "Left"}: ${new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { dateStyle: "medium" }).format(new Date(item.leftAt))}`
+                ? `${locale === "uk" ? "Дата виходу" : "Left"}: ${new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { dateStyle: "medium" }).format(new Date(item.leftAt.length === 10 ? `${item.leftAt}T12:00:00` : item.leftAt))}`
                 : item.group;
         return (
             <Pressable
@@ -878,10 +873,8 @@ export function ManageScreen() {
             >
                 {selecting ? <Ionicons accessibilityElementsHidden color={item.id === actor?.personId ? palette.secondaryText : palette.accent} name={selectedIds.includes(item.id) ? "checkbox" : "square-outline"} size={24} /> : null}
                 <ProfileAvatar
-                    backgroundColor={palette.accentSoft}
                     name={item.name}
                     source={item.photo}
-                    textColor={palette.accent}
                 />
                 <View style={styles.flex}>
                     <Text style={[styles.cardTitle, { color: palette.text }]}>
@@ -935,14 +928,12 @@ export function ManageScreen() {
                 ]}
             >
                 <ProfileAvatar
-                    backgroundColor={palette.accentSoft}
                     name={item.name || item.email}
                     source={
                         state.members.find(
                             (member) => member.id === item.personId,
                         )?.photo
                     }
-                    textColor={palette.accent}
                 />
                 <View style={styles.flex}>
                     <Text
@@ -1032,7 +1023,8 @@ export function ManageScreen() {
             | "lock-closed-outline"
             | "person-add-outline"
             | "search-outline"
-            | "sync-outline";
+            | "sync-outline"
+            | "cloud-upload-outline";
         loading?: boolean;
         title: string;
     }) {

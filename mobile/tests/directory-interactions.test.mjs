@@ -1,3 +1,4 @@
+import * as memberSearch from "../src/lib/member-search.ts";
 import * as directoryOrder from "../src/features/directory/directory-order.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +11,7 @@ const ts = require('typescript');
 const source = await readFile(new URL('../src/features/directory/DirectoryScreen.tsx', import.meta.url), 'utf8');
 const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 
-function directoryFixture() {
+function directoryFixture(platform = "web") {
   const members = [
     { id: 'male-orphan', name: 'Alex Alpha', gender: 'male', isOrphan: true },
     { id: 'female-other', name: 'Beth Beta', gender: 'female', isOrphan: false },
@@ -26,11 +27,13 @@ function directoryFixture() {
       return [states[index], (next) => { states[index] = typeof next === 'function' ? next(states[index]) : next; }];
     },
     useEffect() {},
+    useRef: (value) => ({ current: value }),
     useMemo: (factory) => factory(),
   };
   const modules = new Map([
+    ["@/lib/member-search", memberSearch],
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
-    ['react-native', { Platform: { OS: 'web' }, Pressable: 'Pressable', RefreshControl: 'RefreshControl', ScrollView: 'ScrollView', SectionList: 'SectionList', StyleSheet: { create: (styles) => styles, flatten: styles=>Object.assign({},...styles), hairlineWidth: 1 }, View: 'View' }],
+    ['react-native', { Platform: { OS: platform }, Pressable: 'Pressable', RefreshControl: 'RefreshControl', ScrollView: 'ScrollView', SectionList: 'SectionList', StyleSheet: { create: (styles) => styles, flatten: styles=>Object.assign({},...styles), hairlineWidth: 1 }, View: 'View' }],
     ['react-native-safe-area-context', { useSafeAreaInsets: () => ({ top: 0 }) }],
     ['@react-native-vector-icons/ionicons', { Ionicons: 'Icon' }],
     ['expo-router', { Link: 'Link', useRouter: () => ({ push() {} }) }],
@@ -122,4 +125,27 @@ test('shared member row uses selection controls without navigating to a profile'
  const profile=ui.row({item,locale:'en',ministry:'',onPress:()=>{}});assert.equal(profile.type,'Link');assert.equal(profile.props.href,'/members/selected');
  const remove=ui.row({item,locale:'en',ministry:'',selection:{checked:true,label:'Remove relative',mode:'remove',disabled:true},onPress:()=>{}});
  assert.equal(remove.props.accessibilityRole,'button');assert.equal(remove.props.disabled,true);
+});
+
+test('surname index jumps the roster to the measured section without opening a member',()=>{
+  const ui=directoryFixture(),nodes=ui.render(),scrolls=[];
+  const roster=nodes.find(node=>node.props?.testID==='directory-scroll');
+  roster.props.ref.current={scrollTo:args=>scrolls.push(args)};
+  const sections=nodes.filter(node=>node.props?.onLayout);
+  sections.forEach((node,index)=>node.props.onLayout({nativeEvent:{layout:{y:index*100}}}));
+  ui.button(nodes,'Jump to last names starting with G').props.onPress();
+  assert.deepEqual(scrolls,[{y:300,animated:true}]);
+});
+
+
+test('native surname index jumps to the requested section and retries an unmeasured section',async()=>{
+  const ui=directoryFixture('ios'),nodes=ui.render(),jumps=[],estimates=[];
+  const list=nodes.find(node=>node.type==='SectionList');
+  list.props.ref.current={scrollToLocation:args=>jumps.push(args),getScrollResponder:()=>({scrollTo:args=>estimates.push(args)})};
+  ui.button(nodes,'Jump to last names starting with G').props.onPress();
+  assert.deepEqual(jumps,[{sectionIndex:3,itemIndex:0,viewPosition:0,animated:true}]);
+  list.props.onScrollToIndexFailed({averageItemLength:80,index:100});
+  assert.deepEqual(estimates,[{y:8000,animated:false}]);
+  await new Promise(resolve=>setTimeout(resolve,180));
+  assert.deepEqual(jumps[1],{sectionIndex:3,itemIndex:0,animated:true});
 });

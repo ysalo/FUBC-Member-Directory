@@ -1,3 +1,4 @@
+import * as memberSearch from "../src/lib/member-search.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
@@ -43,6 +44,7 @@ async function bulkUiFixture(component, role = "admin") {
     const closeCalls = [];
     const keyboardListeners = new Map();
     new Function("require", "exports", "document", code)((id) => {
+        if (id === "@/lib/member-search") return memberSearch;
         if (id === "react") return hooks;
         if (id === "react/jsx-runtime") return require(id);
         if (id === "react-native") return { Platform: { OS: "web" }, View: "View", Pressable: "Pressable", ScrollView: "ScrollView", Modal: "Modal", ActivityIndicator: "ActivityIndicator", FlatList: ({ ListHeaderComponent, data, renderItem }) => React.createElement("List", {}, ListHeaderComponent, data.map((item) => renderItem({ item }))), StyleSheet: { create: (styles) => styles, hairlineWidth: 1 } };
@@ -959,7 +961,7 @@ test("account deletion preserves structured edge function failures", async () =>
 
 test('management catalog keeps patronymics for family member disambiguation', async () => {
  const row={id:'person',name:'Іван Саволюк',first_name:'Іван',last_name:'Саволюк',patronymic:'Петрович',photo_path:null,archived_at:null};
- const client={from(table){const query={select(){return query;},order(){return Promise.resolve({data:[row],error:null});},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};return query;},rpc:async()=>({data:[],error:null})};
+ const client={from(table){const query={select(){return query;},is(){return query;},order(){return Promise.resolve({data:[row],error:null});},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};return query;},rpc:async()=>({data:[],error:null})};
  const exports={};new Function('require','exports',managementCode)(id=>{
   if(id==='@/lib/supabase')return {isBackendConfigured:true,requireSupabase:()=>client};
   if(id==='@/lib/permissions')return {canManageDirectory:()=>true,canManageAccounts:()=>false};
@@ -972,4 +974,23 @@ test('management catalog keeps patronymics for family member disambiguation', as
  },exports);
  const {members}=await new exports.SupabaseManagementRepository().load();
  assert.equal(members[0].patronymic,'Петрович');assert.equal(members[0].first_name,'Іван');assert.equal(members[0].last_name,'Саволюк');
+});
+
+test('active member loading accepts an absent departure and uses the recorded departure date for former members',async()=>{
+ let departure=null;
+ const person={id:'person',name:'Anna Petrenko',first_name:'Anna',last_name:'Petrenko',patronymic:null,photo_path:null,archived_at:null,revision:1};
+ const client={from(table){const result={data:table==='people'?person:table==='member_departures'?departure:[],error:null};const query={select(){return query;},eq(){return query;},is(){return query;},maybeSingle:async()=>result,then:resolve=>Promise.resolve(result).then(resolve)};return query;},rpc:async()=>({data:[{ministry_ids:[]}],error:null})};
+ const exports={};new Function('require','exports',managementCode)(id=>{
+  if(id==='@/lib/supabase')return {isBackendConfigured:true,requireSupabase:()=>client};
+  if(id==='@/lib/permissions')return {canManageDirectory:()=>true};
+  if(id==='@/lib/repository-helpers')return {activeAccount:()=>({}),unwrap:r=>{if(r.error||r.data===null)throw Error('Unavailable');return r.data;},privatePhotoSources:async()=>new Map()};
+  if(id==='@/lib/session-cache')return {createSessionCache:()=>({})};
+  if(id==='@/lib/photo-cache'||id==='@/features/family/family-repository')return {};
+  if(id==='./model')return source;
+  throw Error(id);
+ },exports);
+ const repository=new exports.SupabaseManagementRepository();
+ assert.equal((await repository.loadMember('person')).leftAt,null);
+ person.archived_at='2026-10-05T08:00:00Z';departure={date_left:'2026-01-01'};
+ assert.equal((await repository.loadMember('person')).leftAt,'2026-01-01');
 });
