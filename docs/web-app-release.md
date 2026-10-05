@@ -1,5 +1,14 @@
 # Web Application Release and Deployment
 
+## Directory and departure UI polish (2026-10-05, issue #101)
+
+The departure editor now follows the member form's typography, field spacing, hairline borders, rounded surfaces and orange save action. Radio choices use the shared icon family and palette selection colors. Phone and desktop layouts use the existing 18px/32px form spacing; light/dark palettes apply to every field and action. Browser text-entry fields, including date inputs and notes, keep their normal borders without focus outlines. Button/link keyboard focus styling remains available.
+
+The surname index is a compact, rounded floating control centered beside the roster, with a subtle shadow and scrollable content for long alphabets. Web/native section jumps and bounded offscreen retries continue to use the existing roster. During search, results form a single relevance-ordered list and the alphabet index is hidden. Name matching now uses whole tokens or prefixes only, with exact names first and surname-order ties. Fuzzy/inside-name matches are excluded: Andrew finds Andrew before Andrews, while Drew finds Drew without matching Andrew. Both Directory and Management use the same ranking helper. The English/Ukrainian placeholder describes first/last-name lookup.
+
+Node 24 `pnpm verify` and `pnpm build:web` passed. Chromium fixtures at 390×844 and 1440×900 in light and dark themes checked centered/compact index geometry and jumps, reversed-name lookup, exact-name ranking in both lists, no inside-name matches, focus styles on search/date/notes, palette-consistent save colors, radio selection, cancellation, failed-save retry, history and direct/callback routes. All four cases had zero overflow/page errors/notification calls. Browser UI fixtures intercept backend responses; physical native and live OAuth checks were not performed. No migration or new backend contract is introduced: the previously applied departure table/RPC remain the prerequisite and frontend rollback is compatible. CI/Preview and final production evidence are recorded in the feature/release PRs. Application version: 1.4.1.
+
+
 ## Smarter member search, surname index and departure history (2026-10-05, issue #98)
 
 Directory and management member search now match individual first/last/patronymic tokens in either order, with prefixes, case/spacing/apostrophe/hyphen/accent normalization, repair of visual Latin letters in Cyrillic words, and one-character typo tolerance for queries of at least four characters. Short queries remain prefix-only and each query token must match a distinct name token. Results keep surname ordering. The right-side index uses populated Ukrainian/Latin surname sections and scrolls the web roster or native SectionList; long indexes scroll and native offscreen jumps retry with a bounded timer.

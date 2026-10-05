@@ -1,4 +1,4 @@
-import { memberSearchScore } from "@/lib/member-search";
+import { normalizeMemberSearch, searchMembers } from "@/lib/member-search";
 import { directorySurname, compareDirectoryNames } from "./directory-order";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
@@ -277,7 +277,7 @@ export function DirectoryScreen() {
 
     const filteredDirectory = useMemo(() => {
         const needle = searchQuery.trim().toLocaleLowerCase();
-        return sortedDirectory.filter(({ member, surname }) =>
+        const candidates = sortedDirectory.filter(({ member }) =>
             (filters.length === 0 ||
                 filters.some((filter) =>
                     filter === "orphan"
@@ -289,11 +289,13 @@ export function DirectoryScreen() {
                           : filter === "ungrouped"
                             ? !member.membershipGroupId
                             : member.leadershipMinistry === filter,
-                )) && (!needle || memberSearchScore({ ...member, last_name: surname }, needle) !== null),
+                )),
         );
+        return searchMembers(candidates, needle, ({ member, surname }) => ({ ...member, last_name: surname }));
     }, [filters, searchQuery, sortedDirectory]);
 
     const sections = useMemo(() => {
+        if (normalizeMemberSearch(searchQuery)) return filteredDirectory.length ? [{ title: locale === "uk" ? "Результати пошуку" : "Search results", data: filteredDirectory.map(item => item.member) }] : [];
         return filteredDirectory.reduce<Array<{ title: string; data: Member[] }>>(
             (groups, member) => {
                 const title =
@@ -306,7 +308,7 @@ export function DirectoryScreen() {
             },
             [],
         );
-    }, [filteredDirectory, locale]);
+    }, [filteredDirectory, locale, searchQuery]);
 
     useEffect(() => () => {
         if (jumpRetry.current) clearTimeout(jumpRetry.current);
@@ -322,9 +324,11 @@ export function DirectoryScreen() {
         }
     };
     const alphabetIndex = sections.length > 1 ? (
-        <ScrollView accessibilityLabel={locale === "uk" ? "Покажчик прізвищ" : "Last name index"} style={styles.alphabetIndex} contentContainerStyle={{ alignItems: "center" }}>
-            {sections.map((section, index) => <Pressable key={section.title} accessibilityRole="button" accessibilityLabel={`${locale === "uk" ? "До прізвищ на" : "Jump to last names starting with"} ${section.title}`} onPress={() => jumpToSection(index)} style={styles.alphabetButton}><Text style={{ color: palette.accent, fontSize: 12, fontWeight: "700" }}>{section.title}</Text></Pressable>)}
-        </ScrollView>
+        <View pointerEvents="box-none" style={styles.alphabetOverlay}>
+            <ScrollView testID="directory-alphabet-index" accessibilityLabel={locale === "uk" ? "Покажчик прізвищ" : "Last name index"} showsVerticalScrollIndicator={false} style={[styles.alphabetIndex, { backgroundColor: palette.surface }]} contentContainerStyle={styles.alphabetContent}>
+                {sections.map((section, index) => <Pressable key={section.title} accessibilityRole="button" accessibilityLabel={`${locale === "uk" ? "До прізвищ на" : "Jump to last names starting with"} ${section.title}`} onPress={() => jumpToSection(index)} style={({ pressed }) => [styles.alphabetButton, pressed && { backgroundColor: palette.accentSoft }]}><Text style={{ color: palette.accent, fontSize: 11, fontWeight: "700" }}>{section.title}</Text></Pressable>)}
+            </ScrollView>
+        </View>
     ) : null;
 
     const filterOptions: Array<{ id: DirectoryFilter; label: string }> = [
@@ -749,7 +753,7 @@ export function DirectoryScreen() {
                     }, 150);
                 }}
                 refreshControl={<RefreshControl refreshing={resource.refreshing} onRefresh={loadDirectory} />}
-                contentContainerStyle={[styles.content, { paddingRight: 34 }]}
+                contentContainerStyle={[styles.content, { paddingRight: 42 }]}
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={12}
@@ -793,8 +797,10 @@ const scale = 1;
 const px = (value: number) => value * scale;
 
 const styles = StyleSheet.create({
-    alphabetIndex: { position: "absolute", right: 0, top: 8, bottom: 8, width: 28, backgroundColor: "transparent" },
-    alphabetButton: { minHeight: 22, width: 28, alignItems: "center", justifyContent: "center" },
+    alphabetOverlay: { position: "absolute", right: 6, top: 8, bottom: 8, justifyContent: "center", alignItems: "center", width: 30 },
+    alphabetIndex: { flexGrow: 0, maxHeight: "90%", width: 30, borderRadius: 18, boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)" },
+    alphabetContent: { alignItems: "center", paddingVertical: 8 },
+    alphabetButton: { minHeight: 18, width: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
     skeletonText: { alignSelf: "flex-start", borderRadius: 4 },
     desktopScreen: {
         alignSelf: "center",
@@ -820,7 +826,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "600",
     },
-    webContent: { paddingBottom: 28, paddingRight: 28 },
+    webContent: { paddingBottom: 28, paddingRight: 42 },
     safe: { backgroundColor: "#F1F0EB", flex: 1 },
     rosterScroll: { flex: 1 },
     content: { paddingBottom: px(102) },
