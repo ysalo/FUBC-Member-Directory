@@ -52,3 +52,7 @@ Reviewed and manually applied `20261004020000_family_shared_children.sql` throug
 ## Member departures deployment (2026-10-05)
 
 Reviewed and manually applied `20261005000000_member_departures.sql` through an authenticated CLI SQL query. The additive table, manager-only RLS, atomic departure RPC and archive/restore transition trigger preserve previous-client behavior and durable name snapshots. There were zero existing archived members to backfill. A rolled-back authenticated smoke transaction checked validation, preserved contact details, restoration, repeated departures and ordinary-member denial. All 850 members remained unchanged; zero test departures persisted. Migration history remains unreconciled; do not use `db push`. Keep the additive migration when rolling back the frontend.
+
+## Group import identity dates (2026-10-05)
+
+Manually applied `20261005010000_group_import_birth_dates.sql` through authenticated CLI SQL. The additive manager-only RPC returns active person IDs/full birth dates without opening direct private-table access. Keep it during frontend rollback. CLI migration history remains unreconciled; do not use db push. Group 2 was imported through the existing authenticated save-person/save-group RPCs after a rolled-back dry run, retaining 850 people and existing Group 3 assignments. Private receipts and verification remain in the local Group 2 folder.

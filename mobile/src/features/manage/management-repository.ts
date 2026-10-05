@@ -431,6 +431,7 @@ export class SupabaseManagementRepository {
             responsibilityMembersResult,
             assignmentsResult,
             leadershipResult,
+            birthDatesResult,
         ] = await Promise.all([
             client
                 .from("deacon_groups")
@@ -447,12 +448,14 @@ export class SupabaseManagementRepository {
                 .from("person_leadership_ministries")
                 .select("person_id")
                 .eq("leadership_ministry", "deacon"),
+            client.rpc("management_group_birth_dates"),
         ]);
         const groups = unwrap(groupsResult),
             people = unwrap(peopleResult),
             responsibilityMembers = unwrap(responsibilityMembersResult),
             assignments = unwrap(assignmentsResult),
             leadership = unwrap(leadershipResult);
+        const birthDates = new Map(unwrap(birthDatesResult).map(row => [row.person_id, row.birth_date]));
         const deaconPersonIds = new Set(leadership.map((row) => row.person_id));
         const deaconPeople = people.filter((person) =>
             deaconPersonIds.has(person.id),
@@ -484,6 +487,7 @@ export class SupabaseManagementRepository {
         }));
         const deacons: ManagedDeacon[] = deaconPeople.map((person) => ({
             personId: person.id,
+            birthDate: birthDates.get(person.id) ?? null,
             importName: person.last_name && person.first_name ? [person.last_name, person.first_name, person.patronymic].filter(Boolean).join(" ") : person.name,
             name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name),
             currentGroupId:
@@ -496,6 +500,7 @@ export class SupabaseManagementRepository {
         }));
         const members: ManagedGroupMember[] = people.map((person) => ({
             personId: person.id,
+            birthDate: birthDates.get(person.id) ?? null,
             importName: person.last_name && person.first_name ? [person.last_name, person.first_name, person.patronymic].filter(Boolean).join(" ") : person.name,
             name: (person.first_name !== undefined && person.last_name !== undefined ? [person.first_name, person.last_name].join(" ") : person.name),
             currentMembershipGroupId: person.membership_group_id,
