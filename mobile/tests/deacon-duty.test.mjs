@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
@@ -6,6 +7,8 @@ import {
   currentPeriod,
   fridayBeforeSunday,
   moveCandidate,
+  includedCandidates,
+  moveIncludedCandidate,
   nextPeriodForPerson,
   periodsByMonth,
   periodsForPerson,
@@ -190,7 +193,60 @@ test('schedule management keeps regeneration available after a generated year', 
   assert.match(manageSchedule, /regenerate: "Regenerate \{year\} schedule"/);
   assert.match(manageSchedule, /hasGeneratedSchedule = state\.status === "ready" && state\.year!\.periods\.length > 0/);
   assert.match(manageSchedule, /hasGeneratedSchedule \? copy\.regenerate : copy\.generate/);
-  assert.match(manageSchedule, /accessibilityState=\{\{ busy: saving, disabled: saving \|\| orderedDeacons\.length === 0 \}\}/);
+  assert.match(manageSchedule, /accessibilityState=\{\{ busy: saving, disabled: saving \|\| orderedIds\.length === 0 \}\}/);
   assert.doesNotMatch(manageSchedule, /disabled=\{[^}]*hasGeneratedSchedule/);
 });
 
+
+test('generation excludes selected deacons without changing eligible candidates or their order',()=>{
+ const candidates=[{personId:'a',name:'A'},{personId:'b',name:'B'},{personId:'c',name:'C'}];
+ const included=includedCandidates(candidates,['b']);assert.deepEqual(included.map(p=>p.personId),['a','c']);
+ assert.deepEqual(candidates.map(p=>p.personId),['a','b','c']);
+ const periods=buildRotation(2026,included);assert.equal(periods.length,sundaysInYear(2026).length);
+ assert.ok(periods.every(p=>p.personId!=='b'));assert.deepEqual(periods.slice(0,4).map(p=>p.personId),['a','c','a','c']);
+ assert.deepEqual(includedCandidates(candidates,['a','b','c']),[]);
+ assert.deepEqual(moveIncludedCandidate(candidates,['b'],'c',-1).map(p=>p.personId),['c','b','a']);
+ assert.deepEqual(moveIncludedCandidate(candidates,['b'],'b',-1),candidates);
+});
+const require=createRequire(import.meta.url),React=require('react'),ts=require('typescript');
+const managementCode=ts.transpileModule(await readFile(new URL('../src/features/duty/DutyScheduleManagementScreen.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+function rotationFixture({allowed=true}={}){
+ const states=[],focus=[],calls=[];let cursor=0,dirty=false;
+ const deacons=[{personId:'a',name:'Alpha'},{personId:'b',name:'Beta'},{personId:'c',name:'Charlie'}];
+ const repository={loadYear:async year=>({year,eligibleDeacons:deacons,periods:[]}),saveRotation:async(year,ids)=>{calls.push({year,ids});return {year,eligibleDeacons:deacons,periods:buildRotation(year,deacons.filter(d=>ids.includes(d.personId)).sort((a,b)=>ids.indexOf(a.personId)-ids.indexOf(b.personId)))};}};
+ const modules={
+  react:{...React,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],next=>{states[i]=typeof next==='function'?next(states[i]):next;}];},useCallback:f=>f,useMemo:f=>f()},
+  'react/jsx-runtime':require('react/jsx-runtime'),'expo-router':{useFocusEffect:callback=>focus.push(callback)},
+  'react-native':{ActivityIndicator:'Spinner',Pressable:'Button',ScrollView:'Scroll',View:'View',StyleSheet:{create:x=>x,hairlineWidth:1}},
+  'react-native-safe-area-context':{SafeAreaView:'SafeArea'},'@react-native-vector-icons/ionicons':{Ionicons:'Icon'},
+  '@/features/accessibility/app-text':{Text:'Text'},'@/features/appearance/AppearanceProvider':{useAppearance:()=>({palette:{}})},
+  '@/features/directory/directory-repository':{listDirectory:async()=>[]},'@/features/localization/LocalizationProvider':{useLocalization:()=>({locale:'en'})},
+  '@/lib/permissions':{canManageSettings:()=>allowed},'@/features/session/SessionProvider':{useSession:()=>({status:'ready',account:{id:'admin'}})},
+  '@/lib/async-state':{errorMessage:e=>e.message},'@/features/members/ProfileAvatar':{ProfileAvatar:'Avatar'},'./DeaconPickerSheet':{DeaconPickerSheet:()=>null},
+  './DutySummary':{todayFixedPdt:()=> '2026-10-04'},'./duty-domain':{fridayBeforeSunday,moveIncludedCandidate,includedCandidates,weekendLabel},'./duty-repository':{dutyRepository:repository},
+  '@/features/manage/use-unsaved-changes':{useUnsavedChanges:value=>{dirty=value;}},
+ };
+ const exports={};new Function('require','exports',managementCode)(id=>{assert.ok(id in modules,id);return modules[id];},exports);
+ const text=node=>node==null?'':typeof node!=='object'?String(node):Array.isArray(node)?node.map(text).join(''):text(node.props?.children);
+ function render(){cursor=0;const nodes=[];function walk(node){if(Array.isArray(node))return node.forEach(walk);if(!node||typeof node!=='object')return;if(typeof node.type==='function')return walk(node.type(node.props));nodes.push(node);walk(node.props?.children);}walk(exports.DutyScheduleManagementScreen());return nodes;}
+ const find=label=>render().find(n=>n.type==='Button'&&(n.props.accessibilityLabel===label||text(n)===label));
+ return {render,find,calls,deacons,get dirty(){return dirty;},text:()=>render().map(text).join(' '),async load(){render();for(const cb of focus.splice(0))cb();await new Promise(setImmediate);},async press(label){const node=find(label);assert.ok(node,label);assert.ok(!node.props.disabled,label+' disabled');node.props.onPress();await new Promise(setImmediate);}};
+}
+test('rotation controls exclude and reinclude deacons and send only the chosen roster',async()=>{
+ const ui=rotationFixture();await ui.load();await ui.press('Include Beta in rotation');
+ assert.equal(ui.find('Include Beta in rotation').props['aria-checked'],false);assert.equal(ui.dirty,true);assert.match(ui.text(),/2 of 3 deacons included/);
+ await ui.press('Move Charlie up');await ui.press('Generate 2026 schedule');
+ assert.deepEqual(ui.calls,[{year:2026,ids:['c','a']}]);assert.equal(ui.deacons.length,3);ui.render();assert.equal(ui.dirty,false);
+ assert.equal(ui.find('Include Beta in rotation').props['aria-checked'],false,'choices stay excluded after generation');
+ await ui.press('Include Beta in rotation');await ui.press('Regenerate 2026 schedule');assert.deepEqual(ui.calls[1].ids,['c','b','a']);
+});
+test('excluding everyone prevents generation and reset restores the saved roster',async()=>{
+ const ui=rotationFixture();await ui.load();for(const name of ['Alpha','Beta','Charlie'])await ui.press(`Include ${name} in rotation`);
+ assert.match(ui.text(),/Include at least one deacon/);const generate=ui.find('Generate 2026 schedule');assert.equal(generate.props.disabled,true);generate.props.onPress();await new Promise(setImmediate);assert.deepEqual(ui.calls,[]);
+ await ui.press('Reset rotation choices');
+ for(const name of ['Alpha','Beta','Charlie'])assert.equal(ui.find(`Include ${name} in rotation`).props['aria-checked'],true);
+ ui.render();assert.equal(ui.dirty,false);
+});
+test('non-administrators cannot generate or access roster exclusion controls',async()=>{
+ const ui=rotationFixture({allowed:false});await ui.load();assert.match(ui.text(),/permission to manage/);assert.ok(!ui.find('Include Alpha in rotation'));assert.deepEqual(ui.calls,[]);
+});
