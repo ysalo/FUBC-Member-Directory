@@ -75,6 +75,7 @@ export class SupabaseManagementRepository {
                 name: row.name,
                 first_name: row.first_name,
                 last_name: row.last_name,
+                patronymic: row.patronymic,
                 group:
                     groups.find((group) => group.id === row.membership_group_id)
                         ?.name ?? "",

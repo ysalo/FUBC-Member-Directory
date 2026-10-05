@@ -8,6 +8,7 @@ import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { getFamilyCopy } from "@/features/family/family-copy";
 import type { FamilyChanges, FamilySnapshot } from "@/features/family/family-repository";
 import { useSession } from "@/features/session/SessionProvider";
+import { formatMemberName } from "@/lib/member-name";
 import { sessionCacheScope } from "@/lib/session-cache";
 import { managementRepository } from "./management-repository";
 import type { ManagedMember } from "./model";
@@ -113,26 +114,27 @@ export function FamilyEditorScreen() {
   }
   function memberLabel(id: string) {
     const member = members.find(p => p.id === id);
-    return member ? `${member.name}${member.archived ? ` (${copy.archived})` : ""}` : id;
+    return member ? `${formatMemberName(member)}${member.archived ? ` (${copy.archived})` : ""}` : id;
   }
   const visibleMembers = snapshot ? members : [];
-  const candidates = visibleMembers.filter(p => p.id !== memberId && p.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const candidates = visibleMembers.filter(p => p.id !== memberId && [p.name, formatMemberName(p), p.patronymic ?? ""].some(value => value.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())));
   return <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
     <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-      <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.edit}{visibleMembers.find(p => p.id === memberId)?.name ? ` · ${visibleMembers.find(p => p.id === memberId)?.name}` : ""}</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.edit}{visibleMembers.find(p => p.id === memberId)?.name ? ` · ${memberLabel(memberId)}` : ""}</Text>
       <View style={styles.actions}>{action(copy.cancel, cancel)}{snapshot && action(copy.save, () => void save(), busy || conflict)}</View>
       {busy && <ActivityIndicator color={palette.accent} />}
       {error && <Text accessibilityRole="alert" style={[styles.body, { color: palette.text }]}>{error}</Text>}
       {(conflict || (!snapshot && !busy)) && action(conflict ? copy.refresh : copy.retry, () => void load())}
       {snapshot && categories.map(kind => <View key={kind} onLayout={event => { sectionY.current[kind] = event.nativeEvent.layout.y; }} style={[styles.section, { borderColor: palette.line }]}>
         <Text accessibilityRole="header" style={[styles.heading, { color: palette.text }]}>{copy[kind]}</Text>
+        {kind === "children" && changes.spouseId && <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.sharedChildrenHint}</Text>}
         {!ids(kind).length && <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.empty}</Text>}
         {ids(kind).map(id => <View key={id} style={styles.row}>
           <Text style={[styles.body, styles.name, { color: palette.text }]}>{memberLabel(id)}{kind === "siblings" ? ` · ${copy.explicit}` : ""}</Text>
           {action(`${copy.remove}: ${memberLabel(id)} (${copy[kind]})`, () => select(kind, id, true))}
         </View>)}
         {kind === "siblings" && snapshot.siblings.filter(sibling => sibling.supportingParents.length > 0).map(sibling => <View key={sibling.id} style={styles.inference}>
-          <Text style={[styles.body, { color: palette.text }]}>{memberLabel(sibling.id)} · {copy.inferred}: {sibling.supportingParents.map(parent => `${parent.name}${parent.archived ? ` (${copy.archived})` : ""}`).join(", ")}</Text>
+          <Text style={[styles.body, { color: palette.text }]}>{memberLabel(sibling.id)} · {copy.inferred}: {sibling.supportingParents.map(parent => memberLabel(parent.id)).join(", ")}</Text>
           <Text style={[styles.body, { color: palette.secondaryText }]}>{copy.inferenceHint}</Text>
         </View>)}
         {action(`${copy.add}: ${copy[kind]}`, () => { pickerToReveal.current = kind; setCategory(kind); setSearch(""); setError(null); })}

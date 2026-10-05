@@ -52,11 +52,14 @@ test('real competing reciprocal, spouse and ancestry saves reject stale writers'
       assert.equal(await revision(), before, 'rejected save must not advance the revision');
     }
     await sql(url.href,await readFile(new URL('../migrations/20260928020000_family_safeupdate.sql',import.meta.url),'utf8'));
-    for(const scenario of ['reciprocal','spouse','cycle']) {
+    await sql(url.href,await readFile(new URL('../migrations/20261004020000_family_shared_children.sql',import.meta.url),'utf8'));
+    for(const scenario of ['reciprocal','spouse','cycle','shared-children']) {
       const ids=(await sql(url.href,`insert into public.people(name) values('A'),('B'),('C') returning id;`)).split('\n');
-      const [a,b,c]=ids, rev=await revision();
-      const first=scenario==='spouse'?save(a,rev,{spouse:b}):save(a,rev,{children:[b]});
-      const second=scenario==='spouse'?save(c,rev,{spouse:b}):scenario==='cycle'?save(b,rev,{children:[a]}):save(b,rev,{siblings:[c]});
+      const [a,b,c]=ids;
+      if(scenario==='shared-children') await sql(url.href,`${actor} ${save(a,await revision(),{spouse:b})}`);
+      const rev=await revision();
+      const first=scenario==='shared-children'?save(a,rev,{spouse:b,children:[c]}):scenario==='spouse'?save(a,rev,{spouse:b}):save(a,rev,{children:[b]});
+      const second=scenario==='shared-children'?save(b,rev,{spouse:a}):scenario==='spouse'?save(c,rev,{spouse:b}):scenario==='cycle'?save(b,rev,{children:[a]}):save(b,rev,{siblings:[c]});
       let announce;
       const locked=new Promise(resolve=>{announce=resolve;});
       const writer=sql(url.href,`${actor} begin; ${first}\n\\echo FAMILY_LOCKED\nselect pg_sleep(1); commit;`,output=>{if(output.includes('FAMILY_LOCKED'))announce();});
@@ -66,7 +69,8 @@ test('real competing reciprocal, spouse and ancestry saves reject stale writers'
       await assert.rejects(competing,/Family connections changed/);
       await writer;
       const after=JSON.parse(await sql(url.href,`${actor} select public.member_family('${b}',true);`));
-      if(scenario==='spouse') assert.equal(after.spouse.id,a);
+      if(scenario==='shared-children') { assert.equal(after.spouse.id,a); assert.deepEqual(after.children.map(x=>x.id),[c]); }
+      else if(scenario==='spouse') assert.equal(after.spouse.id,a);
       else { assert.deepEqual(after.parents.map(p=>p.id),[a]); assert.deepEqual(after.children,[]); assert.deepEqual(after.siblings,[]); }
       await sql(url.href, `${guard} delete from public.people where id='${a}';`);
       const deleted = JSON.parse(await sql(url.href, `${actor} select public.member_family('${b}',true);`));
