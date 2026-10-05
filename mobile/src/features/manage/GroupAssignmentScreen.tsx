@@ -196,7 +196,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
         const status = checked ? copy.assigned : currentGroup ? `${copy.other} ${currentGroup.name}` : copy.unassigned;
         return <Pressable accessibilityRole="checkbox" accessibilityState={{ checked, disabled: busy }} disabled={busy} key={deacon.personId} onPress={() => toggleDeacon(deacon.personId)} style={[styles.row, index < loaded.deacons.length - 1 && { borderBottomColor: palette.line, borderBottomWidth: StyleSheet.hairlineWidth }]}>
           <ProfileAvatar name={deacon.name} source={deacon.photo} />
-          <View style={styles.rowCopy}><Text selectable style={[styles.name, { color: palette.text }]}>{deacon.name}</Text><Text selectable style={[styles.rowDetail, { color: palette.secondaryText }]}>{status}</Text></View>
+          <View style={styles.rowCopy}><Text selectable style={[styles.name, { color: palette.text }]}>{deacon.name}</Text><Text selectable style={[styles.rowDetail, { color: palette.secondaryText }]}>{locale === "uk" ? "Дата народження" : "Born"}: {deacon.birthDate ?? (locale === "uk" ? "невідома" : "unavailable")}</Text><Text selectable style={[styles.rowDetail, { color: palette.secondaryText }]}>{status}</Text></View>
           <Ionicons color={checked ? palette.accent : palette.secondaryText} name={checked ? "checkmark-circle" : "ellipse-outline"} size={24} />
         </Pressable>;
       }) : <Text selectable style={[styles.empty, { color: palette.secondaryText }]}>{copy.noDeacons}</Text>}
@@ -221,7 +221,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
         const status = isLeader ? copy.leader : checked ? copy.assigned : currentGroup ? `${copy.other} ${currentGroup.name}` : copy.unassigned;
         return <Pressable accessibilityRole="checkbox" accessibilityState={{ checked, disabled: busy || isLeader }} disabled={busy || isLeader} key={member.personId} onPress={() => toggleMember(member.personId)} style={[styles.row, index < visibleMembers.length - 1 && { borderBottomColor: palette.line, borderBottomWidth: StyleSheet.hairlineWidth }, isLeader && styles.disabled]}>
           <ProfileAvatar name={member.name} source={member.photo} />
-          <View style={styles.rowCopy}><Text selectable style={[styles.name, { color: palette.text }]}>{member.name}</Text><Text selectable style={[styles.rowDetail, { color: palette.secondaryText }]}>{status}</Text></View>
+          <View style={styles.rowCopy}><Text selectable style={[styles.name, { color: palette.text }]}>{member.name}</Text><Text selectable style={[styles.rowDetail, { color: palette.secondaryText }]}>{locale === "uk" ? "Дата народження" : "Born"}: {member.birthDate ?? (locale === "uk" ? "невідома" : "unavailable")}</Text><Text selectable style={[styles.rowDetail, { color: palette.secondaryText }]}>{status}</Text></View>
           <Ionicons color={checked ? palette.accent : palette.secondaryText} name={checked ? "checkmark-circle" : "ellipse-outline"} size={24} />
         </Pressable>;
       }) : <Text selectable style={[styles.empty, { color: palette.secondaryText }]}>{copy.noMembers}</Text>}
