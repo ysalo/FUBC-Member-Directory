@@ -3,6 +3,9 @@ import type { ImageSourcePropType } from "react-native";
 export type GroupMember = {
   id: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
+  patronymic?: string | null;
   photo?: ImageSourcePropType;
   leadershipMinistry?: "deacon" | "pastor";
   isOrphan?: boolean;
