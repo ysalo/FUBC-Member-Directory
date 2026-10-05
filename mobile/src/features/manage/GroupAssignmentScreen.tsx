@@ -14,6 +14,7 @@ import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { withTimeout } from "@/lib/async-state";
 import { managementRepository } from "./management-repository";
 import type { GroupManagementState, ManagedGroup } from "./model";
+import { GroupFileImport } from "./GroupFileImport";
 import { useUnsavedChanges } from "./use-unsaved-changes";
 
 const labels = {
@@ -57,6 +58,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
   const [kind, setKind] = useState<GroupKind>("membership");
   const [selectedDeacons, setSelectedDeacons] = useState<string[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [importPending, setImportPending] = useState(false);
   const [query, setQuery] = useState("");
   const [operation, setOperation] = useState<"saving" | "deleting" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
   }, [copy.unavailable, creating, groupId]);
 
   const group = creating ? undefined : data?.groups.find((candidate) => candidate.id === groupId);
-  const dirty = Boolean(data && (name !== (group?.name ?? "") || kind !== (group?.kind ?? "membership") || JSON.stringify([...selectedDeacons].sort()) !== JSON.stringify([...(group?.deaconIds ?? [])].sort()) || JSON.stringify([...selectedMembers].sort()) !== JSON.stringify([...(group?.memberIds ?? [])].sort())));
+  const dirty = Boolean(data && (importPending || name !== (group?.name ?? "") || kind !== (group?.kind ?? "membership") || JSON.stringify([...selectedDeacons].sort()) !== JSON.stringify([...(group?.deaconIds ?? [])].sort()) || JSON.stringify([...selectedMembers].sort()) !== JSON.stringify([...(group?.memberIds ?? [])].sort())));
   const guard = useUnsavedChanges(dirty);
   const targetKind = group?.kind ?? kind;
   const visibleMembers = useMemo(() => {
@@ -111,7 +113,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
   }
 
   async function persist() {
-    if ((!creating && !group) || busy) return;
+    if ((!creating && !group) || busy || importPending) return;
     const nextName = name.trim();
     if (!nextName) { setError(copy.nameRequired); return; }
     setOperation("saving");
@@ -135,6 +137,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
   }
 
   function confirmSave() {
+    if (busy || importPending) return;
     if (!name.trim()) { setError(copy.nameRequired); return; }
     if (!moveCount) { void persist(); return; }
     Alert.alert(copy.moveTitle, copy.moveDetail(moveCount), [
@@ -165,11 +168,13 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
     ]);
   }
 
+  if (!data && error) return <View style={[styles.state, { backgroundColor: palette.background }]}><Text style={{ color: palette.danger }}>{error}</Text><Pressable accessibilityRole="button" onPress={() => router.replace("/manage/groups")}><Text style={{ color: palette.accent }}>{copy.cancel}</Text></Pressable></View>;
   if (!data && !error) return <View style={[styles.state, { backgroundColor: palette.background }]}><ActivityIndicator color={palette.accent} /><Text selectable style={{ color: palette.secondaryText }}>{copy.loading}</Text></View>;
   if (!creating && !group) return <View style={[styles.state, { backgroundColor: palette.background }]}><Text selectable style={[styles.stateTitle, { color: palette.text }]}>{error ?? copy.unavailable}</Text></View>;
   const loaded = data!;
 
   return <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.content, desktop && styles.desktopContent]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" style={{ backgroundColor: palette.background }}>
+    {creating ? <GroupFileImport data={loaded} disabled={busy} onPending={setImportPending} onApply={(file, deacons, members) => { setName(file.name); setKind(file.kind); setSelectedDeacons(deacons); setSelectedMembers(members); setError(null); }} /> : null}
     <View style={styles.field}>
       <Text style={[styles.label, { color: palette.secondaryText }]}>{copy.name}</Text>
       <TextInput accessibilityLabel={copy.name} autoCapitalize="sentences" autoCorrect={false} editable={!busy} maxLength={120} onChangeText={(value) => { setName(value); setError(null); }} returnKeyType="done" style={[styles.input, { backgroundColor: palette.surface, borderColor: error === copy.nameRequired ? palette.danger : palette.line, color: palette.text }]} value={name} />
@@ -223,7 +228,7 @@ export function GroupAssignmentScreen({ creating = false }: { creating?: boolean
     </View>
 
     </View></View>
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={confirmSave} style={[styles.save, { backgroundColor: palette.accent }, busy && styles.disabled]}>{operation === "saving" ? <ActivityIndicator color="#FFF" /> : null}<Text style={styles.saveText}>{operation === "saving" ? copy.saving : copy.save}</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy || importPending }} disabled={busy || importPending} onPress={confirmSave} style={[styles.save, { backgroundColor: palette.accent }, (busy || importPending) && styles.disabled]}>{operation === "saving" ? <ActivityIndicator color="#FFF" /> : null}<Text style={styles.saveText}>{operation === "saving" ? copy.saving : copy.save}</Text></Pressable>
     <Pressable accessibilityRole="button" disabled={busy} onPress={() => guard.confirmLeave(() => router.canGoBack() ? router.back() : router.replace("/manage/groups"))} style={styles.cancel}><Text style={{ color: palette.accent, fontWeight: "700" }}>{copy.cancel}</Text></Pressable>
 
     {group ? <View style={[styles.deleteSection, { borderTopColor: palette.line }]}>

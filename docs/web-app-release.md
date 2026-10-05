@@ -28,6 +28,13 @@ Node 24 `pnpm verify` and `pnpm build:web` passed. Interaction tests cover forwa
 
 # Web Application Release and Deployment
 
+## Group JSON file upload (2026-10-05)
+
+Manage → Groups → Add group now accepts a versioned JSON file containing the full group heading, two deacons and member names. A review lists every source name alongside its existing-person match; unique complete names match automatically and missing/ambiguous names require manual resolution. All rows must resolve to distinct people before applying assignments to the editor. The file only fills a draft; the existing authorized `save_group` RPC and movement confirmation perform the save. Full surname/first/patronymic identity is fetched for import without changing the editor display names. Invalid files and canceled picking preserve the prior draft, pending imports block saving, and native picker copies are deleted. No backend change or migration is needed; frontend rollback remains compatible.
+
+`pnpm verify` and `pnpm build:web` passed. Chromium fixture checks at 390×844 and 1440×900 covered direct editor links, invalid JSON, exact full-name matching, manual resolution, pending-save blocking, draft-only apply, canceled assignment movement, failed-save retry, correct RPC assignments and auth callback errors. Both widths had zero overflow, page errors and notification permission requests. Browser checks used intercepted backend fixtures; physical native and live OAuth were not checked. Private photo extraction and processed-main comparison are saved beside the source photograph and excluded from Git; uncertain spellings await user verification. Hosted Vercel Preview validation and CI/review remain prerequisites before merging into dev; production remains a separate dev → main release.
+
+
 ## Directory and departure UI polish (2026-10-05, issue #101)
 
 The departure editor now follows the member form's typography, field spacing, hairline borders, rounded surfaces and orange save action. Radio choices use the shared icon family and palette selection colors. Phone and desktop layouts use the existing 18px/32px form spacing; light/dark palettes apply to every field and action. Browser text-entry fields, including date inputs and notes, keep their normal borders without focus outlines. Button/link keyboard focus styling remains available.
