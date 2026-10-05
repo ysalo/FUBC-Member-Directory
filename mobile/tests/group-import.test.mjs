@@ -19,3 +19,10 @@ test("matching uses the full import identity rather than the abbreviated display
   const full = { ...file, deacons: ["Leader One Senior", "Leader Two Senior"], members: ["Member Three Senior"] };
   assert.deepEqual(matchGroupFile(full, data), ["one", "two", "three"]);
 });
+
+test("upload accepts only absent or empty verify sections and never silently drops unresolved people", () => {
+  assert.deepEqual(parseGroupFile(JSON.stringify({ ...file, verify: [] })), file);
+  for (const verify of [["Missing Person"], [{ role: "member", name: "Uncertain", suggested_name: "Existing Person" }], [null], null, {}, "", false, 0]) {
+    assert.throws(() => parseGroupFile(JSON.stringify({ ...file, verify })), /verify/);
+  }
+});
