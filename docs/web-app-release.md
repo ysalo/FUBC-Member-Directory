@@ -1,5 +1,14 @@
 # Web Application Release and Deployment
 
+## Family editor usability (2026-10-04)
+
+The family editor now reuses Directory's `MemberRow` for both existing relatives and selection. Directory profile links keep their previous behavior; selection mode uses explicit checkbox/radio semantics, full patronymics, existing photos and initials, and compact remove actions. The screen follows the member editor's header and surface styles, with a reachable save footer and unsaved-change status.
+
+Each category opens a searchable, virtualized picker. Multiple selections stay open until Done, selected rows can be toggled off, spouses use single selection, and creation retains the existing full-form draft handoff. Existing matching-member suggestions in the creation form now display patronymics too. Inferred siblings appear once alongside explicit siblings, retaining their supporting-parent explanation and existing save behavior. Phone keyboard avoidance is included; native behavior has not been physically tested.
+
+Node 24 `pnpm verify` passed (239 main tests, one optional local concurrency skip; visitation 1; groups 12), and `pnpm build:web` passed. Chromium at 390×844 and 1440×900 verified patronymic search, checked selection semantics, multiple selections, Done, inline removal, unsaved-change confirmation, save payloads, failed auth callbacks, no overflow/page errors and zero notification permission calls. Browser checks caught missing web `aria-checked` output; shared rows now expose it explicitly. No new backend migration is required; the previous family RPC and shared-child patch remain compatible. Hosted Preview interaction requires Vercel SSO, and live OAuth/physical native checks are not claimed.
+
+
 ## Family patronymics and shared children (2026-10-04)
 
 Family selection now displays and searches the full first name, patronymic and surname, retaining first/surname search compatibility. Management catalog hydration retains patronymics; selected relatives and supporting parents use the same formatter. Married editors explain that child additions/removals apply to both spouses.

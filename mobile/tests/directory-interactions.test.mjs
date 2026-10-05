@@ -30,7 +30,7 @@ function directoryFixture() {
   };
   const modules = new Map([
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
-    ['react-native', { Platform: { OS: 'web' }, Pressable: 'Pressable', RefreshControl: 'RefreshControl', ScrollView: 'ScrollView', SectionList: 'SectionList', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 }, View: 'View' }],
+    ['react-native', { Platform: { OS: 'web' }, Pressable: 'Pressable', RefreshControl: 'RefreshControl', ScrollView: 'ScrollView', SectionList: 'SectionList', StyleSheet: { create: (styles) => styles, flatten: styles=>Object.assign({},...styles), hairlineWidth: 1 }, View: 'View' }],
     ['react-native-safe-area-context', { useSafeAreaInsets: () => ({ top: 0 }) }],
     ['@react-native-vector-icons/ionicons', { Ionicons: 'Icon' }],
     ['expo-router', { Link: 'Link', useRouter: () => ({ push() {} }) }],
@@ -71,7 +71,7 @@ function directoryFixture() {
   const ids = (nodes) => nodes.filter((node) => node.type === exports.MemberRow).map((node) => node.props.item.id);
   const checkbox = (nodes, label) => nodes.find((node) => node.props?.accessibilityRole === 'checkbox' && node.props.accessibilityLabel === label);
   const button = (nodes, label) => nodes.find((node) => node.type === 'Pressable' && (node.props.accessibilityLabel === label || text(node) === label));
-  return { render, ids, text, checkbox, button };
+  return { render, ids, text, checkbox, button, row: (props) => exports.MemberRow(props) };
 }
 
 test('Directory checkbox presses keep match-any membership, clear, and update the count', () => {
@@ -111,4 +111,15 @@ test('Directory uses explicit surnames, Cyrillic lookalikes and Latin sections a
   assert.deepEqual(ordered.map(row=>row.surname),['Романюк','Рощук','Савчук','Савчук','Яремчук','Van Buren','Waltmen']);
   assert.equal(directoryOrder.directorySurname({name:'Mary Van Buren',last_name:'Van Buren'}),'Van Buren');
   assert.equal(directoryOrder.directorySurname({name:'Andrew Waltmen'}),'Waltmen');
+});
+
+test('shared member row uses selection controls without navigating to a profile',()=>{
+ const ui=directoryFixture();let presses=0;
+ const item={id:'selected',name:'Full Member Name',avatar:{},ministry:'',ministryUk:'',phone:null,leadershipMinistry:null,isOrphan:false,isWidow:false};
+ const row=ui.row({item,locale:'en',ministry:'',fullName:true,compact:true,selection:{checked:true,label:'Select full member',mode:'checkbox'},onPress:()=>presses++});
+ assert.equal(row.type,'Pressable');assert.equal(row.props.accessibilityRole,'checkbox');assert.equal(row.props.accessibilityState.checked,true);assert.equal(row.props['aria-checked'],true);
+ assert.equal(row.props.accessibilityLabel,'Select full member');row.props.onPress();assert.equal(presses,1);
+ const profile=ui.row({item,locale:'en',ministry:'',onPress:()=>{}});assert.equal(profile.type,'Link');assert.equal(profile.props.href,'/members/selected');
+ const remove=ui.row({item,locale:'en',ministry:'',selection:{checked:true,label:'Remove relative',mode:'remove',disabled:true},onPress:()=>{}});
+ assert.equal(remove.props.accessibilityRole,'button');assert.equal(remove.props.disabled,true);
 });

@@ -49,6 +49,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, f
     ['@/features/forms/NativeDateTimeField', { NativeDateTimeField: 'DateField' }],
     ['@/features/forms/date-field', { acceptsDateFieldValue: () => true, localDateValue: () => '2026-09-27' }],
     ['@/features/localization/LocalizationProvider', { useLocalization: () => ({ locale }) }],
+    ['@/lib/member-name', { formatMemberName: (member) => [member.first_name ?? member.name.split(' ')[0], member.patronymic, member.last_name ?? member.name.split(' ').slice(1).join(' ')].filter(Boolean).join(' ') }],
     ['@/features/family/family-copy', { getFamilyCopy: () => ({ matches: 'Members with matching names' }) }],
     ['@/features/session/SessionProvider', { useSession: () => ({ status: 'ready', account: { role: 'admin' } }) }],
     ['@/lib/permissions', { canManageAccounts: () => true }],
@@ -162,4 +163,11 @@ test('selecting an existing relative offers to keep or discard the entered detai
   assert.equal(ui.dialogs.at(-1)[2][0].text, 'Keep editing');
   ui.dialogs.at(-1)[2][1].onPress();
   assert.deepEqual(ui.routes, ['/manage/member/subject/family?createdId=match']);
+});
+
+test('creating a family relative distinguishes existing matches by patronymic',async()=>{
+ const ui=formFixture({familyReturn:'subject',familyCandidates:[{id:'first',name:'Match Person',patronymic:'One'},{id:'second',name:'Match Person',patronymic:'Two'}]});
+ await ui.load();ui.render().find(n=>n.props?.accessibilityLabel==='First name').props.onChangeText('Match');ui.render().find(n=>n.props?.accessibilityLabel==='Last name').props.onChangeText('Person');
+ const names=ui.render().filter(n=>n.type==='Pressable').map(n=>ui.text(n));
+ assert.ok(names.includes('Match One Person'));assert.ok(names.includes('Match Two Person'));
 });
