@@ -21,7 +21,7 @@ const compiledRepository = ts.transpileModule(repositorySource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function remoteGroups({ memberCount = 1, authorized = true, failure = null } = {}) {
+function remoteGroups({ memberCount = 1, authorized = true, failure = null, notesVisible = true } = {}) {
   const calls = [];
   const photos = [];
   const people = Array.from({ length: memberCount }, (_, index) => ({
@@ -40,6 +40,7 @@ function remoteGroups({ memberCount = 1, authorized = true, failure = null } = {
     { id: "unrelated", name: "Unrelated", membership_group_id: "other", archived_at: null },
   ];
   const tables = {
+    member_notes: notesVisible && people.length ? [{ person_id: people[0].id }, { person_id: "unrelated" }] : [],
     deacon_groups: [{ id: "one", name: "One", kind: "membership", archived_at: null }],
     people: [...people, ...excluded],
     deacon_group_members: [],
@@ -106,6 +107,7 @@ for (const memberCount of [0, 1, 50, 100, 101, 500, 999, 1000]) {
     for (const person of people) {
       const member = result.members.find((item) => item.id === person.id);
       assert.equal(member.name, person.name);
+      assert.equal(member.hasNote, person.id === people[0]?.id);
     assert.equal(member.patronymic, person.patronymic);
       assert.equal(member.isOrphan, person.is_orphan);
       assert.equal(member.isWidow, person.is_widow);
@@ -121,7 +123,10 @@ for (const memberCount of [0, 1, 50, 100, 101, 500, 999, 1000]) {
     assert.deepEqual(summaries.flatMap((call) => call.ids), result.members.map((member) => member.id));
     assert.equal(calls.filter((call) => call.source === "member_profile_details").length, 0);
     assert.equal(calls.filter((call) => call.source === "person_leadership_ministries").length, 0);
-    assert.equal(calls.length, memberCount ? 6 + Math.ceil(memberCount / 100) : 5);
+    assert.equal(calls.length, memberCount ? 6 + 2 * Math.ceil(memberCount / 100) : 5);
+    const noteQueries = calls.filter(call => call.source === "member_notes");
+    assert.equal(noteQueries.length, Math.ceil(memberCount / 100));
+    assert.ok(noteQueries.every(call => call.columns === "person_id" && call.ids.length <= 100));
     context.diagnostic(`members=${memberCount}; data requests=${calls.length}; photo signing batches=${photos.length}`);
   });
 }
@@ -142,4 +147,10 @@ test("remote group detail stops at authorization, missing groups, and failed rea
   assert.equal(await missing.repository.getGroup("missing"), null);
   assert.equal(missing.calls.length, 5);
   await assert.rejects(remoteGroups({ failure: "directory_active_members" }).repository.getGroup("one"), /Read failed/);
+});
+
+test("group notes never imply presence when RLS returns no visible rows", async () => {
+  const { repository } = remoteGroups({ memberCount: 50, notesVisible: false });
+  assert.ok((await repository.getGroup("one")).members.every(member => member.hasNote === false));
+  await assert.rejects(remoteGroups({ failure: "member_notes" }).repository.getGroup("one"), /Read failed/);
 });

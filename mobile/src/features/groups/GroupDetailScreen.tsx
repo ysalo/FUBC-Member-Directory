@@ -1,8 +1,8 @@
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Pressable,
@@ -19,6 +19,7 @@ import { formatMemberName } from "@/lib/member-name";
 import { CareStatusBadges } from "@/features/members/care-status-badges";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { LeadershipBadge } from "@/features/members/leadership-badge";
+import { sessionCacheScope, subscribeDataChanges } from "@/lib/session-cache";
 import { useSession } from "@/features/session/SessionProvider";
 import {
     birthdayNotificationsSupported,
@@ -35,7 +36,7 @@ import {
     type GroupSummary,
 } from "./groups-repository";
 
-type GroupMemberFilter = "orphan" | "widow" | "deacon" | "pastor";
+type GroupMemberFilter = "notes" | "orphan" | "widow" | "deacon" | "pastor";
 
 export function GroupDetailScreen({ groupId }: { groupId: string }) {
     const router = useRouter();
@@ -70,6 +71,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
         account?.leadershipMinistry === "deacon" &&
         group.responsibleDeaconIds.includes(account.id),
     );
+    const notesAllowed = account?.status === "active" && (assignedDeacon || account.leadershipMinistry === "pastor");
     const upcoming = useMemo(() => upcomingBirthdays(birthdays), [birthdays]);
     const filteredMembers = useMemo(() => {
         const needle = query.trim().toLocaleLowerCase(locale);
@@ -78,7 +80,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
                 (member) =>
                     filters.length === 0 ||
                     filters.some((filter) =>
-                        filter === "orphan"
+                        filter === "notes" ? Boolean(notesAllowed && member.hasNote) : filter === "orphan"
                             ? member.isOrphan
                             : filter === "widow"
                               ? member.isWidow
@@ -94,7 +96,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
                 { member: a, surname: directorySurname(a) },
                 { member: b, surname: directorySurname(b) },
             ));
-    }, [filters, group, locale, query]);
+    }, [filters, group, locale, query, notesAllowed]);
     const filterOptions: Array<{ id: GroupMemberFilter; label: string }> = [
         { id: "orphan", label: locale === "uk" ? "Сироти" : "Orphans" },
         {
@@ -104,6 +106,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
         { id: "deacon", label: locale === "uk" ? "Диякони" : "Deacons" },
         { id: "pastor", label: locale === "uk" ? "Пастори" : "Pastors" },
     ];
+    if (notesAllowed) filterOptions.push({ id: "notes", label: locale === "uk" ? "Мають нотатку" : "Has a note" });
     const toggleFilter = (filter: GroupMemberFilter) =>
         setFilters((current) =>
             current.includes(filter)
@@ -172,6 +175,23 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
         groupId,
         locale,
     ]);
+
+    // Refresh note presence on return and after note changes, without notification work.
+    useFocusEffect(useCallback(() => {
+        let alive = true;
+        let ticket = 0;
+        const refresh = () => {
+            const request = ++ticket;
+            let scope: string;
+            try { scope = sessionCacheScope(); } catch { return; }
+            void groupsRepository.getGroup(groupId).then(next => {
+                try { if (alive && request === ticket && scope === sessionCacheScope()) setGroup(next); } catch { /* Session ended. */ }
+            }).catch(() => { /* Keep the current roster on a failed background refresh. */ });
+        };
+        refresh();
+        const unsubscribe = subscribeDataChanges(refresh);
+        return () => { alive = false; unsubscribe(); };
+    }, [groupId, account?.id, account?.status, account?.leadershipMinistry]));
 
     async function toggleBirthdayNotifications(enabled: boolean) {
         if (
@@ -668,7 +688,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
                         <PersonRow
                             key={member.id}
                             locale={locale}
-                            member={member}
+                            member={{ ...member, hasNote: Boolean(notesAllowed && member.hasNote) }}
                             onPress={() =>
                                 router.push(`/members/${member.id}` as never)
                             }
@@ -778,7 +798,7 @@ function PersonRow({
     locale: "en" | "uk";
     member: Pick<
         GroupMember,
-        "id" | "name" | "first_name" | "last_name" | "patronymic" | "photo" | "leadershipMinistry" | "isOrphan" | "isWidow"
+        "id" | "name" | "first_name" | "last_name" | "patronymic" | "photo" | "leadershipMinistry" | "isOrphan" | "isWidow" | "hasNote"
     >;
     onPress: () => void;
 }) {
@@ -825,6 +845,9 @@ function PersonRow({
                     isWidow={member.isWidow}
                 />
             </View>
+            {member.hasNote && <View accessibilityLabel={locale === "uk" ? "Має нотатку" : "Has a note"} accessibilityRole="image" testID="member-note-indicator" style={{ marginLeft: 12, width: 24, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={18} color={palette.accent} />
+            </View>}
         </Pressable>
     );
 }
