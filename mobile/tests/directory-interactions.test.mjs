@@ -11,7 +11,7 @@ const ts = require('typescript');
 const source = await readFile(new URL('../src/features/directory/DirectoryScreen.tsx', import.meta.url), 'utf8');
 const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 
-function directoryFixture(platform = "web", people) {
+function directoryFixture(platform = "web", people, leadershipMinistry = null) {
   const members = (people ?? [
     { id: 'male-orphan', name: 'Alex Alpha', gender: 'male', isOrphan: true },
     { id: 'female-other', name: 'Beth Beta', gender: 'female', isOrphan: false },
@@ -31,6 +31,7 @@ function directoryFixture(platform = "web", people) {
     useMemo: (factory) => factory(),
   };
   const modules = new Map([
+    ["@/features/session/SessionProvider", { useSession: () => ({ status: "ready", account: { status: "active", leadershipMinistry } }) }],
     ["@/lib/member-search", memberSearch],
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
     ['react-native', { Platform: { OS: platform }, Pressable: 'Pressable', RefreshControl: 'RefreshControl', ScrollView: 'ScrollView', SectionList: 'SectionList', StyleSheet: { create: (styles) => styles, flatten: styles=>Object.assign({},...styles), hairlineWidth: 1 }, View: 'View' }],
@@ -212,3 +213,17 @@ test('clear search restores the full directory and totals in one press',()=>{
  assert.equal(ui.button(nodes,'Clear search'),undefined);
  assert.equal(nodes.find(node=>node.type==='TextInput').props.value,'');
 });
+
+ test('notes filter and row indicator are available for leaders and only match visible notes', () => {
+   const people = [{ id: 'note', name: 'With Note', hasNote: true }, { id: 'plain', name: 'Without Note' }];
+   const ui = directoryFixture('web', people, 'deacon');
+   let nodes = ui.render();
+   ui.button(nodes, 'Filters').props.onPress();
+   nodes = ui.render();
+   ui.checkbox(nodes, 'Has a note').props.onPress();
+   assert.deepEqual(ui.ids(ui.render()), ['note']);
+   assert.match(ui.text(ui.row({ item: { ...people[0], avatar: {} }, locale: 'en', ministry: '', onPress() {} })), /Note/);
+   const member = directoryFixture();
+   member.button(member.render(), 'Filters').props.onPress();
+   assert.equal(member.checkbox(member.render(), 'Has a note'), undefined);
+ });

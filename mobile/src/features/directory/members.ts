@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from "react-native";
 
 export type Member = {
   id: string;
+  hasNote?: boolean;
   name: string;
   first_name?: string;
   last_name?: string;

@@ -28,6 +28,7 @@ import { formatPhoneNumber } from "@/lib/phone";
 import { formatMemberName } from "@/lib/member-name";
 
 import { listDirectory } from "./directory-repository";
+import { useSession } from "@/features/session/SessionProvider";
 import type { Member } from "./members";
 
 async function loadDirectoryData(fresh: boolean) {
@@ -119,6 +120,12 @@ export function MemberRow({
                 >
                     {formatMemberName(item, undefined, !fullName)}
                 </Text>
+                {item.hasNote && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+                        <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={12} color={palette.secondaryText} />
+                        <Text style={{ color: palette.secondaryText, fontSize: 12 }}>{locale === "uk" ? "Нотатка" : "Note"}</Text>
+                    </View>
+                )}
                 {detail && <Text style={[styles.memberPhone, { color: palette.secondaryText }]}>{detail}</Text>}
                 {!desktop && showsMinistry ? (
                     <Text
@@ -254,7 +261,9 @@ export function DirectoryScreen() {
     const directoryMembers = resource.data?.members ?? [];
     const loadState = resource.status;
     const loadDirectory = resource.refresh;
-    type DirectoryFilter = "orphan" | "widow" | "deacon" | "pastor" | "ungrouped" | "male" | "female";
+    const session = useSession();
+    const notesAllowed = session.status === "ready" && session.account.status === "active" && ["deacon", "pastor"].includes(session.account.leadershipMinistry ?? "");
+    type DirectoryFilter = "notes" | "orphan" | "widow" | "deacon" | "pastor" | "ungrouped" | "male" | "female";
     const [filters, setFilters] = useState<DirectoryFilter[]>([]);
     const [filterOpen, setFilterOpen] = useState(false);
     const [listHeight, setListHeight] = useState(0);
@@ -283,7 +292,7 @@ export function DirectoryScreen() {
         const candidates = sortedDirectory.filter(({ member }) =>
             (filters.length === 0 ||
                 filters.some((filter) =>
-                    filter === "orphan"
+                    filter === "notes" ? Boolean(member.hasNote) : filter === "orphan"
                         ? member.isOrphan
                         : filter === "widow"
                           ? member.isWidow
@@ -382,6 +391,7 @@ export function DirectoryScreen() {
         { id: "male", label: locale === "uk" ? "Чоловіки" : "Male" },
         { id: "female", label: locale === "uk" ? "Жінки" : "Female" },
     ];
+    if (notesAllowed) filterOptions.push({ id: "notes", label: locale === "uk" ? "Мають нотатку" : "Has a note" });
     const toggleFilter = (filter: DirectoryFilter) =>
         setFilters((current) =>
             current.includes(filter)
