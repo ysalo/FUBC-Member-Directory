@@ -60,3 +60,7 @@ Manually applied `20261005010000_group_import_birth_dates.sql` through authentic
 ## Deacon member editing (2026-10-05)
 
 Manually applied `20261005020000_deacon_member_edit.sql` through authenticated CLI SQL after inspecting the documented project's existing name trigger and RPC absence. Rolled-back authenticated deacon checks confirmed scoped editing, unchanged membership assignment, denied creation/removal and preservation of all 850 members. Retain the additive functions during frontend rollback; CLI migration history remains unreconciled. Do not use db push.
+
+## Private care notes (2026-10-05)
+
+Manually applied `20261005030000_member_notes.sql` through authenticated CLI SQL after verifying the documented project had the scope helper and no notes table. A rolled-back authenticated smoke transaction verified responsible-deacon save/read, stale-write rejection and denied visibility after leadership unlinking. Zero smoke notes persisted; the roster remains 850. Keep the additive table/RPCs during frontend rollback. CLI migration history remains unreconciled; do not use db push.

@@ -30,6 +30,7 @@ import {
     memberProfileRepository,
     type MemberProfile,
 } from "./member-repository";
+import { MemberNote } from "./MemberNote";
 import { FamilySection } from "./FamilySection";
 import { CareStatusBadges } from "./care-status-badges";
 import { LeadershipBadge } from "./leadership-badge";
@@ -610,6 +611,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     </View>
                 )}
                 <View style={[styles.body, desktop && styles.desktopBody]}>
+                    <MemberNote key={`${scope}:${memberId}`} memberId={memberId} />
                     {desktop ? (
                         <View style={styles.desktopColumns}>
                             <View style={styles.desktopContactColumn}>
