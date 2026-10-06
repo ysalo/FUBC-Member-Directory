@@ -57,6 +57,7 @@ try {
   await migration('20261005000000_member_departures');
   await migration('20261005020000_deacon_member_edit');
   await migration('20261005030000_member_notes');
+  await migration('20261005040000_remove_member_note');
   test('care notes enforce scope, pastor-only additional reads, revisions and assignment changes', async () => {
     const deacon = (await db.query("insert into public.people(name,gender) values('Note Deacon','male') returning id")).rows[0];
     const pastor = (await db.query("insert into public.people(name,gender) values('Note Pastor','male') returning id")).rows[0];
@@ -81,8 +82,24 @@ try {
     await assert.rejects(save('member',target.id,1,'x'.repeat(5001)),/Enter a note/);
     await assert.rejects(as('member',"update public.member_notes set body='Bypass'"),/permission denied/);
     await save('member',target.id,1,'Updated');
-    assert.equal((await as('member','select revision from public.member_notes')).rows[0].revision,2);
+    const updatedRevision = (await as('member','select revision from public.member_notes')).rows[0].revision;
+    assert.ok(updatedRevision > 1);
+    const remove = (actor,id,revision) => as(actor,'select public.remove_member_note($1,$2)',[id,revision]);
+    await assert.rejects(remove('editor',target.id,2),/Not authorized/);
+    await assert.rejects(remove('admin',target.id,2),/Not authorized/);
+    await assert.rejects(remove('member',outside.id,2),/Not authorized/);
+    await assert.rejects(remove('member',target.id,1),/Conflict/);
+    await assert.rejects(remove('member',target.id,null),/Conflict/);
+    await assert.rejects(as('member','delete from public.member_notes'),/permission denied/);
+    await remove('member',target.id,updatedRevision);
+    assert.equal((await as('member','select person_id from public.member_notes')).rows.length,0);
+    assert.equal((await as('editor','select person_id from public.member_notes')).rows.length,0);
+    await assert.rejects(remove('member',target.id,2),/Conflict/);
+    await save('member',target.id,null,'Recreated note');
+    await assert.rejects(remove('member',target.id,updatedRevision),/Conflict/);
+    await assert.rejects(save('member',target.id,updatedRevision,'Stale prior note'),/Conflict/);
     await db.query('update public.people set membership_group_id=null where id=$1',[target.id]);
+    await assert.rejects(remove('member',target.id,1),/Not authorized/);
     assert.equal((await as('member','select person_id from public.member_notes')).rows.length,0);
     await assert.rejects(save('member',target.id,2,'Moved'),/Not authorized/);
     await db.query("update public.profiles set status='pending' where id=$1",[ids.editor]);
