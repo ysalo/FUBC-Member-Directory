@@ -8,15 +8,15 @@ export type AuditAction = {
   id: string; actor_id: string | null; actor_name: string | null;
   action: string; created_at: string; schema_version: number;
   restoration: "legacy" | "supported" | "irreversible";
-  original_action_id: string | null; reason: string | null; change_count: number;
+  original_action_id: string | null; reason: string | null; change_count: number; subject_labels?: Record<string, string>; subject_count?: number;
 };
-export type AuditChange = { id: number; entity: string; record_key: Json; before_data: Json; after_data: Json; subject_ids: string[] };
+export type AuditChange = { id: number; entity: string; record_key: Json; before_data: Json; after_data: Json; subject_ids: string[]; subject_labels?: Record<string, string> };
 export type AuditFilters = { actor?: string; action?: string; subject?: string; from?: string; to?: string };
 export type AuditPage<T> = { items: T[]; total: number };
 export type RollbackPreview = {
   available: boolean; reasonCode?: string; reason: string | null; photoLimitations: boolean; total: number;
   conflicts: { code?: string; entity?: string; key?: Json; field: string; reason: string }[];
-  changes: { entity: string; key: Json; fields: string[]; current: Json; proposed: Json }[];
+  changes: { entity: string; key: Json; fields: string[]; current: Json; proposed: Json; subject_labels?: Record<string, string> }[];
 };
 async function protectedRead<T>(read: () => PromiseLike<{ data: Json | null; error: { message: string } | null }>): Promise<T> {
   if (!canManageAccounts(activeAccount())) throw new Error("Only active administrators can read audit history.");
