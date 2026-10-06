@@ -42,6 +42,7 @@ export type Database = {
     };
     Functions: {
       member_note_access: { Args: { p_person_id: string }; Returns: boolean };
+      remove_member_note: { Args: { p_person_id: string; p_revision: number }; Returns: undefined };
       save_member_note: { Args: { p_person_id: string; p_revision: number | null; p_body: string }; Returns: undefined };
 
       management_group_birth_dates: { Args: Record<string, never>; Returns: { person_id: string; birth_date: string | null }[] };

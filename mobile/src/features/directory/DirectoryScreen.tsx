@@ -120,12 +120,6 @@ export function MemberRow({
                 >
                     {formatMemberName(item, undefined, !fullName)}
                 </Text>
-                {item.hasNote && (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
-                        <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={12} color={palette.secondaryText} />
-                        <Text style={{ color: palette.secondaryText, fontSize: 12 }}>{locale === "uk" ? "Нотатка" : "Note"}</Text>
-                    </View>
-                )}
                 {detail && <Text style={[styles.memberPhone, { color: palette.secondaryText }]}>{detail}</Text>}
                 {!desktop && showsMinistry ? (
                     <Text
@@ -181,6 +175,11 @@ export function MemberRow({
                     </Text>
                 </>
             ) : null}
+            {item.hasNote && !selection && (
+                <View accessibilityLabel={locale === "uk" ? "Має нотатку" : "Has a note"} accessibilityRole="image" testID="member-note-indicator" style={{ marginLeft: 12, alignItems: "center", justifyContent: "center", width: 24 }}>
+                    <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={18} color={palette.accent} />
+                </View>
+            )}
             {selection ? <Ionicons
                 accessibilityElementsHidden
                 color={selection?.checked && selection.mode !== "remove" ? palette.accent : palette.secondaryText}

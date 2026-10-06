@@ -222,7 +222,14 @@ test('clear search restores the full directory and totals in one press',()=>{
    nodes = ui.render();
    ui.checkbox(nodes, 'Has a note').props.onPress();
    assert.deepEqual(ui.ids(ui.render()), ['note']);
-   assert.match(ui.text(ui.row({ item: { ...people[0], avatar: {} }, locale: 'en', ministry: '', onPress() {} })), /Note/);
+   const row = ui.row({ item: { ...people[0], name: 'Member', avatar: {} }, locale: 'en', ministry: '', onPress() {} });
+   assert.doesNotMatch(ui.text(row), /Note/);
+   const rowContent = row.type === 'Link' ? row.props.children : row;
+   const indicator = rowContent.props.children.find(node => node?.props?.testID === 'member-note-indicator');
+   assert.equal(indicator.props.accessibilityLabel, 'Has a note');
+   assert.equal(indicator.props.children.props.name, 'document-text-outline');
+   assert.equal(indicator.props.children.props.size, 18);
+   assert.equal(rowContent.props.children.at(-2), indicator);
    const member = directoryFixture();
    member.button(member.render(), 'Filters').props.onPress();
    assert.equal(member.checkbox(member.render(), 'Has a note'), undefined);
