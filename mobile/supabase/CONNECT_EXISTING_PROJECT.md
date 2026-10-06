@@ -64,3 +64,7 @@ Manually applied `20261005020000_deacon_member_edit.sql` through authenticated C
 ## Private care notes (2026-10-05)
 
 Manually applied `20261005030000_member_notes.sql` through authenticated CLI SQL after verifying the documented project had the scope helper and no notes table. A rolled-back authenticated smoke transaction verified responsible-deacon save/read, stale-write rejection and denied visibility after leadership unlinking. Zero smoke notes persisted; the roster remains 850. Keep the additive table/RPCs during frontend rollback. CLI migration history remains unreconciled; do not use db push.
+
+## Note removal (2026-10-05)
+
+Manually applied `20261005040000_remove_member_note.sql` through authenticated CLI SQL after confirming the existing project's note table and absent removal RPC. The additive RPC checks current responsibility and the expected revision; a private revision sequence/trigger protects deleted/recreated notes from stale requests. Rolled-back live removal/recreation checks preserved 850 people and the existing note with zero test notes retained. Frontend rollback to 1.7.0 remains compatible with the retained additive backend. Migration history remains unreconciled; do not use db push.

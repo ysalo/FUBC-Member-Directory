@@ -30,7 +30,7 @@ import {
     memberProfileRepository,
     type MemberProfile,
 } from "./member-repository";
-import { MemberNote } from "./MemberNote";
+import { MemberNote, type NoteAction } from "./MemberNote";
 import { FamilySection } from "./FamilySection";
 import { CareStatusBadges } from "./care-status-badges";
 import { LeadershipBadge } from "./leadership-badge";
@@ -48,6 +48,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
     const copy = getMemberCopy(locale);
     const scope = (() => { try { return sessionCacheScope(); } catch { return null; } })();
     const [loaded, setLoaded] = useState<{ scope: string | null; memberId: string; profile: MemberProfile | null; portraitPending?: boolean }>();
+    const [noteAction, setNoteAction] = useState<{ memberId: string; scope: string | null; action: NoteAction | null } | null>(null);
+    const onNoteActionChange = useCallback((action: NoteAction | null) => setNoteAction({ memberId, scope, action }), [memberId, scope]);
     const profile = loaded?.scope === scope && loaded?.memberId === memberId && scope !== null ? loaded.profile : undefined;
     const [editableMember, setEditableMember] = useState<string | null>(null);
     useEffect(() => {
@@ -177,6 +179,21 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
     const photoIdentity = typeof profile.photo === "object" && "uri" in profile.photo ? profile.photo.uri : avatarSourceIdentity(profile.photo);
     const hasHeroPhoto = hasImageSource(profile.photo) && failedPhoto !== photoIdentity;
     const portraitPending = loaded?.portraitPending && !hasImageSource(profile.photo);
+    const currentNoteAction = noteAction?.memberId === memberId && noteAction.scope === scope ? noteAction.action : null;
+    const noteActionLabel = currentNoteAction?.hasNote ? locale === "uk" ? "Редагувати нотатку" : "Edit note" : locale === "uk" ? "Додати нотатку" : "Add note";
+    const noteButton = currentNoteAction ? (
+        <Pressable
+            accessibilityLabel={noteActionLabel}
+            accessibilityRole="button"
+            onPress={currentNoteAction.open}
+            {...(Platform.OS === "web" ? { title: noteActionLabel } : {})}
+            style={desktop
+                ? { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 10 }
+                : [styles.floatingButton, { left: "auto", right: canEdit ? 68 : 16, top: insets.top + 12, backgroundColor: "rgba(10,14,18,0.25)" }]}
+        >
+            <Ionicons accessibilityElementsHidden name="document-text-outline" size={20} color={desktop ? palette.secondaryText : "rgba(255,255,255,0.85)"} />
+        </Pressable>
+    ) : null;
     const shareContact = async () => {
         const message = contactShareMessage(
             {
@@ -418,6 +435,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                                     {copy.back}
                                 </Text>
                             </Pressable>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                {noteButton}
                             {canEdit ? (
                                 <Link
                                     href={`/manage/member/${memberId}`}
@@ -452,6 +471,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                                     </Pressable>
                                 </Link>
                             ) : null}
+                            </View>
                         </View>
                         <View style={styles.desktopIdentity}>
                             {hasHeroPhoto ? (
@@ -577,6 +597,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                                 />
                             </Pressable>
                         ) : null}
+                        {noteButton}
                         <View style={styles.heroCopy}>
                             <Text
                                 accessibilityRole="header"
@@ -611,7 +632,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     </View>
                 )}
                 <View style={[styles.body, desktop && styles.desktopBody]}>
-                    <MemberNote key={`${scope}:${memberId}`} memberId={memberId} />
+                    <MemberNote key={`${scope}:${memberId}`} memberId={memberId} onActionChange={onNoteActionChange} />
                     {desktop ? (
                         <View style={styles.desktopColumns}>
                             <View style={styles.desktopContactColumn}>
