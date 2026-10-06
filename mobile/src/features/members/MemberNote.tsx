@@ -91,17 +91,28 @@ export function MemberNote({ memberId }: { memberId: string }) {
             } },
         ]);
     };
-    return <View style={{ marginBottom: 20, padding: 16, borderRadius: 12, borderWidth: 0.5, borderColor: palette.line, backgroundColor: palette.surface, gap: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+    if (!note && !editing) return <View style={{ marginBottom: 20, alignItems: "flex-start" }}>
+        <Pressable accessibilityRole="button" disabled={saving} onPress={openEditor} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 8, borderWidth: 0.5, borderColor: palette.line }}>
+            <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Додати нотатку" : "Add note"}</Text>
+        </Pressable>
+        {error && <Text accessibilityRole="alert" style={{ color: palette.secondaryText }}>{error}</Text>}
+    </View>;
+    return <View style={{ marginBottom: 20, padding: 16, borderRadius: 12, backgroundColor: palette.surface, gap: 12 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={18} color={palette.accent} />
-                <Text accessibilityRole="header" style={{ color: palette.accent, fontSize: 14, fontWeight: "600" }}>{uk ? "Нотатка" : "Note"}</Text>
+                <Text accessibilityRole="header" style={{ color: palette.secondaryText, fontSize: 14, fontWeight: "600" }}>{uk ? "Нотатка" : "Note"}</Text>
             </View>
-            {!note && editable && !editing && <Pressable accessibilityRole="button" disabled={saving} onPress={openEditor} style={{ minHeight: 44, justifyContent: "center" }}>
-                <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Додати нотатку" : "Add note"}</Text>
-            </Pressable>}
+            {note && editable && !editing && <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginLeft: "auto" }}>
+                {saving && <ActivityIndicator color={palette.accent} />}
+                <Pressable accessibilityRole="button" accessibilityLabel={uk ? "Редагувати нотатку" : "Edit note"} disabled={saving} onPress={openEditor} style={{ minHeight: 44, justifyContent: "center" }}>
+                    <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Редагувати" : "Edit"}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={uk ? "Видалити нотатку" : "Remove note"} disabled={saving} onPress={remove} style={{ minHeight: 44, justifyContent: "center", opacity: saving ? 0.5 : 1 }}>
+                    <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Видалити" : "Remove"}</Text>
+                </Pressable>
+            </View>}
         </View>
-        <Text style={{ color: palette.secondaryText, fontSize: 12 }}>{uk ? "Видно лише відповідальним дияконам і пасторам" : "Only responsible deacons and pastors can see this"}</Text>
         {editing ? <>
             <TextInput autoFocus accessibilityLabel={uk ? "Нотатка" : "Note"} multiline maxLength={5000} editable={!saving} value={draft} onChangeText={setDraft} style={{ color: palette.text, borderColor: palette.line, borderWidth: 1, borderRadius: 8, padding: 12, minHeight: 120, textAlignVertical: "top" }} />
             <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 24 }}>
@@ -110,15 +121,6 @@ export function MemberNote({ memberId }: { memberId: string }) {
                 <Pressable accessibilityRole="button" disabled={saving || !draft.trim()} onPress={() => void save()} style={{ minHeight: 44, justifyContent: "center", opacity: saving || !draft.trim() ? 0.5 : 1 }}><Text style={{ color: palette.accent }}>{uk ? "Зберегти нотатку" : "Save note"}</Text></Pressable>
             </View>
         </> : note && <Text selectable style={{ color: palette.text, fontSize: 16, lineHeight: 24 }}>{note.body}</Text>}
-        {note && editable && !editing && <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
-            {saving && <ActivityIndicator color={palette.accent} />}
-            <Pressable accessibilityRole="button" disabled={saving} onPress={openEditor} style={{ minHeight: 44, justifyContent: "center" }}>
-                <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Редагувати нотатку" : "Edit note"}</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" disabled={saving} onPress={remove} style={{ minHeight: 44, justifyContent: "center", opacity: saving ? 0.5 : 1 }}>
-                <Text style={{ color: palette.danger, fontSize: 14 }}>{uk ? "Видалити нотатку" : "Remove note"}</Text>
-            </Pressable>
-        </View>}
         {error && <Text accessibilityRole="alert" style={{ color: palette.secondaryText }}>{error}</Text>}
     </View>;
 }
