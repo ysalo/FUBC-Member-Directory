@@ -97,8 +97,9 @@ export function MemberNote({ memberId, children }: {
     };
     if (!note && !editing) return render(
         error ? <Text accessibilityRole="alert" style={{ color: palette.secondaryText, marginBottom: 20 }}>{error}</Text> : null,
-        <Pressable accessibilityRole="button" disabled={saving} onPress={openEditor} style={{ minHeight: 48, justifyContent: "center", paddingHorizontal: 8, marginLeft: "auto" }}>
-            <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Додати нотатку" : "Add note"}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={uk ? "Додати нотатку" : "Add note"} disabled={saving} onPress={openEditor} style={({ pressed }) => ({ minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 12, marginLeft: "auto", borderRadius: 8, borderWidth: 1, borderColor: palette.line, backgroundColor: pressed ? palette.subtle : palette.surface })}>
+            <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="add-outline" size={18} color={palette.text} />
+            <Text style={{ color: palette.text, fontSize: 14, fontWeight: "500" }}>{uk ? "Додати нотатку" : "Add note"}</Text>
         </Pressable>,
     );
     return render(<View style={{ marginBottom: 20, padding: 16, borderRadius: 12, backgroundColor: palette.surface, gap: 12 }}>
