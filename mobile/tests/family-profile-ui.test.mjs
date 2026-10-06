@@ -104,11 +104,11 @@ test('data changes refresh the profile family after relationships or archive sta
   assert.equal(ui.calls, 2); assert.deepEqual(ui.render(), []);
 });
 
-for (const locale of ['en', 'uk']) test(`single and bulk deletion confirmations explain lost inferred family in ${locale}`, async () => {
+for (const locale of ['en', 'uk']) test(`single and bulk removal confirmations explain retained family and unavailable photos in ${locale}`, async () => {
   for (const [filename, exported] of [['MemberDeletionScreen', 'MemberDeletionScreen'], ['BulkMemberDeletion', 'BulkMemberDeletion']]) {
     let cursor = 0;
     const saved = { id: 'subject', name: 'Subject Name', revision: 1 };
-    const hooks = { ...React, useEffect() {}, useMemo: (fn) => fn(), useRef: (current) => ({ current }), useState: (initial) => [filename === 'MemberDeletionScreen' ? (cursor++ === 0 ? 'ready' : cursor === 2 ? saved : initial) : initial, () => {}] };
+    const hooks = { ...React, useEffect() {}, useMemo: (fn) => fn(), useRef: (current) => ({ current }), useState: (initial) => [filename === 'MemberDeletionScreen' ? (cursor++ === 1 ? 'ready' : cursor === 3 ? saved : initial) : initial, () => {}] };
     const modules = new Map([
       ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
       ['react-native', { ActivityIndicator: 'ActivityIndicator', Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', View: 'View', Platform: { OS: 'web' }, StyleSheet: { create: (styles) => styles, hairlineWidth: 1 } }],
@@ -126,9 +126,9 @@ for (const locale of ['en', 'uk']) test(`single and bulk deletion confirmations 
     new Function('require', 'exports', await compile(`../src/features/manage/${filename}.tsx`))((id) => { assert.ok(modules.has(id), id); return modules.get(id); }, exports);
     const nodes = nodesOf(exports[exported]({ members: [saved], onClose() {} }));
     const warnings = nodes.filter((node) => node.type === 'Text').map(text).join(' ');
-    assert.match(warnings, locale === 'uk' ? /родинні зв’язки буде видалено/ : /family connections will be removed/);
-    assert.match(warnings, locale === 'uk' ? /автоматично.*також можуть зникнути/ : /Inferred connections.*may also disappear/);
-    const deleteButton = nodes.find((node) => node.type === 'Button' || (node.type === 'Pressable' && text(node) === (locale === 'uk' ? 'Видалити назавжди' : 'Delete permanently')));
+    assert.match(warnings, locale === 'uk' ? /[Рр]одинні зв’язки.*зберігаються/ : /[Ff]amily.*(retained|retain)/);
+    assert.match(warnings, locale === 'uk' ? /[Фф]ото.*неможливо/ : /[Pp]hoto.*(cannot be restored|deleted)/);
+    const deleteButton = nodes.find((node) => node.type === 'Button' || (node.type === 'Pressable' && text(node) === (locale === 'uk' ? 'Вилучити учасників' : 'Remove members')));
     assert.equal(deleteButton.props.disabled, true, 'Warning precedes confirmation; deletion remains disabled');
   }
 });

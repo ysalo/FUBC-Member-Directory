@@ -113,9 +113,9 @@ test("member selection excludes self, follows shown members, and clears across s
 
 test("bulk confirmation requires typed intent, blocks duplicate submits, and reports partial results", async () => {
     const ui = await bulkUiFixture("BulkMemberDeletion");
-    assert.equal(ui.button("Delete permanently").props.disabled, true);
+    assert.equal(ui.button("Remove members").props.disabled, true);
     ui.render().find((node) => node.type === "TextInput").props.onChangeText("DELETE");
-    const submit = ui.button("Delete permanently").props.onPress;
+    const submit = ui.button("Remove members").props.onPress;
     submit(); submit();
     assert.equal(ui.calls.length, 1);
     assert.deepEqual(ui.calls[0], ["first", "second"].map((personId) => ({ personId, expectedRevision: 7, confirmation: personId })));
@@ -125,7 +125,7 @@ test("bulk confirmation requires typed intent, blocks duplicate submits, and rep
     assert.deepEqual(ui.closeCalls, []);
     ui.finish({ completed: [{ deletedPersonId: "first" }], failedPersonId: "second", error: "conflict" });
     await Promise.resolve(); await Promise.resolve();
-    assert.equal(ui.button("Delete permanently"), undefined);
+    assert.equal(ui.button("Remove members"), undefined);
     assert.match(JSON.stringify(ui.render()), /Deletion stopped/);
     ui.button("Close").props.onPress();
     assert.deepEqual(ui.closeCalls, [true]);
@@ -139,7 +139,7 @@ test("bulk confirmation requires typed intent, blocks duplicate submits, and rep
     assert.deepEqual(escaped.closeCalls, [false]);
     const editor = await bulkUiFixture("BulkMemberDeletion", "editor");
     editor.render().find((node) => node.type === "TextInput").props.onChangeText("DELETE");
-    assert.equal(editor.button("Delete permanently").props.disabled, true);
+    assert.equal(editor.button("Remove members").props.disabled, true);
 });
 
 test("bulk member deletion is sequential and stops at the first failure", async () => {
@@ -902,7 +902,7 @@ test("member deletion is an administrator-only confirmed management flow", async
         ),
     ]);
     assert.match(editor, /canManageAccounts\(session\.account\)/);
-    assert.match(editor, /Delete member permanently/);
+    assert.match(editor, /Remove member/);
     assert.match(screen, /confirmation\.trim\(\) === member\.name\.trim\(\)/);
     assert.match(screen, /@expo\/ui/);
     assert.match(screen, /All scheduled and past visits/);
