@@ -22,6 +22,8 @@ import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { formatPhoneNumber } from "@/lib/phone";
 import { formatMemberName } from "@/lib/member-name";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
+import { canManageDirectory } from "@/lib/permissions";
+import { requireSupabase, isBackendConfigured } from "@/lib/supabase";
 import { useSession } from "@/features/session/SessionProvider";
 import { getMemberCopy } from "./member-copy";
 import {
@@ -46,6 +48,15 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
     const scope = (() => { try { return sessionCacheScope(); } catch { return null; } })();
     const [loaded, setLoaded] = useState<{ scope: string | null; memberId: string; profile: MemberProfile | null; portraitPending?: boolean }>();
     const profile = loaded?.scope === scope && loaded?.memberId === memberId && scope !== null ? loaded.profile : undefined;
+    const [editableMember, setEditableMember] = useState<string | null>(null);
+    useEffect(() => {
+        let alive = true;
+        setEditableMember(null);
+        if (isBackendConfigured && session.status === "ready" && session.account.status === "active" && session.account.leadershipMinistry === "deacon") {
+            void requireSupabase().rpc("can_edit_group_member", { p_person_id: memberId }).then(({ data, error }) => { if (alive && !error && data) setEditableMember(memberId); });
+        }
+        return () => { alive = false; };
+    }, [memberId, session]);
     const [failed, setFailed] = useState(false);
     const [failedPhoto, setFailedPhoto] = useState<string>();
     const request = useRef(0);
@@ -161,7 +172,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
     ].includes(profile.maritalStatus?.trim().toLocaleLowerCase() ?? "");
 
     const canEdit =
-        session.status === "ready" && session.account.role === "admin";
+        session.status === "ready" && (canManageDirectory(session.account) || editableMember === memberId);
     const photoIdentity = typeof profile.photo === "object" && "uri" in profile.photo ? profile.photo.uri : avatarSourceIdentity(profile.photo);
     const hasHeroPhoto = hasImageSource(profile.photo) && failedPhoto !== photoIdentity;
     const portraitPending = loaded?.portraitPending && !hasImageSource(profile.photo);
