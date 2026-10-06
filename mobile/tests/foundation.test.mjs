@@ -122,7 +122,7 @@ test('profile loading renders data before photos and ignores old member or sessi
   let desktop = true;
   const dataRequests = [];
   const photoRequests = [];
-  const jsx = (type, props) => ({ type, props });
+  const jsx = (type, props) => type === 'MemberNote' ? props.children(null, null) : ({ type, props });
   const hooks = {
     useState(initial) { const index = cursor++; if (!(index in slots)) slots[index] = initial; return [slots[index], value => { slots[index] = typeof value === 'function' ? value(slots[index]) : value; }]; },
     useRef(initial) { const index = cursor++; return slots[index] ??= { current: initial }; },
@@ -145,6 +145,7 @@ test('profile loading renders data before photos and ignores old member or sessi
       getProfile: memberId => new Promise(resolve => dataRequests.push({ memberId, resolve })),
       hydratePhotos: (profile, variant, part) => new Promise((resolve, reject) => photoRequests.push({ profile, part, resolve, reject })),
     } };
+    if (id === './MemberNote') return { MemberNote: 'MemberNote' };
     if (id === './FamilySection') return { FamilySection: 'FamilySection' };
     if (id === './ProfileAvatar') return { ProfileAvatar: 'ProfileAvatar', hasImageSource: photo => Boolean(photo?.uri), avatarSourceIdentity: photo => photo?.uri ?? '' };
     if (id === '@/lib/permissions') return { canManageDirectory: () => false, canCreateVisit: () => false };

@@ -6,7 +6,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
-import { type ComponentProps, useCallback, useEffect, useRef, useState } from "react";
+import { type ComponentProps, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Platform,
@@ -297,8 +297,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
             ) : null}
         </Section>
     );
-    const detailsSection = (
-        <Section title={copy.details}>
+    const detailsSection = (addNoteAction: ReactNode) => (
+        <Section title={copy.details} action={addNoteAction}>
             {profile.birthDate ? (
                 <Fact
                     label={copy.birthday}
@@ -613,28 +613,32 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     </View>
                 )}
                 <View style={[styles.body, desktop && styles.desktopBody]}>
-                    <MemberNote key={`${scope}:${memberId}`} memberId={memberId} />
-                    {desktop ? (
-                        <View style={styles.desktopColumns}>
-                            <View style={styles.desktopContactColumn}>
-                                {contactSection}
-                                {deaconsSection}
-                                {ministriesSection}
-                                <FamilySection memberId={memberId} />
-                            </View>
-                            <View style={styles.desktopDetailsColumn}>
-                                {detailsSection}
-                            </View>
-                        </View>
-                    ) : (
-                        <>
-                            {contactSection}
-                            {deaconsSection}
-                            {detailsSection}
-                            {ministriesSection}
-                            <FamilySection memberId={memberId} />
-                        </>
-                    )}
+                    <MemberNote key={`${scope}:${memberId}`} memberId={memberId}>
+                        {(noteContent, addNoteAction) => <>
+                            {noteContent}
+                            {desktop ? (
+                                <View style={styles.desktopColumns}>
+                                    <View style={styles.desktopContactColumn}>
+                                        {contactSection}
+                                        {deaconsSection}
+                                        {ministriesSection}
+                                        <FamilySection memberId={memberId} />
+                                    </View>
+                                    <View style={styles.desktopDetailsColumn}>
+                                        {detailsSection(addNoteAction)}
+                                    </View>
+                                </View>
+                            ) : (
+                                <>
+                                    {contactSection}
+                                    {deaconsSection}
+                                    {detailsSection(addNoteAction)}
+                                    {ministriesSection}
+                                    <FamilySection memberId={memberId} />
+                                </>
+                            )}
+                        </>}
+                    </MemberNote>
                 </View>
             </ScrollView>
         </View>
@@ -748,19 +752,24 @@ function ContactValue({
 function Section({
     children,
     title,
+    action,
 }: {
     children: React.ReactNode;
     title: string;
+    action?: ReactNode;
 }) {
     const { palette } = useAppearance();
     return (
         <View style={styles.section}>
-            <Text
-                accessibilityRole="header"
-                style={[styles.sectionTitle, { color: palette.text }]}
-            >
-                {title}
-            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12 }}>
+                <Text
+                    accessibilityRole="header"
+                    style={[styles.sectionTitle, { color: palette.text }]}
+                >
+                    {title}
+                </Text>
+                {action}
+            </View>
             <View
                 style={[
                     styles.card,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Text, TextInput } from "@/features/accessibility/app-text";
@@ -10,7 +10,11 @@ import { useSession } from "@/features/session/SessionProvider";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
 import { invalidateData, sessionCacheScope, subscribeDataChanges } from "@/lib/session-cache";
 
-export function MemberNote({ memberId }: { memberId: string }) {
+export function MemberNote({ memberId, children }: {
+    memberId: string;
+    children: (noteContent: ReactNode, addNoteAction: ReactNode) => ReactNode;
+}) {
+    const render = (noteContent: ReactNode, addNoteAction: ReactNode = null) => children(noteContent, addNoteAction);
     const { palette } = useAppearance();
     const { locale } = useLocalization();
     const session = useSession();
@@ -48,8 +52,8 @@ export function MemberNote({ memberId }: { memberId: string }) {
         });
         return () => { alive = false; };
     }, [memberId, session, reload, uk]);
-    if (access && !editable && !note) return null;
-    if (!access) return error ? <Text style={{ color: palette.secondaryText }}>{error}</Text> : null;
+    if (access && !editable && !note) return render(null);
+    if (!access) return render(error ? <Text style={{ color: palette.secondaryText }}>{error}</Text> : null);
     const openEditor = () => { setEditBase(note); setDraft(note?.body ?? ""); setEditing(true); setError(""); };
     const save = async () => {
         const scope = sessionCacheScope();
@@ -91,13 +95,13 @@ export function MemberNote({ memberId }: { memberId: string }) {
             } },
         ]);
     };
-    if (!note && !editing) return <View style={{ marginBottom: 20, alignItems: "flex-start" }}>
-        <Pressable accessibilityRole="button" disabled={saving} onPress={openEditor} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 8, borderWidth: 0.5, borderColor: palette.line }}>
+    if (!note && !editing) return render(
+        error ? <Text accessibilityRole="alert" style={{ color: palette.secondaryText, marginBottom: 20 }}>{error}</Text> : null,
+        <Pressable accessibilityRole="button" disabled={saving} onPress={openEditor} style={{ minHeight: 48, justifyContent: "center", paddingHorizontal: 8, marginLeft: "auto" }}>
             <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Додати нотатку" : "Add note"}</Text>
-        </Pressable>
-        {error && <Text accessibilityRole="alert" style={{ color: palette.secondaryText }}>{error}</Text>}
-    </View>;
-    return <View style={{ marginBottom: 20, padding: 16, borderRadius: 12, backgroundColor: palette.surface, gap: 12 }}>
+        </Pressable>,
+    );
+    return render(<View style={{ marginBottom: 20, padding: 16, borderRadius: 12, backgroundColor: palette.surface, gap: 12 }}>
         <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={18} color={palette.accent} />
@@ -114,6 +118,7 @@ export function MemberNote({ memberId }: { memberId: string }) {
             </View>}
         </View>
         {editing ? <>
+            {!editBase && <Text style={{ color: palette.secondaryText, fontSize: 12, lineHeight: 18 }}>{uk ? "Видно лише пасторам і дияконам групи." : "Only visible to pastors and group deacons."}</Text>}
             <TextInput autoFocus accessibilityLabel={uk ? "Нотатка" : "Note"} multiline maxLength={5000} editable={!saving} value={draft} onChangeText={setDraft} style={{ color: palette.text, borderColor: palette.line, borderWidth: 1, borderRadius: 8, padding: 12, minHeight: 120, textAlignVertical: "top" }} />
             <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 24 }}>
                 {saving && <ActivityIndicator color={palette.accent} />}
@@ -122,5 +127,5 @@ export function MemberNote({ memberId }: { memberId: string }) {
             </View>
         </> : note && <Text selectable style={{ color: palette.text, fontSize: 16, lineHeight: 24 }}>{note.body}</Text>}
         {error && <Text accessibilityRole="alert" style={{ color: palette.secondaryText }}>{error}</Text>}
-    </View>;
+    </View>);
 }
