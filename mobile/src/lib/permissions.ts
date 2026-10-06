@@ -21,3 +21,5 @@ export function canRespondToVisit(actor: Actor, visit: Pick<Visit, "status" | "a
 export function canReadGroupBirthdays(actor: Actor, responsibleAccountIds: readonly string[]): boolean {
   return isActive(actor) && actor?.leadershipMinistry === "deacon" && responsibleAccountIds.includes(actor.id);
 }
+
+export const canOpenMemberEditor = (actor: Actor): boolean => canManageDirectory(actor) || (isActive(actor) && actor?.leadershipMinistry === "deacon");

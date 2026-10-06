@@ -147,7 +147,7 @@ test('profile loading renders data before photos and ignores old member or sessi
     } };
     if (id === './FamilySection') return { FamilySection: 'FamilySection' };
     if (id === './ProfileAvatar') return { ProfileAvatar: 'ProfileAvatar', hasImageSource: photo => Boolean(photo?.uri), avatarSourceIdentity: photo => photo?.uri ?? '' };
-    if (id === '@/lib/permissions') return { canCreateVisit: () => false };
+    if (id === '@/lib/permissions') return { canManageDirectory: () => false, canCreateVisit: () => false };
     if (id === '@/lib/member-name') return { formatMemberName };
     return {};
   }, exports);

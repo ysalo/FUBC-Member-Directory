@@ -56,3 +56,7 @@ Reviewed and manually applied `20261005000000_member_departures.sql` through an 
 ## Group import identity dates (2026-10-05)
 
 Manually applied `20261005010000_group_import_birth_dates.sql` through authenticated CLI SQL. The additive manager-only RPC returns active person IDs/full birth dates without opening direct private-table access. Keep it during frontend rollback. CLI migration history remains unreconciled; do not use db push. Group 2 was imported through the existing authenticated save-person/save-group RPCs after a rolled-back dry run, retaining 850 people and existing Group 3 assignments. Private receipts and verification remain in the local Group 2 folder.
+
+## Deacon member editing (2026-10-05)
+
+Manually applied `20261005020000_deacon_member_edit.sql` through authenticated CLI SQL after inspecting the documented project's existing name trigger and RPC absence. Rolled-back authenticated deacon checks confirmed scoped editing, unchanged membership assignment, denied creation/removal and preservation of all 850 members. Retain the additive functions during frontend rollback; CLI migration history remains unreconciled. Do not use db push.

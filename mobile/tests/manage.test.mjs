@@ -58,7 +58,7 @@ async function bulkUiFixture(component, role = "admin") {
         if (id === "@/features/shell/WebTabBar") return { WebTabBar: "Tabs" };
         if (id === "@/features/members/ProfileAvatar") return { ProfileAvatar: "Avatar" };
         if (id === "expo-router") return { useFocusEffect() {}, useRouter: () => ({ push: (route) => calls.push(route) }) };
-        if (id === "@/lib/permissions") return { canManageAccounts: (account) => account?.status === "active" && account.role === "admin", canManageDirectory: () => true };
+        if (id === "@/lib/permissions") return { canManageAccounts: (account) => account?.status === "active" && account.role === "admin", canOpenMemberEditor: () => true, canManageDirectory: () => true };
         if (id === "@/lib/supabase") return { isBackendConfigured: true };
         if (id === "@/lib/async-state") return { withTimeout: (promise) => promise, errorMessage: String };
         if (id === "./management-repository") return { managementRepository: { load: async () => ({ members, accounts: [] }) } };
@@ -196,7 +196,7 @@ function photoRepository(failure, configured = true) {
     const exports = {};
     new Function("require", "exports", managementCode)((id) => {
         if (id === "@/lib/supabase") return { isBackendConfigured: configured, requireSupabase: () => client };
-        if (id === "@/lib/permissions") return { canManageDirectory: () => true };
+        if (id === "@/lib/permissions") return { canOpenMemberEditor: () => true, canManageDirectory: () => true };
         if (id === "@/lib/repository-helpers") return { activeAccount: () => ({}), unwrap: (result) => { if (result.error) throw new Error(result.error.message); return result.data; } };
         if (id === "@/lib/session-cache") return { invalidateData: (...topics) => invalidations.push(topics), createSessionCache: () => ({ load: (key, loader) => loader() }) };
         if (id === "@/lib/photo-cache") return { thumbnailPath: (path) => `${path}.avatar-256.jpg` };
@@ -964,7 +964,7 @@ test('management catalog keeps patronymics for family member disambiguation', as
  const client={from(table){const query={select(){return query;},is(){return query;},order(){return Promise.resolve({data:[row],error:null});},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};return query;},rpc:async()=>({data:[],error:null})};
  const exports={};new Function('require','exports',managementCode)(id=>{
   if(id==='@/lib/supabase')return {isBackendConfigured:true,requireSupabase:()=>client};
-  if(id==='@/lib/permissions')return {canManageDirectory:()=>true,canManageAccounts:()=>false};
+  if(id==='@/lib/permissions')return {canOpenMemberEditor:()=>true,canManageDirectory:()=>true,canManageAccounts:()=>false};
   if(id==='@/lib/repository-helpers')return {activeAccount:()=>({}),unwrap:r=>r.data,privatePhotoSources:async()=>new Map()};
   if(id==='@/lib/session-cache')return {createSessionCache:()=>({load:(key,loader)=>loader()})};
   if(id==='@/lib/photo-cache')return {};
@@ -982,7 +982,7 @@ test('active member loading accepts an absent departure and uses the recorded de
  const client={from(table){const result={data:table==='people'?person:table==='member_departures'?departure:[],error:null};const query={select(){return query;},eq(){return query;},is(){return query;},maybeSingle:async()=>result,then:resolve=>Promise.resolve(result).then(resolve)};return query;},rpc:async()=>({data:[{ministry_ids:[]}],error:null})};
  const exports={};new Function('require','exports',managementCode)(id=>{
   if(id==='@/lib/supabase')return {isBackendConfigured:true,requireSupabase:()=>client};
-  if(id==='@/lib/permissions')return {canManageDirectory:()=>true};
+  if(id==='@/lib/permissions')return {canOpenMemberEditor:()=>true,canManageDirectory:()=>true};
   if(id==='@/lib/repository-helpers')return {activeAccount:()=>({}),unwrap:r=>{if(r.error||r.data===null)throw Error('Unavailable');return r.data;},privatePhotoSources:async()=>new Map()};
   if(id==='@/lib/session-cache')return {createSessionCache:()=>({})};
   if(id==='@/lib/photo-cache'||id==='@/features/family/family-repository')return {};
