@@ -1,3 +1,24 @@
+## Readable audit subjects (2026-10-06)
+
+Audit history shows affected member/group names, readable action and record labels,
+and old → new names for renames. Expanded records and rollback previews retain
+identifiers and exact JSON snapshots. English and Ukrainian labels share the
+existing desktop-admin restrictions. Large action summaries show at most five
+subjects and the remaining count; record details remain paginated.
+
+Reviewed, rehearsed with rollback, and applied
+`20261006020000_audit_subject_labels.sql` through authenticated CLI SQL to the
+documented existing project before releasing this frontend. It captures display names with audit changes and
+backfills existing snapshots, using current directory names only when no historical
+name is available. Captured names survive later renames/deletion. Legacy entries
+without surviving names retain their existing fallback. No private notes are read,
+no Edge Function update is needed, and old clients remain compatible. Do not use
+`db push` or reconcile CLI history. The additive labels can remain on frontend rollback. Live rolled-back checks
+verified named history/previews and unchanged rollback/removal authorization;
+850 members, six profiles and 82 photos were preserved. Verification includes the
+full application suite, PostgreSQL concurrency with safeupdate, web export and
+16 synthetic-backend browser cases; real OAuth/native checks are not claimed.
+
 ## Desktop audit history and guarded restoration (issue #133)
 
 Manage → Audit history is available to active admins on web at widths of at least

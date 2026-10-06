@@ -68,3 +68,14 @@ Manually applied `20261005030000_member_notes.sql` through authenticated CLI SQL
 ## Note removal (2026-10-05)
 
 Manually applied `20261005040000_remove_member_note.sql` through authenticated CLI SQL after confirming the existing project's note table and absent removal RPC. The additive RPC checks current responsibility and the expected revision; a private revision sequence/trigger protects deleted/recreated notes from stale requests. Rolled-back live removal/recreation checks preserved 850 people and the existing note with zero test notes retained. Frontend rollback to 1.7.0 remains compatible with the retained additive backend. Migration history remains unreconciled; do not use db push.
+
+## Readable audit subjects (2026-10-06)
+
+Manually applied `20261006020000_audit_subject_labels.sql` through authenticated
+CLI SQL after a rolled-back live rehearsal. Audit records capture display names
+and backfill existing snapshots; historical names take priority over current
+fallbacks. Live rolled-back RPC checks confirmed labeled history/previews and
+unchanged rollback/removal permissions. All 850 members, six profiles and 82
+photos remained intact. No Edge Function update was needed. Migration history
+remains unreconciled; do not use `db push`. Retain the additive labels on frontend
+rollback.

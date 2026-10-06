@@ -202,3 +202,45 @@ test('actor deletion, permanent deletion and replacement preserve history; legac
  const page=(await command("select public.audit_history('{}',2,1) result")).result; assert.equal(page.items.length,2); assert.equal(page.total,before+1);
  const filtered=(await command('select public.audit_history($1,50,0) result',[JSON.stringify({subject:member.id})])).result; assert.ok(filtered.items.some(x=>x.id===authored.id));
 });
+
+test('audit names survive later renames and deletion, and label private/group changes and previews',async()=>{
+ let member=await save(null,{first_name:'Historical',last_name:'Name',address:'Original'});
+ const creation=await latest();
+ member=await save(member.id,{address:'Changed'});
+ const privateAction=await latest();
+ member=await save(member.id,{first_name:'Later'});
+ const namedGroup=await group('Readable Group',[member.id]);
+ const groupAction=await latest();
+ assert.equal((await history()).items.find(x=>x.id===privateAction.id).subject_labels[member.id],'Historical Name');
+ assert.equal((await details(privateAction.id)).items.find(x=>x.entity==='people_private').subject_labels[member.id],'Historical Name');
+ assert.equal((await preview(privateAction.id)).changes.find(x=>x.entity==='people_private').subject_labels[member.id],'Historical Name');
+ const names=(await history()).items.find(x=>x.id===groupAction.id).subject_labels;
+ assert.equal(names[namedGroup.id],'Readable Group');assert.equal(names[member.id],'Later Name');
+ await command('select public.delete_member_record($1,null)',[member.id]);
+ assert.equal((await history()).items.find(x=>x.id===creation.id).subject_labels[member.id],'Historical Name');
+ assert.equal((await history()).items.find(x=>x.id===privateAction.id).subject_labels[member.id],'Historical Name');
+ await assert.rejects(command("select app_private.audit_subject_labels('{}')"));
+});
+
+test('existing deleted-record snapshots backfill historical names and large summaries are bounded',async()=>{
+ const oldDb=new PGlite();
+ try {
+  await oldDb.exec(auditBootstrap);
+  for(const name of auditMigrations.slice(0,-1)) await oldDb.exec(await readFile(new URL(`../migrations/${name}.sql`,import.meta.url),'utf8'));
+  await oldDb.query('insert into auth.users(id,email) values($1,$2)',[ids.admin,'backfill@example.com']);
+  await oldDb.query("update public.profiles set status='active',role='admin' where id=$1",[ids.admin]);
+  await oldDb.exec(`set role authenticated; set request.jwt.claim.sub='${ids.admin}'`);
+  const saved=(await oldDb.query("select to_jsonb(public.save_person(null,null,'{\"first_name\":\"Before\",\"last_name\":\"Rename\",\"gender\":\"male\"}')) member")).rows[0].member;
+  const creation=(await oldDb.query('select public.audit_history() history')).rows[0].history.items[0].id;
+  await oldDb.query('select public.save_person($1,$2,$3)',[saved.id,saved.revision,JSON.stringify({...saved,first_name:'After'})]);
+  await oldDb.query('select public.delete_member_record($1,null)',[saved.id]);
+  await oldDb.exec('reset role');
+  await oldDb.exec(await readFile(new URL('../migrations/20261006020000_audit_subject_labels.sql',import.meta.url),'utf8'));
+  await oldDb.exec(`set role authenticated; set request.jwt.claim.sub='${ids.admin}'`);
+  const history=(await oldDb.query('select public.audit_history() history')).rows[0].history;
+  assert.equal(history.items.find(x=>x.id===creation).subject_labels[saved.id],'Before Rename');
+ } finally {await oldDb.close();}
+ const input=Array.from({length:8},(_,i)=>({first_name:'Batch',last_name:`Person ${i}`,gender:'male'}));
+ await command('select public.import_members_from_csv($1,$2,$3,$4)',[crypto.randomUUID(),JSON.stringify(input),'add','']);
+ const batch=await latest();assert.equal(Object.keys(batch.subject_labels).length,5);assert.equal(batch.subject_count,8);
+});
