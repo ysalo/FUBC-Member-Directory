@@ -55,6 +55,7 @@ try {
 
   await migration('20261004000000_member_name_fields');
   await migration('20261005000000_member_departures');
+  await migration('20261005020000_deacon_member_edit');
   test('name fields backfill archived records and preserve multiword names on writes', async () => {
     const old = (await db.query('select first_name,last_name from public.people order by name')).rows;
     assert.equal(old.length, 3);
@@ -87,6 +88,32 @@ try {
     assert.equal(person.first_name,'Legacy');
     assert.equal(person.last_name,'Changed');
     assert.equal(await db.query("select nullif(current_setting('app.member_name_fields',true),'') as value").then(result => result.rows[0].value),null);
+  });
+  test('deacons edit only active members of their assigned group and cannot change assignments', async () => {
+    const deacon = (await db.query("insert into public.people(name,gender) values('Assigned Deacon','male') returning id")).rows[0];
+    await db.query("insert into public.person_ministries(person_id,ministry_id) select $1,id from public.ministries where system_key='deacon'", [deacon.id]);
+    await db.query('update public.profiles set person_id=$1 where id=$2', [deacon.id,ids.member]);
+    const group = (await db.query("insert into public.deacon_groups(name,kind) values('Scope test','membership') returning id")).rows[0];
+    await db.query('insert into public.deacon_group_deacons(group_id,person_id,slot) values($1,$2,1)', [group.id,deacon.id]);
+    let person = (await db.query("insert into public.people(name,gender,membership_group_id) values('Editable Member','female',$1) returning *",[group.id])).rows[0];
+    const save = (id, revision, data, actor='member') => as(actor,'select * from public.deacon_save_member($1,$2,$3::jsonb)',[id,revision,JSON.stringify(data)]);
+    assert.equal((await as('member','select public.can_edit_group_member($1) as allowed',[person.id])).rows[0].allowed,true);
+    person = (await save(person.id,person.revision,{first_name:'Updated',last_name:'Member',phone:'123',birth_date:'1990-01-01',address:'New address',gender:'female',ministry_ids:[]})).rows[0];
+    assert.equal(person.name,'Updated Member'); assert.equal(person.membership_group_id,group.id); assert.equal(person.phone,'123');
+    const details=(await as('member','select * from public.management_member_care_details($1)',[person.id])).rows[0];
+    assert.equal(details.address,'New address');
+    await assert.rejects(save(person.id,person.revision-1,{phone:'stale'}),/Conflict/);
+    for (const data of [{membership_group_id:null},{archived:true},{photo_path:'fake'},{ministry_ids:['91000000-0000-4000-8000-000000000001']}]) await assert.rejects(save(person.id,person.revision,data),/Only member information|assignments cannot/);
+    await assert.rejects(save(null,null,{name:'New Person'}),/Not authorized/);
+    await assert.rejects(as('member','select * from public.save_person($1,$2,$3::jsonb)',[person.id,person.revision,'{"name":"Bypass"}']),/Not authorized/);
+    await db.query('update public.people set membership_group_id=null where id=$1',[person.id]);
+    await assert.rejects(save(person.id,person.revision,{phone:'outside'}),/Not authorized/);
+    await assert.rejects(as('member','select * from public.management_member_care_details($1)',[person.id]),/Not authorized/);
+    await db.query('update public.people set membership_group_id=$2,archived_at=now() where id=$1',[person.id,group.id]);
+    await assert.rejects(save(person.id,person.revision,{phone:'archived'}),/Not authorized/);
+    await db.query('update public.profiles set person_id=null where id=$1',[ids.member]);
+    await db.query('delete from public.people where id in ($1,$2)',[person.id,deacon.id]);
+    await db.query('delete from public.deacon_groups where id=$1',[group.id]);
   });
   test('departures save atomically with name snapshots, management-only access and repeat membership episodes', async () => {
     const save = async (id, revision, data) => (await as('editor', 'select * from public.save_person($1,$2,$3::jsonb)', [id,revision,JSON.stringify(data)])).rows[0];

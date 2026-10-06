@@ -3,7 +3,7 @@ import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useTextSize } from "@/features/accessibility/TextSizeProvider";
 import { useSession } from "@/features/session/SessionProvider";
-import { canManageAccounts, canManageDirectory, canManageGroups, canManageSettings } from "@/lib/permissions";
+import { canOpenMemberEditor, canManageAccounts, canManageDirectory, canManageGroups, canManageSettings } from "@/lib/permissions";
 import { isBackendConfigured } from "@/lib/supabase";
 
 export const unstable_settings = {
@@ -18,9 +18,10 @@ export default function ManageLayout() {
   const pathname = usePathname();
   const actor = session.status === "ready" ? session.account : null;
   const memberRoute = pathname === "/manage" || /^\/manage\/member\/[^/]+(?:\/(?:family|departure))?\/?$/.test(pathname);
+  const editRoute = /^\/manage\/member\/(?!new(?:\/|$))[^/]+\/?$/.test(pathname);
   const groupRoute = pathname === "/manage/groups" || /^\/manage\/group\/[^/]+\/?$/.test(pathname);
   const settingsRoute = pathname === "/manage/schedule" || pathname === "/manage/ministries" || /^\/manage\/ministry\/[^/]+\/?$/.test(pathname);
-  if (isBackendConfigured && !(memberRoute ? canManageDirectory(actor) : groupRoute ? canManageGroups(actor) : settingsRoute ? canManageSettings(actor) : canManageAccounts(actor))) return <Redirect href="/" />;
+  if (isBackendConfigured && !(editRoute ? canOpenMemberEditor(actor) : memberRoute ? canManageDirectory(actor) : groupRoute ? canManageGroups(actor) : settingsRoute ? canManageSettings(actor) : canManageAccounts(actor))) return <Redirect href="/" />;
   return <Stack screenOptions={{ contentStyle: { backgroundColor: palette.background }, headerBackButtonDisplayMode: "minimal", headerStyle: { backgroundColor: palette.background }, headerTintColor: palette.accent, headerTitleStyle: { color: palette.text, fontSize: 17 * scale }, headerShown: false }}>
     <Stack.Screen name="index" options={{ headerShown: false }} />
     <Stack.Screen name="account/[accountId]" options={{ headerShown: true, title: locale === "uk" ? "Обліковий запис" : "Account" }} />

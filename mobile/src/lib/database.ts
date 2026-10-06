@@ -39,6 +39,8 @@ export type Database = {
       member_family: { Args: { p_person_id: string; p_manage?: boolean }; Returns: Json };
       save_member_family: { Args: { p_person_id: string; p_revision: number; p_parent_ids: string[]; p_spouse_id: string | null; p_child_ids: string[]; p_sibling_ids: string[] }; Returns: Json };
       mobile_contract_version: { Args: Record<string, never>; Returns: string };
+      can_edit_group_member: { Args: { p_person_id: string }; Returns: boolean };
+      deacon_save_member: { Args: { p_id: string | null; p_revision: number | null; p_data: Json }; Returns: PersonRow };
       save_person: { Args: { p_id: string | null; p_revision: number | null; p_data: Json }; Returns: PersonRow };
       delete_member_record: { Args: { p_person_id: string; p_deleted_account_id?: string | null }; Returns: { deleted_person_id: string; deleted_visit_count: number }[] };
       save_group: { Args: { p_id: string | null; p_revision: number | null; p_name: string; p_kind: string; p_archived: boolean; p_deacon_ids: string[]; p_member_ids: string[] }; Returns: GroupRow };

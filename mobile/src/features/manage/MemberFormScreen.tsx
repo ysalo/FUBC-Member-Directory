@@ -20,7 +20,7 @@ import { acceptsDateFieldValue, localDateValue } from "@/features/forms/date-fie
 import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { getFamilyCopy } from "@/features/family/family-copy";
 import { useSession } from "@/features/session/SessionProvider";
-import { canManageAccounts } from "@/lib/permissions";
+import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
 import { formatMemberName } from "@/lib/member-name";
 import { formatPhoneNumber } from "@/lib/phone";
 import { managementRepository } from "./management-repository";
@@ -51,6 +51,7 @@ export function MemberFormScreen() {
     const { palette } = useAppearance();
     const { locale } = useLocalization();
     const session = useSession();
+    const fullManagement = session.status === "ready" && canManageDirectory(session.account);
     const leadershipAllowed = session.status === "ready" && canManageAccounts(session.account);
     const [member, setMember] = useState<ManagedMember | null>(null);
     const [ministries, setMinistries] = useState<ManagedMinistry[]>([]);
@@ -77,7 +78,7 @@ export function MemberFormScreen() {
     const originalName = member ? { firstName: member.first_name ?? splitMemberName(member.name).firstName, lastName: member.last_name ?? splitMemberName(member.name).lastName } : { firstName: "", lastName: "" };
     const dirty = state === "ready" && (JSON.stringify([firstName, patronymic, lastName, birthday, membershipJoinedAt, phone, email, address, [...ministryIds].sort(), isOrphan, isWidow, gender]) !== JSON.stringify([originalName.firstName, member?.patronymic ?? "", originalName.lastName, member?.birthday ?? "", member?.membershipJoinedAt ?? "", formatPhoneNumber(member?.phone), member?.email ?? "", member?.address ?? "", [...(member?.ministryIds ?? [])].sort(), Boolean(member?.isOrphan), Boolean(member?.isWidow), member?.gender ?? null]) || Boolean(pendingPhoto) || photoRemoved);
     const guard = useUnsavedChanges(dirty);
-    const leave = () => familyReturn ? router.replace(`/manage/member/${encodeURIComponent(familyReturn)}/family` as never) : accountId ? router.replace(managedAccountHref(accountId) as never) : router.replace("/manage");
+    const leave = () => familyReturn ? router.replace(`/manage/member/${encodeURIComponent(familyReturn)}/family` as never) : accountId ? router.replace(managedAccountHref(accountId) as never) : fullManagement ? router.replace("/manage") : router.replace(`/members/${memberId}` as never);
     useEffect(() => {
         if (!familyReturn) return;
         let alive = true;
@@ -402,7 +403,7 @@ export function MemberFormScreen() {
                             );
                             router.canGoBack()
                                 ? router.back()
-                                : router.replace("/manage");
+                                : fullManagement ? router.replace("/manage") : router.replace(`/members/${memberId}` as never);
                         } catch {
                             setError(labels.saveError);
                             setState("ready");
@@ -485,7 +486,7 @@ export function MemberFormScreen() {
                         </Text>
                     </Pressable>
                 </View>
-                {editing && memberId && (
+                {fullManagement && editing && memberId && (
                     state === "saving" ? (
                         <Pressable accessibilityRole="link" accessibilityState={{ disabled: true }} disabled>
                             <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>
@@ -528,7 +529,7 @@ export function MemberFormScreen() {
                             {labels.photo}
                         </Text>
                         <MemberAvatar name={fullName} source={photoSource} />
-                        <View style={styles.photoActions}>
+                        {fullManagement && <View style={styles.photoActions}>
                             <Pressable
                                 accessibilityRole="button"
                                 disabled={state === "saving"}
@@ -566,7 +567,7 @@ export function MemberFormScreen() {
                                     </Text>
                                 </Pressable>
                             ) : null}
-                        </View>
+                        </View>}
                     </View>
                     <View
                         style={[
@@ -764,7 +765,7 @@ export function MemberFormScreen() {
                                     const selected = ministryIds.includes(
                                         item.id,
                                     );
-                                    const disabled = Boolean(item.systemKey) && !leadershipAllowed;
+                                    const disabled = !fullManagement || (Boolean(item.systemKey) && !leadershipAllowed);
                                     return (
                                         <Pressable
                                             accessibilityRole="checkbox"
@@ -838,8 +839,8 @@ export function MemberFormScreen() {
                                     );
                                 })}
                         </View>
-                        {editing && member ? <Pressable accessibilityRole="link" onPress={() => guard.confirmLeave(() => router.push(`/manage/member/${encodeURIComponent(member.id)}/departure` as never))} style={styles.membershipAction}><Text style={{ color: palette.accent }}>{locale === "uk" ? "Історія виходу з членства" : "Departure history"}</Text></Pressable> : null}
-                        {editing && member ? (
+                        {fullManagement && editing && member ? <Pressable accessibilityRole="link" onPress={() => guard.confirmLeave(() => router.push(`/manage/member/${encodeURIComponent(member.id)}/departure` as never))} style={styles.membershipAction}><Text style={{ color: palette.accent }}>{locale === "uk" ? "Історія виходу з членства" : "Departure history"}</Text></Pressable> : null}
+                        {fullManagement && editing && member ? (
                             <Pressable
                                 accessibilityRole="button"
                                 disabled={state === "saving"}

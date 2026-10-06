@@ -1,6 +1,6 @@
 import { emptyFamily, loadFamily, saveFamily, type FamilyChanges } from "@/features/family/family-repository";
 import type { MemberDepartureRow, Database, Json, PersonRow } from "@/lib/database";
-import { canManageAccounts, canManageDirectory, canManageGroups, canManageSettings } from "@/lib/permissions";
+import { canOpenMemberEditor, canManageAccounts, canManageDirectory, canManageGroups, canManageSettings } from "@/lib/permissions";
 import {
     activeAccount,
     privatePhotoSources,
@@ -167,21 +167,21 @@ export class SupabaseManagementRepository {
         };
     }
     async loadMember(id: string): Promise<ManagedMember | null> {
-        if (!canManageDirectory(activeAccount()))
+        if (!canOpenMemberEditor(activeAccount()))
             throw new Error("Not authorized.");
         const client = requireSupabase();
         const [personResult, groupsResult, detailsResult, departuresResult] = await Promise.all([
             client.from("people").select("*").eq("id", id).maybeSingle(),
             client.from("deacon_groups").select("*"),
             client.rpc("management_member_care_details", { p_person_id: id }),
-            client.from("member_departures").select("date_left").eq("person_id", id).is("restored_at", null).maybeSingle(),
+            canManageDirectory(activeAccount()) ? client.from("member_departures").select("date_left").eq("person_id", id).is("restored_at", null).maybeSingle() : Promise.resolve({ data: null, error: null }),
         ]);
         if (personResult.error) throw new Error(personResult.error.message);
+        const details = unwrap(detailsResult)[0];
         if (!personResult.data) return null;
         if (departuresResult.error) throw new Error(departuresResult.error.message);
         const row = personResult.data;
         const groups = unwrap(groupsResult);
-        const details = unwrap(detailsResult)[0];
         const photos = await privatePhotoSources([row.photo_path], "original");
         return {
             id: row.id,
@@ -294,7 +294,7 @@ export class SupabaseManagementRepository {
         return saved;
     }
     async listMinistries(): Promise<ManagedMinistry[]> {
-        if (!canManageDirectory(activeAccount()))
+        if (!canOpenMemberEditor(activeAccount()))
             throw new Error("Not authorized.");
         const rows = unwrap(
             await requireSupabase()
@@ -349,10 +349,10 @@ export class SupabaseManagementRepository {
         gender?: "male" | "female";
         membershipJoinedAt?: string | null;
     }) {
-        if (!canManageDirectory(activeAccount()))
+        if (!canOpenMemberEditor(activeAccount()))
             throw new Error("Not authorized.");
         const saved = unwrap(
-            await requireSupabase().rpc("save_person", {
+            await requireSupabase().rpc(canManageDirectory(activeAccount()) ? "save_person" : "deacon_save_member", {
                 p_id: member.id ?? null,
                 p_revision: member.revision ?? null,
                 p_data: {

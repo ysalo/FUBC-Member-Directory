@@ -9,7 +9,7 @@ const ts = require('typescript');
 const source = await readFile(new URL('../src/features/manage/MemberFormScreen.tsx', import.meta.url), 'utf8');
 const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 
-function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, failLinkOnce = false, familyReturn, familyCandidates = [] } = {}) {
+function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, failLinkOnce = false, familyReturn, familyCandidates = [], deacon = false } = {}) {
   const states = [];
   const refs = [];
   let cursor = 0;
@@ -52,7 +52,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, f
     ['@/lib/member-name', { formatMemberName: (member) => [member.first_name ?? member.name.split(' ')[0], member.patronymic, member.last_name ?? member.name.split(' ').slice(1).join(' ')].filter(Boolean).join(' ') }],
     ['@/features/family/family-copy', { getFamilyCopy: () => ({ matches: 'Members with matching names' }) }],
     ['@/features/session/SessionProvider', { useSession: () => ({ status: 'ready', account: { role: 'admin' } }) }],
-    ['@/lib/permissions', { canManageAccounts: () => true }],
+    ['@/lib/permissions', { canManageDirectory: () => !deacon, canManageAccounts: () => !deacon }],
     ['@/lib/phone', { formatPhoneNumber: (value) => value ?? '' }],
     ['./management-repository', { managementRepository }],
     ['./MemberAvatar', { MemberAvatar: 'Avatar' }],
@@ -170,4 +170,16 @@ test('creating a family relative distinguishes existing matches by patronymic',a
  await ui.load();ui.render().find(n=>n.props?.accessibilityLabel==='First name').props.onChangeText('Match');ui.render().find(n=>n.props?.accessibilityLabel==='Last name').props.onChangeText('Person');
  const names=ui.render().filter(n=>n.type==='Pressable').map(n=>ui.text(n));
  assert.ok(names.includes('Match One Person'));assert.ok(names.includes('Match Two Person'));
+});
+
+test('deacon editing hides administrative and photo controls and returns to the profile', async () => {
+  const ui = formFixture({ deacon: true, existing: { id: 'member', name: 'Anna Member', first_name: 'Anna', last_name: 'Member', gender: 'female', revision: 1 } });
+  await ui.load();
+  const nodes = ui.render();
+  for (const label of ['Edit family', 'Departure history', 'Mark as left membership', 'Delete member', 'Change photo']) assert.equal(ui.button(nodes, label), undefined);
+  nodes.find(node => node.props?.accessibilityLabel === 'First name').props.onChangeText('Updated');
+  await ui.button(ui.render(), 'Save member').props.onPress();
+  assert.equal(ui.saves[0].first_name, 'Updated');
+  assert.deepEqual(ui.routes, ['/members/member']);
+  assert.equal(ui.photos.length, 0);
 });
