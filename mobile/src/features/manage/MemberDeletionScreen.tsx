@@ -40,6 +40,11 @@ const words = {
   },
 } as const;
 
+const removalWords = {
+  en: { title: "Remove this member?", detail: "The member will be hidden from the directory. Administrators can preview restoration in desktop Audit history. Family and group relationships are retained.", accountDetail: "Linked sign-in access will be revoked immediately. Restoring directory data does not re-enable the account.", visitsDetail: "Existing visits remain retained.", photo: "The photo will be deleted and cannot be restored from audit history.", delete: "Remove member", failed: "Removal did not finish. Reload and try again.", soft: "Recoverable removal", permanent: "Permanent deletion (irreversible)" },
+  uk: { title: "Вилучити учасника?", detail: "Учасника буде приховано в довіднику. Адміністратори можуть переглянути відновлення в історії змін на комп’ютері. Родинні зв’язки та групи зберігаються.", accountDetail: "Доступ до входу буде негайно відкликано. Відновлення довідника не вмикає доступ облікового запису.", visitsDetail: "Наявні відвідування зберігаються.", photo: "Фото буде видалено; відновити його з історії неможливо.", delete: "Вилучити учасника", failed: "Вилучення не завершено. Оновіть дані та повторіть.", soft: "Вилучення з можливістю відновлення", permanent: "Видалення назавжди (незворотне)" },
+} as const;
+
 type LoadState = "loading" | "ready" | "missing" | "denied" | "error";
 
 export function MemberDeletionScreen() {
@@ -49,13 +54,16 @@ export function MemberDeletionScreen() {
   const { locale } = useLocalization();
   const { palette } = useAppearance();
   const session = useSession();
-  const copy = words[locale];
+  const [permanent, setPermanent] = useState(false);
+  const removalCopy = removalWords[locale];
+  const copy = permanent ? words[locale] : { ...words[locale], ...removalCopy };
   const actor = session.status === "ready" ? session.account : null;
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [member, setMember] = useState<ManagedMember | null>(null);
   const [account, setAccount] = useState<ManagedAccount | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cleanupWarning, setCleanupWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
 
@@ -91,7 +99,8 @@ export function MemberDeletionScreen() {
     if (!member || member.revision == null || !valid || busy) { setError("required"); return; }
     setBusy(true); setError(null);
     try {
-      await deleteMember({ personId: member.id, expectedRevision: member.revision, confirmation: confirmation.trim() });
+      const result = await deleteMember({ personId: member.id, expectedRevision: member.revision, confirmation: confirmation.trim(), permanent });
+      if (result.cleanupWarning) { setCleanupWarning(result.cleanupWarning); return; }
       router.replace("/manage");
     } catch (cause) {
       setError(cause instanceof MemberDeletionError ? cause.code : "unexpected");
@@ -118,6 +127,10 @@ export function MemberDeletionScreen() {
       <View style={styles.flex}><Text selectable style={[styles.memberName, { color: palette.text }]}>{member.name}</Text>{member.group ? <Text numberOfLines={2} style={[styles.secondary, { color: palette.secondaryText }]}>{member.group}</Text> : null}</View>
     </View>
 
+    <View style={{ gap: 8 }}>
+      {[false, true].map(value => <Pressable key={String(value)} accessibilityRole="radio" accessibilityState={{ checked: permanent === value, disabled: busy }} disabled={busy} onPress={() => { setPermanent(value); setConfirmation(""); }} style={styles.stateAction}><Text style={{ color: permanent === value ? palette.danger : palette.secondaryText }}>{permanent === value ? "● " : "○ "}{value ? removalCopy.permanent : removalCopy.soft}</Text></Pressable>)}
+    </View>
+
     <View style={[styles.consequences, { backgroundColor: palette.dangerSoft }]}>
       <Consequence icon="key-outline" title={copy.account} detail={account ? `${copy.accountDetail}${account.email ? ` ${account.email}` : ""}` : copy.noAccount} />
       <View style={[styles.separator, { backgroundColor: palette.line }]} />
@@ -132,6 +145,7 @@ export function MemberDeletionScreen() {
       <TextInput accessibilityLabel={copy.confirmation} autoCapitalize="words" autoCorrect={false} editable={!busy} onChangeText={(value) => { setConfirmation(value); setError(null); }} placeholder={copy.confirmation} placeholderTextColor={palette.secondaryText} style={[styles.input, { backgroundColor: palette.surface, borderColor: errorText ? palette.danger : palette.line, color: palette.text }]} value={confirmation} />
     </>}
 
+    {cleanupWarning ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{cleanupWarning}</Text> : null}
     {errorText ? <Text accessibilityLiveRegion="polite" selectable style={[styles.error, { color: palette.danger }]}>{errorText}</Text> : null}
     <Host style={styles.buttonHost}>
       <Button disabled={busy || !valid} label={busy ? copy.deleting : copy.delete} onPress={() => void submit()} style={{ backgroundColor: palette.danger, borderRadius: 13, height: 54, opacity: busy || !valid ? 0.5 : 1, width: "100%" }} />

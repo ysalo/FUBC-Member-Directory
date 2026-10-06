@@ -1,7 +1,7 @@
 import type { AccessRole, AccountStatus, LeadershipMinistry } from "./domain";
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 export type ProfileRow = { id: string; person_id: string | null; display_name: string; status: AccountStatus; role: AccessRole; revision: number; created_at: string };
-export type PersonRow = { id: string; name: string; first_name: string; last_name: string; patronymic: string | null; gender: "male" | "female"; ministry: string; ministry_uk: string; phone: string | null; email: string | null; photo_path: string | null; membership_group_id: string | null; membership_joined_at: string | null; archived_at: string | null; revision: number; created_at: string };
+export type PersonRow = { id: string; name: string; first_name: string; last_name: string; patronymic: string | null; gender: "male" | "female"; ministry: string; ministry_uk: string; phone: string | null; email: string | null; photo_path: string | null; membership_group_id: string | null; membership_joined_at: string | null; archived_at: string | null; removed_at: string | null; revision: number; created_at: string };
 export type GroupRow = { id: string; name: string; kind: "membership" | "responsibility"; archived_at: string | null; revision: number };
 export type MinistryRow = { id: string; name: string; name_uk: string; system_key: LeadershipMinistry; archived_at: string | null; revision: number; created_at: string };
 export type VisitRow = { id: string; planner_id: string | null; person_id: string; scheduled_at: string; location: string; notes: string; status: "open" | "cancelled" | "completed"; completed_at: string | null; archived_at: string | null; revision: number; submission_id: string; created_at: string; updated_fields: Array<"scheduledAt" | "location" | "notes"> };
@@ -41,6 +41,12 @@ export type Database = {
       person_leadership_ministries: { Row: { person_id: string; leadership_ministry: Exclude<LeadershipMinistry, null> }; Relationships: [] };
     };
     Functions: {
+      audit_history: { Args: { p_filters: Json; p_limit: number; p_offset: number }; Returns: Json };
+      audit_action_details: { Args: { p_action_id: string; p_limit: number; p_offset: number }; Returns: Json };
+      preview_audit_rollback: { Args: { p_action_id: string; p_limit: number; p_offset: number }; Returns: Json };
+      execute_audit_rollback: { Args: { p_action_id: string; p_operation_id: string; p_reason: string }; Returns: Json };
+      remove_member: { Args: { p_id: string; p_revision: number; p_confirmation: string }; Returns: Json };
+
       member_note_access: { Args: { p_person_id: string }; Returns: boolean };
       remove_member_note: { Args: { p_person_id: string; p_revision: number }; Returns: undefined };
       save_member_note: { Args: { p_person_id: string; p_revision: number | null; p_body: string }; Returns: undefined };

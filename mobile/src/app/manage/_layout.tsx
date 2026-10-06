@@ -17,12 +17,13 @@ export default function ManageLayout() {
   const session = useSession();
   const pathname = usePathname();
   const actor = session.status === "ready" ? session.account : null;
-  const memberRoute = pathname === "/manage" || /^\/manage\/member\/[^/]+(?:\/(?:family|departure))?\/?$/.test(pathname);
+  const memberRoute = pathname === "/manage/audit" || pathname === "/manage" || /^\/manage\/member\/[^/]+(?:\/(?:family|departure))?\/?$/.test(pathname);
   const editRoute = /^\/manage\/member\/(?!new(?:\/|$))[^/]+\/?$/.test(pathname);
   const groupRoute = pathname === "/manage/groups" || /^\/manage\/group\/[^/]+\/?$/.test(pathname);
   const settingsRoute = pathname === "/manage/schedule" || pathname === "/manage/ministries" || /^\/manage\/ministry\/[^/]+\/?$/.test(pathname);
   if (isBackendConfigured && !(editRoute ? canOpenMemberEditor(actor) : memberRoute ? canManageDirectory(actor) : groupRoute ? canManageGroups(actor) : settingsRoute ? canManageSettings(actor) : canManageAccounts(actor))) return <Redirect href="/" />;
   return <Stack screenOptions={{ contentStyle: { backgroundColor: palette.background }, headerBackButtonDisplayMode: "minimal", headerStyle: { backgroundColor: palette.background }, headerTintColor: palette.accent, headerTitleStyle: { color: palette.text, fontSize: 17 * scale }, headerShown: false }}>
+    <Stack.Screen name="audit" options={{ headerShown: true, title: locale === "uk" ? "Історія змін" : "Audit history" }} />
     <Stack.Screen name="index" options={{ headerShown: false }} />
     <Stack.Screen name="account/[accountId]" options={{ headerShown: true, title: locale === "uk" ? "Обліковий запис" : "Account" }} />
     <Stack.Screen name="account/[accountId]/link" options={{ headerShown: true, title: locale === "uk" ? "Пов’язати учасника" : "Link member" }} />

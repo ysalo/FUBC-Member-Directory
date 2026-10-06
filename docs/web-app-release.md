@@ -1,3 +1,60 @@
+## Desktop audit history and guarded restoration (issue #133)
+
+Manage → Audit history is available to active admins on web at widths of at least
+1024px. Native/small-web direct routes redirect to management without fetching
+history. History and large action details are paginated; date, actor ID, action
+and affected member/group ID filters select newest-first actions. Expansions show
+before/after JSON. Restoration previews explain field conflicts and unavailable
+photos; confirmation requires a reason.
+
+Directory commands retain one transactional action with server-derived actor
+identity and per-record snapshots. Covered commands include general/deacon member
+writes, private details, family, departures, ministry assignments, groups and
+cross-group assignments, photo metadata and imports. Notes are excluded. Legacy
+entries remain explicit; permanent deletion and replacement remain irreversible.
+History survives subject/account deletion and replacement.
+
+Ordinary removal hides the member, preserves recoverable family/group data,
+revokes linked account access for existing sessions and clears photo references.
+The editor provides a separate permanent-deletion choice. Restoration does not
+reactivate accounts or resurrect old image paths. Photo cleanup runs through the
+Storage API with a durable retry queue; failures are disclosed by the endpoint.
+The frontend uses the dedicated `remove-member` endpoint for recoverable removal,
+so a backend without that endpoint fails closed rather than performing the older
+permanent deletion behavior.
+
+Backend readiness is a separately reviewed release gate. Review and apply
+`20261006000000_directory_audit.sql`, then
+`20261006010000_audit_rollback.sql`, and deploy both `remove-member` and the updated
+`delete-member` Edge Function before releasing this frontend to main. Do not use
+`db push` or reconcile existing migration history automatically. Verify these
+contracts with real active-admin/deacon/editor/inactive accounts and Storage
+cleanup after deployment. Existing native/web command signatures remain intact;
+new commands wrap their private implementations. Future replacements of a
+covered writer must retain its audit envelope. Rollback to the prior frontend
+can retain the additive backend, but old deletion copy describes permanent loss
+while the updated default endpoint now performs recoverable removal.
+
+Audit/rollback transactions share one lock order (audit advisory lock, family
+revision row, covered tables), serializing directory writers and rechecking current
+state at execution. This favors consistency over concurrent write throughput;
+large imports/restorations can temporarily delay other directory writes. Preview
+uses a rolled-back database subtransaction to validate constraints and invariants;
+it never changes committed directory state. Retention is indefinite, including
+historical personal information after permanent deletion.
+
+Validation: Node 24 `pnpm verify` passes all 306 tests, including both real
+PostgreSQL concurrency suites with pg-safeupdate enabled; `pnpm build:web` passes.
+Fifteen audit SQL integration cases plus an Edge Function/SQL integration case
+cover capture, authorization, inverse changes, idempotence, retention, access
+revocation, and photo cleanup/retry. Sixteen synthetic-backend Chromium cases in
+light/dark themes at 390/1023/1024/1440px cover admin/editor navigation and direct
+routes, filters, pagination, JSON comparisons, reason validation, confirmation,
+conflict display, irreversible/legacy labels, photo limitations, and recoverable versus permanent removal endpoint selection. Platform route
+tests execute the native width guard; physical devices and live OAuth are not
+claimed. Hosted Preview/CI evidence is recorded in the feature PR; live backend
+migrations and real-service acceptance remain a separate reviewed step.
+
 ## Release 1.6.0 — group import birth dates
 
 Imports can resolve identical full names by exact YYYY-MM-DD birth date. Import review and group assignment rows display full birth dates, and files accept one or two deacons. The manager-only birth-date RPC is deployed; old clients remain compatible. The reusable name-audit script keeps private sources, approved resolutions and omitted-name issues outside Git. Group 2 has already been imported and must not be imported again as part of deployment.

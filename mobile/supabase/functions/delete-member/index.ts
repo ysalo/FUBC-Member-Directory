@@ -35,6 +35,25 @@ Deno.serve(async (request: Request) => {
     if (callerProfileError) throw callerProfileError;
     if (!caller || caller.status !== "active" || caller.role !== "admin") return failed("not-authorized", "Only active administrators can delete members.", 403);
 
+    // Default removal preserves Auth identity and relationships. Database checks
+    // revoke access for existing sessions atomically with the audited mutation.
+    if (body.permanent !== true) {
+      const { data: removal, error: removalError } = await callerClient.rpc("remove_member", {
+        p_id: personId, p_revision: expectedRevision, p_confirmation: confirmation,
+      });
+      if (removalError) return failed(removalError.code === "40001" ? "conflict" : "removal", removalError.message, removalError.code === "42501" ? 403 : 409);
+      const { data: pending, error: pendingError } = await adminClient.rpc("member_removal_photo_cleanup", { p_person_id: personId });
+      if (pendingError) throw pendingError;
+      let cleanupWarning = null;
+      for (const item of pending ?? []) {
+        const { error: cleanupError } = await adminClient.storage.from("member-photos").remove([item.path, `${item.path}.avatar-256.jpg`]);
+        if (cleanupError) { cleanupWarning = "Photo cleanup is pending; retry removal to finish cleanup."; break; }
+        const { error: receiptError } = await adminClient.rpc("member_removal_photo_cleanup_completed", { p_person_id: personId });
+        if (receiptError) { cleanupWarning = "Photo cleanup receipt is pending; retry removal to finish cleanup."; break; }
+      }
+      return json({ status: "completed", deletedPersonId: personId, deletedAccountId: null, deletedVisitCount: 0, cleanupWarning });
+    }
+
     const { data: person, error: personError } = await adminClient.from("people").select("id,name,revision,photo_path").eq("id", personId).maybeSingle();
     if (personError) throw personError;
     // A lost response after a successful deletion is safe to retry.

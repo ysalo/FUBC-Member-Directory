@@ -53,7 +53,7 @@ const labels = {
         schedule: "Schedule",
         scheduleDetail: "Generate and adjust the Friday/Sunday deacon rotation",
         addMember: "Add member",
-        importMembers: "Import members", importDetail: "Review and import a CSV member list",
+        audit: "Audit history", auditDetail: "Review changes and preview restoration", importMembers: "Import members", importDetail: "Review and import a CSV member list",
         loading: "Preparing management tools…",
         loadingDetail: "Loading members and account access.",
         error: "Management tools didn’t load",
@@ -96,7 +96,7 @@ const labels = {
         ministries: "Служіння",
         ministriesDetail: "Назви служінь",
         addMember: "Додати учасника",
-        importMembers: "Імпорт учасників", importDetail: "Перегляд та імпорт списку з CSV",
+        audit: "Історія змін", auditDetail: "Перегляд змін і відновлення", importMembers: "Імпорт учасників", importDetail: "Перегляд та імпорт списку з CSV",
         loading: "Готуємо інструменти керування…",
         loadingDetail: "Завантажуємо учасників і доступ до облікових записів.",
         error: "Не вдалося завантажити керування",
@@ -512,6 +512,7 @@ export function ManageScreen() {
                                 desktop && styles.desktopShortcuts,
                             ]}
                         >
+                            {desktop && canManageAccounts(actor) ? <Shortcut detail={copy.auditDetail} icon="time-outline" label={copy.audit} onPress={() => router.push("/manage/audit" as Href)} /> : null}
                             {accountsAllowed ? <Shortcut detail={copy.importDetail} icon="cloud-upload-outline" label={copy.importMembers} onPress={() => router.push("/manage/import" as Href)} /> : null}
                             <Shortcut
                                 detail={copy.groupsDetail}
@@ -639,7 +640,7 @@ export function ManageScreen() {
         onPress,
     }: {
         detail: string;
-        icon: "people-outline" | "layers-outline" | "calendar-outline" | "cloud-upload-outline";
+        icon: "people-outline" | "layers-outline" | "calendar-outline" | "cloud-upload-outline" | "time-outline";
         label: string;
         onPress: () => void;
     }) {

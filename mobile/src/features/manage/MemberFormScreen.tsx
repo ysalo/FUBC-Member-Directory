@@ -164,7 +164,7 @@ export function MemberFormScreen() {
                       restoreTitle: "Відновити членство?",
                       restoreDetail:
                           "Учасник знову з’явиться в довіднику без призначення до групи.",
-                      deleteMember: "Видалити учасника назавжди",
+                      deleteMember: "Вилучити учасника",
                       save: "Зберегти",
                       cancel: "Скасувати",
                       required: "Введіть ім’я та прізвище.",
@@ -215,7 +215,7 @@ export function MemberFormScreen() {
                       restoreTitle: "Restore membership?",
                       restoreDetail:
                           "This person will return to the directory without a group assignment.",
-                      deleteMember: "Delete member permanently",
+                      deleteMember: "Remove member",
                       save: "Save member",
                       cancel: "Cancel",
                       required: "Enter a first and last name.",

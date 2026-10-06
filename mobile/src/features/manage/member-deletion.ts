@@ -5,12 +5,14 @@ export type DeleteMemberRequest = {
   personId: string;
   expectedRevision: number;
   confirmation: string;
+  permanent?: boolean;
 };
 
 export type DeleteMemberResult = {
   deletedPersonId: string;
   deletedAccountId: string | null;
   deletedVisitCount: number;
+  cleanupWarning?: string;
 };
 
 export class MemberDeletionError extends Error {
@@ -33,7 +35,10 @@ export async function deleteMembers(requests: readonly DeleteMemberRequest[]) {
 }
 
 export async function deleteMember(request: DeleteMemberRequest): Promise<DeleteMemberResult> {
-  const { data, error } = await requireSupabase().functions.invoke("delete-member", { body: request });
+  const client = requireSupabase();
+  const { data, error } = request.permanent
+    ? await client.functions.invoke("delete-member", { body: request })
+    : await client.functions.invoke("remove-member", { body: request });
   if (error) {
     const context = "context" in error && error.context && typeof error.context === "object" ? error.context as Response : null;
     const payload = context && "json" in context ? await context.json().catch(() => null) : null;
@@ -47,5 +52,6 @@ export async function deleteMember(request: DeleteMemberRequest): Promise<Delete
     deletedPersonId: data.deletedPersonId,
     deletedAccountId: typeof data.deletedAccountId === "string" ? data.deletedAccountId : null,
     deletedVisitCount: data.deletedVisitCount,
+    ...(typeof data.cleanupWarning === "string" ? { cleanupWarning: data.cleanupWarning } : {}),
   };
 }
