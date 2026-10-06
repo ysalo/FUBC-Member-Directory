@@ -102,7 +102,7 @@ test('member profiles show linked deacon avatars below Contact in both layouts o
   assert.match(profile, /<ProfileAvatar name=\{deacon\.name\} size=\{64\} source=\{deacon\.avatar\}/);
   assert.match(deaconsSection, /<Text numberOfLines=\{2\}[^>]*>\{deacon\.name\}<\/Text>/);
   assert.match(profile, /deaconAvatars: \{ flexDirection: "column"/);
-  assert.equal([...profile.matchAll(/\{contactSection\}[\s\S]*?\{deaconsSection\}[\s\S]*?\{ministriesSection\}[\s\S]*?<FamilySection memberId=\{memberId\} \/>/g)].length, 2);
+  assert.equal([...profile.matchAll(/\{contactSection\(addNoteAction\)\}[\s\S]*?\{deaconsSection\}[\s\S]*?\{ministriesSection\}[\s\S]*?<FamilySection memberId=\{memberId\} \/>/g)].length, 2);
 });
 
 test('member profile visit action uses planning language', async () => {

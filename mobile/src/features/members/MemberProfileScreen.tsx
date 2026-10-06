@@ -220,8 +220,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
             </View>
         </Section>
     ) : null;
-    const contactSection = (
-        <Section title={copy.contact}>
+    const contactSection = (addNoteAction: ReactNode) => (
+        <Section title={copy.contact} action={addNoteAction}>
             <View style={styles.actions}>
                 {profile.phone ? (
                     <Action
@@ -297,8 +297,8 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
             ) : null}
         </Section>
     );
-    const detailsSection = (addNoteAction: ReactNode) => (
-        <Section title={copy.details} action={addNoteAction}>
+    const detailsSection = (
+        <Section title={copy.details}>
             {profile.birthDate ? (
                 <Fact
                     label={copy.birthday}
@@ -619,20 +619,20 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                             {desktop ? (
                                 <View style={styles.desktopColumns}>
                                     <View style={styles.desktopContactColumn}>
-                                        {contactSection}
+                                        {contactSection(addNoteAction)}
                                         {deaconsSection}
                                         {ministriesSection}
                                         <FamilySection memberId={memberId} />
                                     </View>
                                     <View style={styles.desktopDetailsColumn}>
-                                        {detailsSection(addNoteAction)}
+                                        {detailsSection}
                                     </View>
                                 </View>
                             ) : (
                                 <>
-                                    {contactSection}
+                                    {contactSection(addNoteAction)}
                                     {deaconsSection}
-                                    {detailsSection(addNoteAction)}
+                                    {detailsSection}
                                     {ministriesSection}
                                     <FamilySection memberId={memberId} />
                                 </>
