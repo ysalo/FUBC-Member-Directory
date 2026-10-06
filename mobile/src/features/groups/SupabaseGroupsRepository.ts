@@ -56,12 +56,15 @@ export class SupabaseGroupsRepository implements GroupsRepository {
       members.slice(index * memberSummaryBatchSize, (index + 1) * memberSummaryBatchSize).map((member) => member.id));
     const summaries = (await Promise.all(batches.map(async (ids) => unwrap(await client.rpc("directory_active_members", {})
       .select("id,leadership_ministry,is_orphan,is_widow").in("id", ids))))).flat();
+    // RLS returns presence only for notes this account can read.
+    const visibleNotes = (await Promise.all(batches.map(async ids => unwrap(await client.from("member_notes").select("person_id").in("person_id", ids))))).flat();
+    const noteIds = new Set(visibleNotes.map(note => note.person_id));
     const summaryById = new Map(summaries.map((summary) => [summary.id, summary]));
     const photos = await privatePhotoSources(members.map((person) => person.photo_path));
     const responsibleDeacons = group.responsibleDeacons ?? [];
     return { ...group, members: members.map((member) => {
       const summary = summaryById.get(member.id);
-      return { id: member.id, first_name: member.first_name, last_name: member.last_name, patronymic: member.patronymic, name: (member.first_name !== undefined && member.last_name !== undefined ? [member.first_name, member.last_name].join(" ") : member.name), photo: member.photo_path ? photos.get(member.photo_path) : undefined,
+      return { id: member.id, hasNote: noteIds.has(member.id), first_name: member.first_name, last_name: member.last_name, patronymic: member.patronymic, name: (member.first_name !== undefined && member.last_name !== undefined ? [member.first_name, member.last_name].join(" ") : member.name), photo: member.photo_path ? photos.get(member.photo_path) : undefined,
         leadershipMinistry: summary?.leadership_ministry ?? undefined, isOrphan: summary?.is_orphan ?? undefined, isWidow: summary?.is_widow ?? false };
     }), responsibleDeacons };
   }

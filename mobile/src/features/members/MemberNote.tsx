@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
+import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -9,9 +10,7 @@ import { useSession } from "@/features/session/SessionProvider";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
 import { invalidateData, sessionCacheScope, subscribeDataChanges } from "@/lib/session-cache";
 
-export type NoteAction = { hasNote: boolean; open: () => void };
-
-export function MemberNote({ memberId, onActionChange }: { memberId: string; onActionChange: (action: NoteAction | null) => void }) {
+export function MemberNote({ memberId }: { memberId: string }) {
     const { palette } = useAppearance();
     const { locale } = useLocalization();
     const session = useSession();
@@ -49,16 +48,9 @@ export function MemberNote({ memberId, onActionChange }: { memberId: string; onA
         });
         return () => { alive = false; };
     }, [memberId, session, reload, uk]);
-    useEffect(() => {
-        onActionChange(access && editable && !editing && !saving ? {
-            hasNote: Boolean(note),
-            open: () => { setEditBase(note); setDraft(note?.body ?? ""); setEditing(true); setError(""); },
-        } : null);
-        return () => onActionChange(null);
-    }, [access, editable, editing, saving, note, onActionChange]);
-    if (access && !note && !editing) return null;
     if (access && !editable && !note) return null;
     if (!access) return error ? <Text style={{ color: palette.secondaryText }}>{error}</Text> : null;
+    const openEditor = () => { setEditBase(note); setDraft(note?.body ?? ""); setEditing(true); setError(""); };
     const save = async () => {
         const scope = sessionCacheScope();
         setSaving(true);
@@ -101,7 +93,13 @@ export function MemberNote({ memberId, onActionChange }: { memberId: string; onA
     };
     return <View style={{ marginBottom: 20, padding: 16, borderRadius: 12, borderWidth: 0.5, borderColor: palette.line, backgroundColor: palette.surface, gap: 10 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <Text style={{ color: palette.secondaryText, fontSize: 14, fontWeight: "600" }}>{uk ? "Нотатка" : "Note"}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={18} color={palette.accent} />
+                <Text accessibilityRole="header" style={{ color: palette.accent, fontSize: 14, fontWeight: "600" }}>{uk ? "Нотатка" : "Note"}</Text>
+            </View>
+            {!note && editable && !editing && <Pressable accessibilityRole="button" disabled={saving} onPress={openEditor} style={{ minHeight: 44, justifyContent: "center" }}>
+                <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Додати нотатку" : "Add note"}</Text>
+            </Pressable>}
         </View>
         <Text style={{ color: palette.secondaryText, fontSize: 12 }}>{uk ? "Видно лише відповідальним дияконам і пасторам" : "Only responsible deacons and pastors can see this"}</Text>
         {editing ? <>
@@ -114,6 +112,9 @@ export function MemberNote({ memberId, onActionChange }: { memberId: string; onA
         </> : note && <Text selectable style={{ color: palette.text, fontSize: 16, lineHeight: 24 }}>{note.body}</Text>}
         {note && editable && !editing && <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
             {saving && <ActivityIndicator color={palette.accent} />}
+            <Pressable accessibilityRole="button" disabled={saving} onPress={openEditor} style={{ minHeight: 44, justifyContent: "center" }}>
+                <Text style={{ color: palette.secondaryText, fontSize: 14 }}>{uk ? "Редагувати нотатку" : "Edit note"}</Text>
+            </Pressable>
             <Pressable accessibilityRole="button" disabled={saving} onPress={remove} style={{ minHeight: 44, justifyContent: "center", opacity: saving ? 0.5 : 1 }}>
                 <Text style={{ color: palette.danger, fontSize: 14 }}>{uk ? "Видалити нотатку" : "Remove note"}</Text>
             </Pressable>
