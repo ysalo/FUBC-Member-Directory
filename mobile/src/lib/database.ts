@@ -11,6 +11,13 @@ type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relati
 export type Database = {
   public: {
     Tables: {
+      member_notes: {
+        Row: { person_id: string; body: string; revision: number; updated_at: string };
+        Insert: { person_id: string; body: string; revision?: number; updated_at?: string };
+        Update: { body?: string; revision?: number; updated_at?: string };
+        Relationships: [];
+      };
+
       profiles: Table<ProfileRow & { last_seen_at: string | null }>;
       people: Table<PersonRow>;
       member_departures: Table<MemberDepartureRow>;
@@ -34,6 +41,9 @@ export type Database = {
       person_leadership_ministries: { Row: { person_id: string; leadership_ministry: Exclude<LeadershipMinistry, null> }; Relationships: [] };
     };
     Functions: {
+      member_note_access: { Args: { p_person_id: string }; Returns: boolean };
+      save_member_note: { Args: { p_person_id: string; p_revision: number | null; p_body: string }; Returns: undefined };
+
       management_group_birth_dates: { Args: Record<string, never>; Returns: { person_id: string; birth_date: string | null }[] };
       record_member_departure: { Args: { p_person_id: string; p_revision: number; p_date_left: string; p_reason: MemberDepartureRow["reason"]; p_other_detail: string | null; p_notes: string }; Returns: MemberDepartureRow };
       member_family: { Args: { p_person_id: string; p_manage?: boolean }; Returns: Json };
