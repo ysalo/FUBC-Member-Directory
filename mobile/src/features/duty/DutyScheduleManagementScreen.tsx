@@ -1,7 +1,7 @@
 import { Text } from "@/features/accessibility/app-text";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -15,7 +15,8 @@ import { errorMessage } from "@/lib/async-state";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { DeaconPickerSheet } from "./DeaconPickerSheet";
 import { todayFixedPdt } from "./DutySummary";
-import { fridayBeforeSunday, includedCandidates, moveIncludedCandidate, weekendLabel, type DutyCandidate } from "./duty-domain";
+import { fridayBeforeSunday, includedCandidates, moveIncludedCandidate, dropIncludedCandidate, weekendLabel, type DutyCandidate } from "./duty-domain";
+import { DraggableRotationRow, type RotationLayout } from "./DraggableRotationRow";
 import { dutyRepository, type DutyYear } from "./duty-repository";
 import { useUnsavedChanges } from "@/features/manage/use-unsaved-changes";
 
@@ -34,12 +35,13 @@ const labels = {
     retry: "Try again",
     noDeacons: "No active deacons are available to schedule yet.",
     rotationOrder: "Rotation order",
-    reorderHint: "Uncheck deacons to exclude them, then use the arrows to set the repeating order.",
+    reorderHint: "Uncheck deacons to exclude them, then drag the handles or use the arrows to set the repeating order.",
     include: (name: string) => `Include ${name} in rotation`,
     excluded: "Excluded from this generation",
     included: (count: number, total: number) => `${count} of ${total} deacons included`,
     atLeastOne: "Include at least one deacon to generate the schedule.",
     exclusionHint: "These choices apply when you generate. Ministry assignments and the current schedule stay unchanged until then.",
+    drag: (name: string) => `Drag ${name} to reorder`,
     moveUp: (name: string) => `Move ${name} up`,
     moveDown: (name: string) => `Move ${name} down`,
     schedule: "Generated schedule",
@@ -66,12 +68,13 @@ const labels = {
     retry: "Спробувати ще раз",
     noDeacons: "Поки немає активних дияконів для розкладу.",
     rotationOrder: "Порядок чергування",
-    reorderHint: "Зніміть позначки з дияконів, яких не потрібно включати, і встановіть порядок стрілками.",
+    reorderHint: "Зніміть позначки з дияконів, яких не потрібно включати, і встановіть порядок перетягуванням або стрілками.",
     include: (name: string) => `Включити до черги: ${name}`,
     excluded: "Не включено до цього розкладу",
     included: (count: number, total: number) => `Включено дияконів: ${count} із ${total}`,
     atLeastOne: "Оберіть хоча б одного диякона для створення розкладу.",
     exclusionHint: "Цей вибір застосовується під час створення розкладу. До того часу служіння та поточний розклад не змінюються.",
+    drag: (name: string) => `Перетягніть ${name}, щоб змінити порядок`,
     moveUp: (name: string) => `Перемістити ${name} вгору`,
     moveDown: (name: string) => `Перемістити ${name} вниз`,
     schedule: "Створений розклад",
@@ -96,6 +99,8 @@ export function DutyScheduleManagementScreen() {
   const today = todayFixedPdt();
   const [year, setYear] = useState(() => Number(today.slice(0, 4)));
   const [state, setState] = useState<{ status: "loading" | "error" | "ready"; year?: DutyYear; message?: string }>({ status: "loading" });
+  const rotationLayouts = useRef(new Map<string, RotationLayout>());
+  const [dragTarget, setDragTarget] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [reassignSundayOn, setReassignSundayOn] = useState<string | null>(null);
   const [draftDeaconId, setDraftDeaconId] = useState<string | null>(null);
@@ -176,7 +181,7 @@ export function DutyScheduleManagementScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView scrollEnabled={dragTarget === null} contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
         <Text style={[styles.subtitle, { color: palette.secondaryText }]}>{copy.subtitle}</Text>
 
@@ -208,13 +213,14 @@ export function DutyScheduleManagementScreen() {
                     const index = orderedIds.indexOf(deacon.personId);
                     const included = index >= 0;
                     return (
-                    <View key={deacon.personId} style={[styles.row, { backgroundColor: palette.background, borderColor: palette.line }]}>
+                    <DraggableRotationRow key={deacon.personId} id={deacon.personId} ids={orderedIds} layouts={rotationLayouts} disabled={saving || !included} label={copy.drag(deacon.name)} onDrag={setDragTarget} onDrop={targetId => setOrderedDeacons(current => dropIncludedCandidate(current, excludedIds, deacon.personId, targetId))}>
+                      {handle => <View style={[styles.row, { backgroundColor: palette.background, borderColor: dragTarget === deacon.personId ? palette.accent : palette.line }]}>
                       <Pressable accessibilityRole="checkbox" accessibilityLabel={copy.include(deacon.name)} accessibilityState={{ checked: included, disabled: saving }} aria-checked={included} aria-disabled={saving} disabled={saving} onPress={() => toggleIncluded(deacon.personId)} style={styles.includeControl}>
                         <Ionicons accessibilityElementsHidden name={included ? "checkbox" : "square-outline"} size={24} color={included ? palette.accent : palette.secondaryText} />
                         {included && <Text style={[styles.orderBadgeText, { color: palette.secondaryText }]}>{index + 1}</Text>}
                       </Pressable>
                       <ProfileAvatar name={deacon.name} size={40} source={memberById.get(deacon.personId)?.avatar} />
-                      <View style={styles.deaconCopy}><Text numberOfLines={2} style={[styles.cardTitle, { color: included ? palette.text : palette.secondaryText }]}>{deacon.name}</Text>{!included && <Text style={[styles.excluded, { color: palette.secondaryText }]}>{copy.excluded}</Text>}</View>
+                      <View style={styles.deaconCopy}><Text style={[styles.cardTitle, { color: included ? palette.text : palette.secondaryText }]}>{deacon.name}</Text>{!included && <Text style={[styles.excluded, { color: palette.secondaryText }]}>{copy.excluded}</Text>}
                       <View style={styles.reorderControls}>
                         <Pressable
                           accessibilityLabel={copy.moveUp(deacon.name)}
@@ -239,7 +245,10 @@ export function DutyScheduleManagementScreen() {
                           <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-down" size={19} />
                         </Pressable>
                       </View>
-                    </View>
+                      </View>
+                      {handle}
+                    </View>}
+                    </DraggableRotationRow>
                   ); })}
                 </View>
               )}
