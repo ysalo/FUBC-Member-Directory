@@ -1,5 +1,4 @@
 import { Text } from "@/features/accessibility/app-text";
-import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
 import { useWarmResource } from "@/lib/use-warm-resource";
@@ -43,7 +42,7 @@ export function DutySummary({ locale, directoryMembers }: { locale: "en" | "uk";
         <Text style={[styles.linkText, { color: palette.text }]}>
           {locale === "uk" ? "Переглянути розклад" : "View schedule"}
         </Text>
-        <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={16} />
+
       </Pressable>
     </View>
   );

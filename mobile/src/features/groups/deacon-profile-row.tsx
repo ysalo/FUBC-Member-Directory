@@ -1,5 +1,4 @@
 import { Text } from "@/features/accessibility/app-text";
-import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -34,7 +33,7 @@ export function DeaconProfileRow({ accessibilityHint, deacon, roleLabel, last = 
         <Text numberOfLines={2} selectable style={[styles.name, { color: palette.text }]}>{deacon.name}</Text>
         <Text selectable style={[styles.label, { color: palette.secondaryText }]}>{roleLabel}</Text>
       </View>
-      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={18} />
+
     </Pressable>
   );
 }

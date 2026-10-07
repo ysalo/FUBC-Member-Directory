@@ -224,7 +224,6 @@ test("member saves send membership dates and preserve omission for older callers
     const form = await readFile(new URL("../src/features/manage/MemberFormScreen.tsx", import.meta.url), "utf8");
     assert.match(form, /setMembershipJoinedAt\(found.membershipJoinedAt \?\? ""\)/);
     assert.match(form, /membershipJoinedAt: membershipJoinedAt \|\| null/);
-    assert.match(form, /accessibilityLabel=\{labels.membershipDate\}/);
 });
 
 test("member saves send optional patronymics and preserve omission for other callers", async () => {
@@ -485,7 +484,8 @@ test("the group management editor creates groups and searches and saves multiple
         ),
     ]);
     assert.match(screen, /<TextInput[^>]+maxLength=\{120\}/);
-    assert.match(screen, /@expo\/ui\/community\/segmented-control/);
+    assert.doesNotMatch(screen, /@expo\/ui\/community\/segmented-control/);
+    assert.match(screen, /const targetKind = "membership"/);
     assert.match(screen, /Search members/);
     assert.match(screen, /selectedMembers/);
     assert.match(screen, /p_name: name\.trim\(\)/);

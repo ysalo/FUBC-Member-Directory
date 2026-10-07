@@ -182,7 +182,7 @@ export function VisitationListScreen() {
                       </View>
                     ))}
                   </View>
-                  <Ionicons accessibilityElementsHidden color={visitColors.secondaryText} name="chevron-forward" size={21} style={styles.chevron} />
+
                 </Pressable>
               );
             })}

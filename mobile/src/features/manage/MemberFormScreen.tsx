@@ -139,7 +139,9 @@ export function MemberFormScreen() {
                       lastName: "Прізвище",
                       birthday: "День народження",
                       membershipDate: "Дата вступу до церкви",
-                      membershipDateKnown: "Дата вступу відома",
+                      optionalDate: "Необов’язково · залиште порожнім, якщо невідомо",
+                      chooseDate: "Оберіть дату",
+                      clearDate: "Очистити",
                       invalidMembershipDate: "Вкажіть коректну дату вступу не пізніше сьогоднішньої.",
                       invalidBirthday: "Вкажіть коректну дату народження не пізніше сьогоднішньої.",
                       ministry: "Служіння",
@@ -168,7 +170,6 @@ export function MemberFormScreen() {
                       save: "Зберегти",
                       cancel: "Скасувати",
                       required: "Введіть ім’я та прізвище.",
-                      dateHint: "РРРР-ММ-ДД",
                       loadError: "Не вдалося завантажити учасника.",
                       photoType: "Оберіть фото JPEG, PNG або WebP.",
                       photoSize: "Фото має бути не більшим за 5 МБ.",
@@ -190,7 +191,9 @@ export function MemberFormScreen() {
                       lastName: "Last name",
                       birthday: "Birthday",
                       membershipDate: "Member since",
-                      membershipDateKnown: "Membership date known",
+                      optionalDate: "Optional · leave blank if unknown",
+                      chooseDate: "Choose a date",
+                      clearDate: "Clear",
                       invalidMembershipDate: "Enter a valid membership date no later than today.",
                       invalidBirthday: "Enter a valid birthday no later than today.",
                       ministry: "Ministries",
@@ -219,7 +222,6 @@ export function MemberFormScreen() {
                       save: "Save member",
                       cancel: "Cancel",
                       required: "Enter a first and last name.",
-                      dateHint: "YYYY-MM-DD",
                       loadError: "Unable to load this member.",
                       photoType: "Choose a JPEG, PNG, or WebP photo.",
                       photoSize: "Photo must be 5 MB or smaller.",
@@ -445,6 +447,53 @@ export function MemberFormScreen() {
         <SafeAreaView
             style={[styles.safe, { backgroundColor: palette.background }]}
         >
+            <View style={[styles.header, !desktop && styles.headerMobile, { borderBottomColor: palette.line }]}>
+                {!desktop ? <Text accessibilityRole="header" style={[styles.title, styles.titleMobile, { color: palette.text }]}>{labels.title}</Text> : null}
+                <Pressable
+                    accessibilityRole="button"
+                    disabled={state === "saving"}
+                    style={styles.headerAction}
+                    onPress={() => guard.confirmLeave(leave)}
+                >
+                    <Text
+                        style={[styles.cancel, { color: palette.accent }]}
+                    >
+                        {labels.cancel}
+                    </Text>
+                </Pressable>
+                {desktop ? <Text
+                    accessibilityRole="header"
+                    style={[styles.title, { color: palette.text }]}
+                >
+                    {labels.title}
+                </Text> : null}
+                <Pressable
+                    accessibilityRole="button"
+                    style={styles.headerAction}
+                    disabled={state === "saving"}
+                    onPress={() => void save()}
+                >
+                    <Text
+                        style={[
+                            styles.save,
+                            { color: palette.accent },
+                            state === "saving" && styles.disabled,
+                        ]}
+                    >
+                        {state === "saving" ? "…" : labels.save}
+                    </Text>
+                </Pressable>
+            </View>
+            {error ? (
+                <Text
+                    selectable
+                    accessibilityRole="alert"
+                    accessibilityLiveRegion="polite"
+                    style={[styles.error, { color: palette.danger }]}
+                >
+                    {error}
+                </Text>
+            ) : null}
             <ScrollView
                 contentInsetAdjustmentBehavior="automatic"
                 keyboardShouldPersistTaps="handled"
@@ -453,39 +502,6 @@ export function MemberFormScreen() {
                     desktop && styles.desktopContent,
                 ]}
             >
-                <View style={styles.header}>
-                    <Pressable
-                        accessibilityRole="button"
-                        onPress={() => guard.confirmLeave(leave)}
-                    >
-                        <Text
-                            style={[styles.cancel, { color: palette.accent }]}
-                        >
-                            {labels.cancel}
-                        </Text>
-                    </Pressable>
-                    <Text
-                        accessibilityRole="header"
-                        style={[styles.title, { color: palette.text }]}
-                    >
-                        {labels.title}
-                    </Text>
-                    <Pressable
-                        accessibilityRole="button"
-                        disabled={state === "saving"}
-                        onPress={() => void save()}
-                    >
-                        <Text
-                            style={[
-                                styles.save,
-                                { color: palette.accent },
-                                state === "saving" && styles.disabled,
-                            ]}
-                        >
-                            {state === "saving" ? "…" : labels.save}
-                        </Text>
-                    </Pressable>
-                </View>
                 {fullManagement && editing && memberId && (
                     state === "saving" ? (
                         <Pressable accessibilityRole="link" accessibilityState={{ disabled: true }} disabled>
@@ -501,14 +517,6 @@ export function MemberFormScreen() {
                         </Pressable></Link>
                     )
                 )}
-                {error ? (
-                    <Text
-                        selectable
-                        style={[styles.error, { color: palette.accent }]}
-                    >
-                        {error}
-                    </Text>
-                ) : null}
                 <View
                     style={[
                         styles.formLayout,
@@ -576,29 +584,31 @@ export function MemberFormScreen() {
                         ]}
                     >
                         <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.identity}</Text>
+                        <View style={[styles.fieldRow, desktop && styles.fieldRowDesktop]}>
                         <Field
                             label={labels.firstName}
                             hint={labels.requiredField}
-                            errorText={error === labels.required ? labels.required : undefined}
+                            errorText={error === labels.required && !firstName.trim() ? labels.requiredField : undefined}
                             value={firstName}
                             onChangeText={setFirstName}
                             palette={palette}
-                            autoFocus={!editing}
+                            autoFocus={!editing && desktop}
                         />
+                        <Field
+                            label={labels.lastName}
+                            hint={labels.requiredField}
+                            errorText={error === labels.required && !lastName.trim() ? labels.requiredField : undefined}
+                            value={lastName}
+                            onChangeText={setLastName}
+                            palette={palette}
+                        />
+                        </View>
                         <Field
                             label={labels.patronymic}
                             value={patronymic}
                             onChangeText={setPatronymic}
                             palette={palette}
                             maxLength={200}
-                        />
-                        <Field
-                            label={labels.lastName}
-                            hint={labels.requiredField}
-                            errorText={error === labels.required ? labels.required : undefined}
-                            value={lastName}
-                            onChangeText={setLastName}
-                            palette={palette}
                         />
                         {matchingFamilyMembers.length ? <View style={styles.field}>
                             <Text style={[styles.label, { color: palette.secondaryText }]}>{getFamilyCopy(locale).matches}</Text>
@@ -629,73 +639,39 @@ export function MemberFormScreen() {
                             </View>
                             {error === labels.genderRequired ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{labels.genderRequired}</Text> : null}
                         </View>
-                        <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.dates}</Text>
-                        <View style={styles.field}>
-                            <Text
-                                style={[
-                                    styles.label,
-                                    { color: palette.secondaryText },
-                                ]}
-                            >
-                                {labels.birthday}
-                            </Text>
-                            <TextInput
-                                accessibilityLabel={`${labels.birthday}, ${labels.dateHint}`}
-                                editable={state !== "saving"}
-                                keyboardType="numbers-and-punctuation"
-                                maxLength={10}
-                                onChangeText={setBirthday}
-                                placeholder={labels.dateHint}
-                                placeholderTextColor={palette.secondaryText}
-                                style={[styles.input, { backgroundColor: palette.surface, borderColor: palette.line, color: palette.text }]}
-                                value={birthday}
-                            />
-                            <NativeDateTimeField
-                                accessibilityLabel={labels.birthday}
-                                accentColor={palette.accent}
-                                backgroundColor={palette.surface}
-                                borderColor={palette.line}
-                                disabled={state === "saving"}
-                                maximumDate={new Date()}
-                                mode="date"
-                                onChange={setBirthday}
-                                textColor={palette.text}
-                                value={birthday || "2000-01-01"}
-                            />
+                        <View style={[styles.sectionDivider, { borderTopColor: palette.line }]}>
+                            <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.dates}</Text>
+                            <Text style={[styles.sectionHint, { color: palette.secondaryText }]}>{labels.optionalDate}</Text>
                         </View>
-                        <View style={styles.field}>
-                            <Text style={[styles.label, { color: palette.secondaryText }]}>{labels.membershipDate}</Text>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44 }}>
-                                <Text style={{ color: palette.text, flex: 1 }}>{labels.membershipDateKnown}</Text>
-                                <Switch accessibilityLabel={labels.membershipDateKnown} disabled={state === "saving"} value={Boolean(membershipJoinedAt)} onValueChange={(known) => setMembershipJoinedAt(known ? localDateValue(new Date()) : "")} />
-                            </View>
-                            {membershipJoinedAt ? <>
-                                <TextInput
-                                    accessibilityLabel={`${labels.membershipDate}, ${labels.dateHint}`}
-                                    editable={state !== "saving"}
-                                    keyboardType="numbers-and-punctuation"
-                                    maxLength={10}
-                                    onChangeText={setMembershipJoinedAt}
-                                    placeholder={labels.dateHint}
-                                    placeholderTextColor={palette.secondaryText}
-                                    style={[styles.input, { backgroundColor: palette.surface, borderColor: palette.line, color: palette.text }]}
-                                    value={membershipJoinedAt}
-                                />
+                        <View style={[styles.fieldRow, desktop && styles.fieldRowDesktop]}>
+                            {[
+                                { label: labels.birthday, value: birthday, change: setBirthday, error: labels.invalidBirthday },
+                                { label: labels.membershipDate, value: membershipJoinedAt, change: setMembershipJoinedAt, error: labels.invalidMembershipDate },
+                            ].map((date) => <View key={date.label} style={styles.dateField}>
+                                <View style={styles.dateLabelRow}>
+                                    <Text style={[styles.label, { color: palette.text }]}>{date.label}</Text>
+                                    {date.value ? <Pressable accessibilityRole="button" accessibilityLabel={`${labels.clearDate}: ${date.label}`} disabled={state === "saving"} onPress={() => date.change("")} style={styles.clearDate}>
+                                        <Text style={{ color: palette.accent, fontSize: 14 }}>{labels.clearDate}</Text>
+                                    </Pressable> : null}
+                                </View>
                                 <NativeDateTimeField
-                                accessibilityLabel={labels.membershipDate}
-                                accentColor={palette.accent}
-                                backgroundColor={palette.surface}
-                                borderColor={palette.line}
-                                disabled={state === "saving"}
-                                maximumDate={new Date()}
-                                mode="date"
-                                onChange={setMembershipJoinedAt}
-                                textColor={palette.text}
-                                value={membershipJoinedAt}
+                                    accessibilityLabel={date.label}
+                                    allowOutOfRange
+                                    accentColor={palette.accent}
+                                    backgroundColor={palette.surface}
+                                    borderColor={error === date.error ? palette.danger : palette.line}
+                                    disabled={state === "saving"}
+                                    maximumDate={new Date()}
+                                    mode="date"
+                                    onChange={date.change}
+                                    placeholder={labels.chooseDate}
+                                    textColor={palette.text}
+                                    value={date.value}
                                 />
-                            </> : null}
+                                {error === date.error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{date.error}</Text> : null}
+                            </View>)}
                         </View>
-                        <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.contact}</Text>
+                        <Text accessibilityRole="header" style={[styles.section, styles.sectionDivider, { color: palette.text, borderTopColor: palette.line }]}>{labels.contact}</Text>
                         <Field
                             label={labels.phone}
                             value={phone}
@@ -703,7 +679,7 @@ export function MemberFormScreen() {
                                 setPhone(formatPhoneNumber(value))
                             }
                             palette={palette}
-                            keyboardType="number-pad"
+                            keyboardType="phone-pad"
                             maxLength={14}
                             textContentType="telephoneNumber"
                         />
@@ -877,11 +853,11 @@ export function MemberFormScreen() {
                             <Pressable
                                 accessibilityRole="button"
                                 disabled={state === "saving"}
-                                onPress={() =>
+                                onPress={() => guard.confirmLeave(() =>
                                     router.push(
                                         `/manage/member/${encodeURIComponent(member.id)}/delete` as never,
-                                    )
-                                }
+                                    ),
+                                )}
                                 style={({ pressed }) => [
                                     styles.deleteMember,
                                     { borderColor: palette.danger },
@@ -899,10 +875,6 @@ export function MemberFormScreen() {
                                 </Text>
                             </Pressable>
                         ) : null}
-                        <View style={styles.footerActions}>
-                            <Pressable accessibilityRole="button" disabled={state === "saving"} onPress={() => void save()} style={[styles.footerSave, { backgroundColor: palette.accent }, state === "saving" && styles.disabled]}><Text style={styles.footerSaveText}>{state === "saving" ? "…" : labels.save}</Text></Pressable>
-                            <Pressable accessibilityRole="button" disabled={state === "saving"} onPress={() => guard.confirmLeave(leave)} style={styles.footerCancel}><Text style={{ color: palette.accent }}>{labels.cancel}</Text></Pressable>
-                        </View>
                     </View>
                 </View>
             </ScrollView>
@@ -948,6 +920,7 @@ function Field({
     palette: ReturnType<typeof useAppearance>["palette"];
     multiline?: boolean;
 } & ComponentProps<typeof TextInput>) {
+    const [focused, setFocused] = useState(false);
     return (
         <View style={styles.field}>
             <Text style={[styles.label, { color: palette.secondaryText }]}>
@@ -958,13 +931,16 @@ function Field({
                 accessibilityLabel={label}
                 {...props}
                 multiline={multiline}
+                aria-invalid={Boolean(errorText)}
+                onFocus={(event) => { setFocused(true); props.onFocus?.(event); }}
+                onBlur={(event) => { setFocused(false); props.onBlur?.(event); }}
                 placeholderTextColor={palette.secondaryText}
                 style={[
                     styles.input,
                     {
                         color: palette.text,
                         backgroundColor: palette.surface,
-                        borderColor: palette.line,
+                        borderColor: errorText ? palette.danger : focused ? palette.accent : palette.line,
                     },
                     multiline && styles.multiline,
                 ]}
@@ -1016,17 +992,30 @@ const styles = StyleSheet.create({
         alignItems: "center",
         flexDirection: "row",
         justifyContent: "space-between",
-        paddingBottom: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
     },
-    title: { fontSize: 20, fontWeight: "800" },
+    headerMobile: { flexWrap: "wrap", rowGap: 0 },
+    titleMobile: { flexBasis: "100%", flexGrow: 0, paddingBottom: 4 },
+    headerAction: { minHeight: 44, minWidth: 64, alignItems: "center", justifyContent: "center" },
+    title: { flex: 1, textAlign: "center", fontSize: 20, fontWeight: "800" },
     cancel: { fontSize: 16 },
     save: { fontSize: 16, fontWeight: "700" },
     disabled: { opacity: 0.5 },
-    field: { gap: 7 },
+    field: { gap: 7, flex: 1, minWidth: 0 },
+    fieldRow: { gap: 16 },
+    fieldRowDesktop: { flexDirection: "row", alignItems: "flex-start" },
+    dateField: { flex: 1, minWidth: 0, gap: 7 },
+    dateLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44, gap: 8 },
+    clearDate: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
+    sectionDivider: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 22, marginTop: 8, gap: 5 },
+    sectionHint: { fontSize: 14, lineHeight: 20 },
     label: { fontSize: 14, fontWeight: "600" },
     input: {
-        borderRadius: 14,
-        borderWidth: StyleSheet.hairlineWidth,
+        borderRadius: 10,
+        borderWidth: 1,
         fontSize: 17,
         fontVariant: ["tabular-nums"],
         minHeight: 50,
@@ -1035,10 +1024,6 @@ const styles = StyleSheet.create({
     },
     multiline: { minHeight: 92, textAlignVertical: "top" },
     section: { fontSize: 20, fontWeight: "800", marginTop: 8 },
-    footerActions: { gap: 8, marginTop: 18 },
-    footerSave: { minHeight: 52, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-    footerSaveText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
-    footerCancel: { minHeight: 48, alignItems: "center", justifyContent: "center" },
     switchCard: {
         borderRadius: 14,
         borderWidth: StyleSheet.hairlineWidth,
@@ -1075,7 +1060,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 10,
     },
-    error: { fontSize: 15, lineHeight: 21, textAlign: "center" },
+    error: { fontSize: 15, lineHeight: 21, textAlign: "center", paddingHorizontal: 18, paddingVertical: 10 },
     link: {
         fontSize: 16,
         fontWeight: "700",

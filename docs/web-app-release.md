@@ -1,3 +1,13 @@
+## Management refinements (2026-10-06, version 1.8.1)
+
+Group assignments use neutral rows with checked controls, membership language and a stable draft roster: unchecking someone keeps them available through search and tab changes. Group management creates and lists membership groups only; care type controls are removed and care imports rejected explicitly. A read-only live preflight found zero care groups, so no records were deleted. Row disclosure arrows are removed throughout the directory.
+
+The member editor has clearer field groups, paired desktop name/date inputs, focus/error styling, single clearable date controls, and persistent Save/Cancel actions. Unknown dates stay empty; future typed dates fail Save validation. Duplicate date fields, the date-known switch and duplicate footer actions are removed. Dirty navigation and deletion guards, permissions and existing mutation contracts remain.
+
+Used frontend-design and web-design-guidelines skills. Validation: Node 24 `pnpm verify` (308 main + 1 visitation + 13 groups, no skips), `pnpm build:web`, targeted group browser checks at 390px/light and 1440px/dark, and editor checks at 390px/light, 1440px/dark and 320px/Ukrainian/large text. Synthetic backends cover complete paged assignment saves, uncheck/recheck, date clearing, future-date validation, failed-save draft retention/retry, persistent actions and zero unexpected writes, browser errors, overflow or notification effects. Screenshots reviewed; narrow header adjusted after review. No migration or dependency changes; rollback to 1.8.0 remains compatible.
+
+Release follows feature → dev → main. Hosted Vercel Preview can require SSO; authenticated hosted Preview, physical native devices and live OAuth are not claimed. Feature/release PRs record CI, preview accessibility and production smoke evidence.
+
 ## Management workspace and paged group editing (2026-10-06, version 1.8.0)
 
 The management revamp follows [the specification](manage-experience-spec.md) and

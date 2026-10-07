@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import SegmentedControl from "@expo/ui/community/segmented-control";
 import { Text, TextInput } from "@/features/accessibility/app-text";
 import { Alert } from "@/features/platform/alert";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -44,9 +43,6 @@ const labels = {
   en: {
     name: "Group name",
     nameRequired: "Enter a group name.",
-    type: "Group type",
-    membership: "Membership",
-    responsibility: "Care",
     deacons: "Responsible deacons",
     deaconDetail: "Choose up to two. A deacon can lead one group only.",
     changeDeacons: "Choose deacons",
@@ -54,7 +50,9 @@ const labels = {
     deaconSearch: "Search deacons",
     members: "Group members",
     all: "All members",
-    selected: "Selected",
+    selected: "In this group",
+    memberCount: "members in group",
+    removed: "Will be removed",
     search: "Search members",
     none: "No members match this view.",
     noDeaconMatches: "No active deacons match.",
@@ -90,9 +88,6 @@ const labels = {
   uk: {
     name: "Назва групи",
     nameRequired: "Введіть назву групи.",
-    type: "Тип групи",
-    membership: "Членська",
-    responsibility: "Турботи",
     deacons: "Відповідальні диякони",
     deaconDetail:
       "Оберіть не більше двох. Диякон може відповідати лише за одну групу.",
@@ -101,7 +96,9 @@ const labels = {
     deaconSearch: "Пошук дияконів",
     members: "Учасники групи",
     all: "Усі учасники",
-    selected: "Вибрані",
+    selected: "У цій групі",
+    memberCount: "учасників у групі",
+    removed: "Буде вилучено",
     search: "Пошук учасників",
     none: "Учасників у цьому поданні не знайдено.",
     noDeaconMatches: "Активних дияконів не знайдено.",
@@ -165,7 +162,7 @@ export function GroupAssignmentScreen({
     [reload, setReload] = useState(0),
     [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState(""),
-    [kind, setKind] = useState<ManagedGroup["kind"]>("membership"),
+    [rosterMemberIds, setRosterMemberIds] = useState<string[]>([]),
     [selectedMembers, setSelectedMembers] = useState<string[]>([]),
     [selectedDeacons, setSelectedDeacons] = useState<string[]>([]);
   const [mode, setMode] = useState<"selected" | "all">(
@@ -208,9 +205,12 @@ export function GroupAssignmentScreen({
       .then((context) => {
         if (ticket !== generation.current || identityRef.current !== identity)
           return;
-        setLoaded({ identity, group: context.group });
+        setLoaded({
+          identity,
+          group: context.group?.kind === "membership" ? context.group : null,
+        });
         setName(context.group?.name ?? "");
-        setKind(context.group?.kind ?? "membership");
+        setRosterMemberIds(context.group?.memberIds ?? []);
         setSelectedMembers(context.group?.memberIds ?? []);
         setSelectedDeacons(context.group?.deaconIds ?? []);
         setMode(creating ? "all" : "selected");
@@ -231,31 +231,26 @@ export function GroupAssignmentScreen({
     const timer = setTimeout(() => setDeaconSearch(deaconQuery.trim()), 250);
     return () => clearTimeout(timer);
   }, [deaconQuery]);
-  const targetKind = group?.kind ?? kind;
+  const targetKind = "membership";
   const dirty = Boolean(
     ready &&
       (importPending ||
         name !== (group?.name ?? "") ||
-        targetKind !== (group?.kind ?? "membership") ||
         !equalIds(selectedMembers, group?.memberIds ?? []) ||
         !equalIds(selectedDeacons, group?.deaconIds ?? [])),
   );
   const guard = useUnsavedChanges(dirty);
-  // Keep the server roster fixed for this view/query. Removing a selected row
-  // hides it locally without shifting later offsets or refetching the roster.
-  const selectedRead = useRef<{ key: string; ids: string[] } | null>(null);
-  const [rosterRevision, setRosterRevision] = useState(0);
-  const selectedReadKey = `${identity}:${mode}:${committedQuery}:${ready}:${rosterRevision}`;
-  if (selectedRead.current?.key !== selectedReadKey)
-    selectedRead.current = { key: selectedReadKey, ids: [...selectedMembers] };
+  // Preserve everyone included in this draft, even after unchecking a row.
+  // Search and tab changes must not discard the option to restore an assignment.
+  const rosterKey = rosterMemberIds.join(",");
   const list = useManagementList(
-    `group-members:${identity}:${mode}:${committedQuery}:${rosterRevision}`,
+    `group-members:${identity}:${mode}:${committedQuery}:${rosterKey}`,
     (request) => managementRepository.loadCandidatesPage(request),
     {
       query: committedQuery,
       filters: {
         selectedOnly: mode === "selected",
-        selectedIds: mode === "selected" ? selectedRead.current.ids : [],
+        selectedIds: mode === "selected" ? rosterMemberIds : [],
       },
     },
     allowed && ready,
@@ -279,18 +274,8 @@ export function GroupAssignmentScreen({
     },
     allowed && ready && selectedDeacons.length > 0,
   );
-  const visibleMemberItems =
-    mode === "selected"
-      ? list.items.filter((member) => selectedMembers.includes(member.id))
-      : list.items;
-  const visibleTotal =
-    mode !== "selected"
-      ? list.total
-      : !committedQuery
-        ? selectedMembers.length
-        : list.total -
-          list.items.filter((member) => !selectedMembers.includes(member.id))
-            .length;
+  const visibleMemberItems = list.items;
+  const visibleTotal = list.total;
   function leave() {
     if (router.canGoBack()) router.back();
     else router.replace("/manage/groups");
@@ -316,6 +301,9 @@ export function GroupAssignmentScreen({
   function toggleMember(id: string) {
     if (busy || selectedDeacons.includes(id)) return;
     setError(null);
+    setRosterMemberIds((previous) =>
+      previous.includes(id) ? previous : [...previous, id],
+    );
     setSelectedMembers((previous) =>
       previous.includes(id)
         ? previous.filter((value) => value !== id)
@@ -517,25 +505,25 @@ export function GroupAssignmentScreen({
       isLeader = !deacon && selectedDeacons.includes(item.id);
     const assignmentId = deacon
       ? item.currentDeaconGroupId
-      : targetKind === "membership"
-        ? item.currentMembershipGroupId
-        : item.currentResponsibilityGroupId;
+      : item.currentMembershipGroupId;
     const assignmentName = deacon
       ? item.currentDeaconGroupName
-      : targetKind === "membership"
-        ? item.currentMembershipGroupName
-        : item.currentResponsibilityGroupName;
+      : item.currentMembershipGroupName;
     const status = isLeader
       ? copy.leader
-      : assignmentId === group?.id && assignmentId
-        ? copy.assigned
-        : assignmentName
-          ? `${copy.other} ${assignmentName}`
-          : copy.unassigned;
+      : !deacon && !checked && group?.memberIds.includes(item.id)
+        ? copy.removed
+        : assignmentId === group?.id && assignmentId
+          ? copy.assigned
+          : assignmentName
+            ? `${copy.other} ${assignmentName}`
+            : copy.unassigned;
     return (
       <Pressable
         accessibilityLabel={`${formatMemberName(item)}. ${status}`}
         accessibilityRole="checkbox"
+        aria-checked={checked}
+        aria-disabled={busy || isLeader}
         accessibilityState={{ checked, disabled: busy || isLeader }}
         disabled={busy || isLeader}
         onPress={() => (deacon ? toggleDeacon(item.id) : toggleMember(item.id))}
@@ -543,7 +531,7 @@ export function GroupAssignmentScreen({
           ui.row,
           {
             borderBottomColor: palette.line,
-            backgroundColor: checked ? palette.accentSoft : palette.background,
+            backgroundColor: palette.background,
           },
           isLeader && { opacity: 0.6 },
         ]}
@@ -708,11 +696,10 @@ export function GroupAssignmentScreen({
                         onPending={setImportPending}
                         onApply={(file, deaconIds, memberIds) => {
                           setName(file.name);
-                          setKind(file.kind);
+                          setRosterMemberIds(memberIds);
                           setSelectedDeacons(deaconIds);
                           setSelectedMembers(memberIds);
                           setMode("selected");
-                          setRosterRevision((revision) => revision + 1);
                           setError(null);
                         }}
                       />
@@ -750,29 +737,6 @@ export function GroupAssignmentScreen({
                 value={name}
               />
             </View>
-            {creating ? (
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: palette.secondaryText }]}>
-                  {copy.type}
-                </Text>
-                <SegmentedControl
-                  enabled={!busy}
-                  selectedIndex={kind === "membership" ? 0 : 1}
-                  onValueChange={(value) =>
-                    setKind(
-                      value === copy.responsibility
-                        ? "responsibility"
-                        : "membership",
-                    )
-                  }
-                  values={[copy.membership, copy.responsibility]}
-                />
-              </View>
-            ) : (
-              <Text style={[ui.detail, { color: palette.secondaryText }]}>
-                {copy[targetKind]}
-              </Text>
-            )}
             <View style={styles.field}>
               <View style={ui.heading}>
                 <Text
@@ -881,7 +845,7 @@ export function GroupAssignmentScreen({
               { color: palette.secondaryText },
             ]}
           >
-            {selectedMembers.length} {copy.selected.toLocaleLowerCase()} ·{" "}
+            {selectedMembers.length} {copy.memberCount} ·{" "}
             {dirty ? copy.dirty : copy.saved}
           </Text>
           <View style={[styles.actionButtons, !desktop && styles.phoneButtons]}>
