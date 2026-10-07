@@ -851,3 +851,34 @@ no literal Collapse text, disabled disclosure during edits, note confirmations,
 family/group navigation, overflow and zero notification effects. Feature/release
 PRs record browser evidence, CI with PostgreSQL, Preview and production results.
 Physical native and live OAuth checks are not claimed.
+
+## Assigned deacon member photos (1.8.9)
+
+Deacons can use Change photo and Remove photo in the existing editor for members
+in their assigned, active membership groups. Photo optimization, private originals
+and thumbnails, partial-save retry handling and English/Ukrainian controls remain
+shared between web and native. Administrative controls retain their previous roles.
+The repository checks live member scope before uploading.
+
+Manually applied reviewed `20261007010000_deacon_member_photos.sql` to verified
+project `lxrrjrezpdzyqkevgwyx` through an authenticated CLI SQL query, after a
+rolled-back rehearsal. Storage INSERT/DELETE permit assigned active deacons;
+UPDATE remains manager-only. Deacons may clean only unpublished originals and
+thumbnails. Metadata publication locks the member before checking scope and
+retains optimistic revisions, removed-member filtering and public audit wrappers.
+Private audit implementation execution remains revoked from authenticated users.
+Postdeployment smoke SQL rolled back publication/removal and confirmed outside-group
+denial and current-photo deletion protection. All 850 people remain; zero smoke
+objects persist. No migration-history reconciliation or `db push` was performed.
+Keep this additive backend change if reverting the frontend.
+
+Validation: pnpm verify passes (322 main, one visitation, 14 groups; two existing
+PostgreSQL concurrency tests skipped locally), and pnpm build:web passes. Security
+tests cover scope, malformed paths, buckets, revoked accounts, archived groups and
+members, conflict handling, audit events, immutable storage and pair cleanup.
+Synthetic authenticated Chromium checks pass at 390/1440px for deacons/pastors:
+select a JPEG, optimize/upload both renditions, publish and return to profile;
+notes confirmations, family/group navigation, overflow and zero notifications.
+Backend requests are intercepted in browser tests. Physical iPhone/Android and
+live OAuth are not claimed. Hosted Preview, CI and production evidence belong
+to the feature/release PRs.

@@ -541,9 +541,14 @@ export class SupabaseManagementRepository extends SupabaseManagementReads {
         mimeType?: "image/jpeg" | "image/png" | "image/webp",
         thumbnail?: ArrayBuffer,
     ) {
-        if (!canManageDirectory(activeAccount()))
-            throw new Error("Not authorized.");
+        const account = activeAccount();
+        if (!canOpenMemberEditor(account)) throw new Error("Not authorized.");
         const client = requireSupabase();
+        if (!canManageDirectory(account)) {
+            const access = await client.rpc("can_edit_group_member", { p_person_id: person.id });
+            if (access.error) throw new Error(access.error.message);
+            if (access.data !== true) throw new Error("Not authorized.");
+        }
         let path: string | null = null;
         if (bytes) {
             if (

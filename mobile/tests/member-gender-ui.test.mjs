@@ -173,11 +173,11 @@ test('creating a family relative distinguishes existing matches by patronymic',a
  assert.ok(names.includes('Match One Person'));assert.ok(names.includes('Match Two Person'));
 });
 
-test('deacon editing hides administrative and photo controls and returns to the profile', async () => {
+test('deacon editing hides administrative controls and returns to the profile', async () => {
   const ui = formFixture({ deacon: true, existing: { id: 'member', name: 'Anna Member', first_name: 'Anna', last_name: 'Member', gender: 'female', revision: 1 } });
   await ui.load();
   const nodes = ui.render();
-  for (const label of ['Departure history', 'Mark as left membership', 'Delete member', 'Change photo']) assert.equal(ui.button(nodes, label), undefined);
+  for (const label of ['Departure history', 'Mark as left membership', 'Delete member']) assert.equal(ui.button(nodes, label), undefined);
   assert.ok(ui.button(nodes, 'Edit family'));
   nodes.find(node => node.props?.accessibilityLabel === 'First name').props.onChangeText('Updated');
   await ui.button(ui.render(), 'Save member').props.onPress();
@@ -229,4 +229,16 @@ test('member dates use one empty optional control each and clear saved values ex
   ui.button(ui.render(), 'Save member').props.onPress(); await new Promise(setImmediate);
   assert.equal(ui.saves[0].birthday, null);
   assert.equal(ui.saves[0].membershipJoinedAt, null);
+});
+
+test('deacon member editor offers photo replacement and removal without management controls', async () => {
+  const fixture = formFixture({ deacon: true, existing: { id: 'member', name: 'Anna Member', gender: 'female', revision: 1, photoPath: 'member/photo.jpg', photo: { uri: 'https://example.invalid/photo.jpg' } } });
+  await fixture.load();
+  const nodes = fixture.render();
+  assert.ok(fixture.button(nodes, 'Change photo'));
+  assert.ok(fixture.button(nodes, 'Remove photo'));
+  fixture.button(nodes, 'Remove photo').props.onPress();
+  await fixture.button(fixture.render(), 'Save member').props.onPress();
+  await new Promise(setImmediate);
+  assert.equal(fixture.photos.length, 1);
 });

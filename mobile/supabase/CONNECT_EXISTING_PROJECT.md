@@ -123,3 +123,13 @@ anonymous read denial and preservation of the family audit wrapper. All 850
 people, 42 family edges, two existing notes and 1,053 audit events remained
 unchanged; zero smoke notes persisted. Retain the additive backend on frontend
 rollback. PR #157 remains open and unmerged at the user's request.
+
+## Deacon member photos (2026-10-07)
+
+Reviewed and manually applied `20261007010000_deacon_member_photos.sql` to verified
+project `lxrrjrezpdzyqkevgwyx`. A rolled-back rehearsal and postdeployment SQL smoke
+confirmed assigned-deacon publication/removal, outside-group denial, current-photo
+storage deletion protection and unpublished-pair cleanup. All 850 people remain;
+zero smoke objects persist. Existing audited RPC wrappers and manager access are
+preserved. Retain the additive migration if reverting the frontend. CLI history
+remains unreconciled; do not use `db push`.
