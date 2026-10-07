@@ -1,7 +1,6 @@
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlatList, Pressable, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Text } from "@/features/accessibility/app-text";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -170,12 +169,6 @@ export function AccountsManagementScreen() {
               </ManagementLink>
               <LastSeen value={item.lastSeenAt} />
             </View>
-            <Ionicons
-              accessibilityElementsHidden
-              color={palette.secondaryText}
-              name="chevron-forward"
-              size={20}
-            />
           </View>
         )}
         ListEmptyComponent={

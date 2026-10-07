@@ -202,12 +202,6 @@ export function ManageScreen() {
                         {task.count}
                       </Text>
                     ) : null}
-                    <Ionicons
-                      accessibilityElementsHidden
-                      color={palette.secondaryText}
-                      name="chevron-forward"
-                      size={19}
-                    />
                   </View>
                 </ManagementLink>
               ))}
@@ -254,12 +248,6 @@ export function ManageScreen() {
                           {account.email}
                         </Text>
                       </View>
-                      <Ionicons
-                        accessibilityElementsHidden
-                        color={palette.accent}
-                        name="chevron-forward"
-                        size={19}
-                      />
                     </View>
                   </ManagementLink>
                 ))}
@@ -310,12 +298,6 @@ export function ManageScreen() {
                     >
                       {tool.label}
                     </Text>
-                    <Ionicons
-                      accessibilityElementsHidden
-                      color={palette.secondaryText}
-                      name="chevron-forward"
-                      size={18}
-                    />
                   </View>
                 </ManagementLink>
               ))}

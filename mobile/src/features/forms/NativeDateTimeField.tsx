@@ -15,6 +15,9 @@ type Props = {
   onChange: (value: string) => void;
   textColor: ColorValue;
   value: string;
+  placeholder?: string;
+  /** Let the form validate typed dates against maximumDate when saving. */
+  allowOutOfRange?: boolean;
 };
 
 function pickerDate(value: string, mode: Props["mode"]) {
@@ -33,14 +36,14 @@ function serializePickerDate(date: Date, mode: Props["mode"]) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-export function NativeDateTimeField({ accessibilityLabel, accentColor, backgroundColor, borderColor, disabled, maximumDate, mode, onChange, textColor, value }: Props) {
+export function NativeDateTimeField({ accessibilityLabel, accentColor, backgroundColor, borderColor, disabled, maximumDate, mode, onChange, textColor, value, placeholder }: Props) {
   const [open, setOpen] = useState(false);
   const date = pickerDate(value, mode);
   const picker = <DateTimePicker accentColor={accentColor as string} disabled={disabled} display={Platform.OS === "ios" ? "compact" : "default"} is24Hour maximumDate={maximumDate} mode={mode} onDismiss={() => setOpen(false)} onValueChange={(_, selected) => { onChange(serializePickerDate(selected, mode)); setOpen(false); }} style={Platform.OS === "ios" ? styles.iosPickerOverlay : undefined} value={date} />;
 
-  if (Platform.OS === "ios") return <View accessibilityLabel={accessibilityLabel} style={[styles.field, styles.iosField, { backgroundColor, borderColor }]}><Text accessibilityElementsHidden style={[styles.value, { color: textColor }]}>{mode === "date" ? date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : value}</Text>{picker}</View>;
-  if (Platform.OS === "android") return <><Pressable accessibilityLabel={accessibilityLabel} accessibilityRole="button" disabled={disabled} onPress={() => setOpen(true)} style={[styles.field, { backgroundColor, borderColor }]}><Text style={[styles.value, { color: textColor }]}>{value}</Text></Pressable>{open ? picker : null}</>;
-  return <TextInput accessibilityLabel={accessibilityLabel} editable={!disabled} keyboardType="numbers-and-punctuation" onChangeText={onChange} style={[styles.field, styles.value, { backgroundColor, borderColor, color: textColor }]} value={value} />;
+  if (Platform.OS === "ios") return <View accessibilityLabel={accessibilityLabel} style={[styles.field, styles.iosField, { backgroundColor, borderColor }]}><Text accessibilityElementsHidden style={[styles.value, { color: textColor }]}>{!value && placeholder ? placeholder : mode === "date" ? date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : value}</Text>{picker}</View>;
+  if (Platform.OS === "android") return <><Pressable accessibilityLabel={accessibilityLabel} accessibilityRole="button" disabled={disabled} onPress={() => setOpen(true)} style={[styles.field, { backgroundColor, borderColor }]}><Text style={[styles.value, { color: textColor }]}>{value || placeholder}</Text></Pressable>{open ? picker : null}</>;
+  return <TextInput placeholder={placeholder} accessibilityLabel={accessibilityLabel} editable={!disabled} keyboardType="numbers-and-punctuation" onChangeText={onChange} style={[styles.field, styles.value, { backgroundColor, borderColor, color: textColor }]} value={value} />;
 }
 
 const styles = StyleSheet.create({

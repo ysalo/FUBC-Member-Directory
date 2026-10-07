@@ -1,5 +1,4 @@
 import { Text } from "@/features/accessibility/app-text";
-import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, View, type ImageSourcePropType } from "react-native";
 
@@ -47,7 +46,7 @@ export function DeaconRow({ personId, name, avatar, card = false, detail, locale
         </View>
         {detail ? <Text style={[styles.detail, { color: palette.secondaryText }]}>{detail}</Text> : null}
       </View>
-      <Ionicons accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={18} />
+
     </Pressable>
   );
 }
