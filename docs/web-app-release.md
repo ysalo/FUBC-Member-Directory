@@ -741,3 +741,13 @@ FUBC_BROWSER_OUT=/tmp/menu-evidence node tests/menu-browser.mjs
 The harness intercepts Supabase, blocks unknown writes, checks 320/390/1023/1024/1440px in both themes with Ukrainian large text, and exercises radio keyboard behavior, persistence/reload, About version/focus/dismissal, account deletion guards, profile navigation, installation help and Manage tool navigation. Remote sign-out failure is tested against the installed Supabase library's behavior: local session is removed and sign-in appears. No real account mutations or notification calls occur.
 
 `build:web` clears Metro cache so Expo Constants uses current release configuration. Preview may require Vercel SSO; unauthenticated Preview access is not validation of the application. Physical native devices and live OAuth remain unverified. No backend migrations are required.
+
+## Menu corrections 1.8.5
+
+The overall Menu layout is retained. Preference choices return to segmented controls with a filled selection, system/sun/moon appearance icons, and Small/Standard/Large Aa previews. Browser radios retain arrow-key selection and visible focus; shared native controls retain radio accessibility semantics. Full names remain whole; segments wrap rather than splitting labels in Ukrainian and at large text sizes.
+
+Mobile browser About returns to the shared full-screen modal used before 1.8.4. Desktop keeps its bounded dialog when supported, with the full-screen modal as a fallback. With showModal unavailable, 1.8.4 threw and unmounted Menu; this compatibility failure was reproduced, although the user's exact device failure was not confirmed. Native page-sheet behavior is retained; physical native testing is not claimed.
+
+Browser acceptance now uses touch below 1024px, checks filled selections and increasing text-size previews, and verifies About opening, focus, dismissal and reopening. Use FUBC_BROWSER_ENGINE=webkit for the Safari engine, or FUBC_DISABLE_DIALOG=1 to exercise unsupported-dialog About at 390/1440px. The latter disables the API only for About; unrelated confirmations keep their own dialog support. Synthetic responses include CORS headers for WebKit; pending read requests settle before full-document navigation. Unknown writes remain blocked. No backend migration or notification change is required; rollback to 1.8.4 is compatible.
+
+Validation: pnpm verify passed 325 tests without skips; web export and iOS bundle export passed. Ten Chromium and ten WebKit responsive/theme cases plus four unsupported-dialog About fallback cases passed locally. Protected feature → dev → main release checks and production results are recorded in the PRs.
