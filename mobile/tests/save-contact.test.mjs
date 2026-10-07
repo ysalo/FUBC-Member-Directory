@@ -27,8 +27,10 @@ async function load(file) {
 }
 const record=await load('contact-record.ts'); imports.set('./contact-record',record.url);
 const copy=await load('member-copy.ts'); imports.set('./member-copy',copy.url);
+const nativeSave=await load('save-contact.ts'); imports.set('./save-contact',nativeSave.url);
 const {SaveContactButton}= (await load('SaveContactButton.tsx')).exports;
-const web=(await load('SaveContactButton.web.tsx')).exports;
+const vcard=await load('contact-vcard.ts'); imports.set('./contact-vcard',vcard.url);
+const web=(await load('save-contact.web.ts')).exports;
 const profile={first_name:' Іван ',last_name:' Сало ',patronymic:' Іванович ',phone:' +12065550143 ',email:' member@example.org ',address:' 123 Main St\nSeattle, WA ',leadershipMinistry:'deacon'};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
@@ -59,6 +61,49 @@ for (const locale of ['en','uk']) {
     assert.equal(fixture.alerts.length,1);
   });
 }
-test('browser adapter does not offer a native contact action',()=>{
-  assert.equal(web.SaveContactButton({profile,name:'display'}),null);
+
+test('vCard escapes injected properties and preserves Unicode, multiline addresses and full names',()=>{
+  const card=vcard.exports.memberVCard({...profile,first_name:'Іван;Тест',address:'123 Main St\nSeattle, WA',phone:'+123\nNOTE:injected'},'Іван;Тест Сало');
+  assert.ok(card.startsWith('BEGIN:VCARD\r\nVERSION:3.0\r\n'));
+  assert.ok(card.includes('FN:Іван\\;Тест Сало\r\n'));
+  assert.ok(card.includes('N:Сало;Іван\\;Тест;Іванович;;\r\n'));
+  assert.ok(card.includes('TEL;TYPE=CELL:+123\\nNOTE:injected\r\n'));
+  assert.ok(card.includes('ADR;TYPE=HOME:;;123 Main St\\nSeattle\\, WA;;;;\r\n'));
+  const long=vcard.exports.memberVCard({...profile,address:'Ї'.repeat(150)},'Ї'.repeat(100));
+  for(const line of long.split('\r\n'))assert.ok(Buffer.byteLength(line)<=75);
+  assert.ok(long.replace(/\r\n /g,'').includes('FN:'+'Ї'.repeat(100)));
+  assert.ok(!vcard.exports.memberVCard({...profile,leadershipMinistry:null},'Name').includes('EMAIL'));
+  assert.equal(vcard.exports.contactFileName('../Іван\n?'),'..Іван.vcf');
+});
+
+test('browser shares a real contact file; cancellation causes no download',async()=>{
+  let shared; const files=[];
+  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{canShare:data=>{files.push(data.files[0]);return true;},share:async data=>{shared=data.files[0];}}});
+  await web.saveMemberContact(profile,'Іван Сало');
+  assert.equal(shared.type,'text/vcard');assert.equal(shared.name,'Іван Сало.vcf');
+  assert.equal(await shared.text(),vcard.exports.memberVCard(profile,'Іван Сало'));
+  navigator.share=async()=>{throw new DOMException('Canceled','AbortError');};
+  await web.saveMemberContact(profile,'Іван Сало');
+  assert.equal(files.length,2);
+});
+
+test('browser downloads when file sharing is unavailable or rejected and releases URLs',async()=>{
+  const originalURL=globalThis.URL,originalTimer=globalThis.setTimeout;
+  const downloads=[],revoked=[],timers=[];
+  globalThis.URL={createObjectURL:file=>{downloads.push(file);return 'blob:contact';},revokeObjectURL:url=>revoked.push(url)};
+  globalThis.setTimeout=(callback,delay)=>{timers.push([callback,delay]);};
+  const links=[];
+  globalThis.document={body:{appendChild:link=>{link.attached=true;}},createElement:()=>{const link={click(){assert.ok(this.attached);this.clicked=true;},remove(){this.removed=true;}};links.push(link);return link;}};
+  try{
+    Object.defineProperty(globalThis,'navigator',{configurable:true,value:{}});
+    await web.saveMemberContact(profile,'Іван Сало');
+    navigator.canShare=()=>true;navigator.share=async()=>{throw new Error('File unsupported');};
+    await web.saveMemberContact(profile,'Іван Сало');
+    assert.equal(downloads.length,2);
+    for(const link of links){assert.equal(link.download,'Іван Сало.vcf');assert.equal(link.href,'blob:contact');assert.ok(link.clicked&&link.removed);}
+    assert.equal(await downloads[0].text(),vcard.exports.memberVCard(profile,'Іван Сало'));
+    assert.deepEqual(revoked,[]);
+    for(const [callback,delay] of timers){assert.equal(delay,60000);callback();}
+    assert.deepEqual(revoked,['blob:contact','blob:contact']);
+  }finally{globalThis.URL=originalURL;globalThis.setTimeout=originalTimer;delete globalThis.document;}
 });
