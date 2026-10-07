@@ -847,7 +847,7 @@ function PersonRow({
                 />
             </View>
             {member.hasDeaconNote && <View accessibilityLabel={locale === "uk" ? "Має нотатку дияконів" : "Has deacon notes"} accessibilityRole="image" testID="deacon-note-indicator" style={{ marginLeft: 12, width: 24, alignItems: "center", justifyContent: "center" }}>
-                <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="heart-outline" size={18} color={palette.accent} />
+                <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="clipboard-outline" size={18} color={palette.accent} />
             </View>}
             {member.hasNote && <View accessibilityLabel={locale === "uk" ? "Має нотатку" : "Has a note"} accessibilityRole="image" testID="member-note-indicator" style={{ marginLeft: 12, width: 24, alignItems: "center", justifyContent: "center" }}>
                 <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={18} color={palette.accent} />
