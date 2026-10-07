@@ -47,26 +47,18 @@ try {for(const width of [390,1440])for(const leadership of ['deacon','pastor']) 
   await route.fulfill({status,headers,contentType:'application/json',body:JSON.stringify(body)});
  });
  await page.goto(`${site}/members/${member}`);await page.getByText('Anna Member',{exact:true}).first().waitFor();
- const saveContact=page.getByRole('button',{name:'Save to Contacts',exact:true});
- await saveContact.waitFor();
- await page.evaluate(()=>{Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'canShare',{configurable:true,value:undefined});});
- const downloadPromise=page.waitForEvent('download');await saveContact.click();const download=await downloadPromise;
- assert.equal(download.suggestedFilename(),'Anna Member.vcf');
- const stream=await download.createReadStream();let card='';for await(const chunk of stream)card+=chunk.toString();
- assert.ok(card.includes('FN:Anna Member\r\n'));assert.ok(card.includes('N:Member;Anna;;;\r\n'));assert.ok(card.includes('ADR;TYPE=HOME:;;Seattle;;;;\r\n'));assert.ok(!card.includes('Prayer'));
- await page.evaluate(()=>{window.__contactShares=[];Object.defineProperty(navigator,'canShare',{configurable:true,value:data=>data.files[0].type==='text/vcard'});Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{const file=data.files[0];window.__contactShares.push({name:file.name,body:await file.text()});}});});
- await saveContact.click();await page.waitForFunction(()=>window.__contactShares.length===1);
- assert.equal((await page.evaluate(()=>window.__contactShares[0])).body,card);
- await page.evaluate(()=>{navigator.share=async()=>{throw new DOMException('Canceled','AbortError');};window.__canceledDownloads=0;const original=URL.createObjectURL;URL.createObjectURL=(...args)=>{window.__canceledDownloads++;return original(...args);};});
- await saveContact.click();await page.waitForTimeout(100);
- assert.equal(await page.evaluate(()=>window.__canceledDownloads),0);assert.equal(await page.getByRole('alertdialog').count(),0);
+ assert.equal(await page.getByRole('button',{name:'Save to Contacts',exact:true}).count(),0);
 
  if(leadership==='deacon') {
   const toggle=page.getByTestId('deacon-notes-toggle');await toggle.waitFor();
   assert.ok(await toggle.evaluate((el)=>{const headings=[...document.querySelectorAll('[role=heading]')];return headings.every(h=>!(el.compareDocumentPosition(h)&Node.DOCUMENT_POSITION_FOLLOWING));}),'deacon notes are below profile sections');
+  assert.equal(await toggle.getAttribute('aria-expanded'),'false');
   await toggle.click();const section=page.getByTestId('deacon-notes-section');assert.equal(await section.getByText('Only for this group’s deacons. Prayer needs and care reminders.',{exact:true}).count(),0);await section.getByText('Prayer for recovery',{exact:true}).waitFor();
+  const expandedToggle=page.getByTestId('deacon-notes-toggle');assert.equal(await expandedToggle.getAttribute('aria-expanded'),'true');assert.equal(await section.getByText('Collapse',{exact:true}).count(),0);
+  await expandedToggle.click();assert.equal(await page.getByTestId('deacon-notes-section').count(),0);assert.equal(await page.getByTestId('deacon-notes-toggle').getAttribute('aria-expanded'),'false');
+  await page.getByTestId('deacon-notes-toggle').click();await section.getByText('Prayer for recovery',{exact:true}).waitFor();
   await page.screenshot({path:`${out}/member-${width}.png`,fullPage:true});
-  await section.getByRole('button',{name:'Edit note',exact:true}).click();await page.getByRole('textbox',{name:'Deacon note',exact:true}).fill('Prayer and follow up');
+  await section.getByRole('button',{name:'Edit note',exact:true}).click();await page.getByRole('textbox',{name:'Deacon note',exact:true}).fill('Prayer and follow up');assert.equal(await page.getByTestId('deacon-notes-toggle').isDisabled(),true);
   await section.getByRole('button',{name:'Save note',exact:true}).click();await section.getByText('Prayer and follow up',{exact:true}).waitFor();
   await section.getByRole('button',{name:'Remove note',exact:true}).click();await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.ok(note);
   await section.getByRole('button',{name:'Remove note',exact:true}).click();await page.getByRole('button',{name:'Remove note',exact:true}).last().click();await section.getByRole('button',{name:'Add note',exact:true}).waitFor();

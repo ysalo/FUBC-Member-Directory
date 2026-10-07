@@ -107,18 +107,27 @@ export function MemberNote({ memberId, children, deaconOnly = false }: {
             <Text style={{ color: palette.text, fontSize: 14, fontWeight: "500" }}>{uk ? "Додати нотатку" : "Add note"}</Text>
         </Pressable>,
     );
-    if (deaconOnly && !expanded) return render(<Pressable testID="deacon-notes-toggle" accessibilityRole="button" accessibilityState={{ expanded: false }} onPress={() => setExpanded(true)} style={{ minHeight: 56, marginBottom: 20, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Ionicons accessibilityElementsHidden name="clipboard-outline" size={20} color={palette.accent} />
-        <Text style={{ flex: 1, color: palette.text, fontSize: 16, fontWeight: "600" }}>{uk ? "Нотатки дияконів" : "Deacon notes"}{note ? " •" : ""}</Text>
-        <Ionicons accessibilityElementsHidden name="chevron-down" size={18} color={palette.secondaryText} />
-    </Pressable>);
-    return render(<View testID={deaconOnly ? "deacon-notes-section" : "member-note-section"} style={{ marginBottom: 20, padding: 16, borderRadius: 12, backgroundColor: palette.surface, gap: 12 }}>
+    const disclosure = deaconOnly ? (
+        <Pressable testID="deacon-notes-toggle" accessibilityRole="button"
+            accessibilityLabel={uk ? "Нотатки дияконів" : "Deacon notes"}
+            accessibilityState={{ expanded, disabled: saving || editing }}
+            aria-expanded={expanded}
+            disabled={saving || editing} onPress={() => setExpanded(value => !value)}
+            style={{ minHeight: 56, width: "100%", flexDirection: "row", alignItems: "center", gap: 10, opacity: saving || editing ? 0.5 : 1 }}>
+            <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="clipboard-outline" size={20} color={palette.accent} />
+            <Text style={{ flex: 1, color: palette.text, fontSize: 16, fontWeight: "600" }}>{uk ? "Нотатки дияконів" : "Deacon notes"}{note ? " •" : ""}</Text>
+            <Ionicons accessibilityElementsHidden importantForAccessibility="no" name={expanded ? "chevron-up" : "chevron-down"} size={18} color={palette.secondaryText} />
+        </Pressable>
+    ) : null;
+    if (deaconOnly && !expanded) return render(
+        <View style={{ marginBottom: 20, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface }}>{disclosure}</View>,
+    );
+    return render(<View testID={deaconOnly ? "deacon-notes-section" : "member-note-section"} style={{ marginBottom: 20, padding: 16, paddingTop: deaconOnly ? 0 : 16, borderRadius: 12, backgroundColor: palette.surface, gap: 12 }}>
         <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Ionicons accessibilityElementsHidden importantForAccessibility="no" name={deaconOnly ? "clipboard-outline" : "document-text-outline"} size={18} color={palette.accent} />
-                <Text accessibilityRole="header" style={{ color: palette.secondaryText, fontSize: 14, fontWeight: "600" }}>{deaconOnly ? (uk ? "Нотатки дияконів" : "Deacon notes") : (uk ? "Нотатка" : "Note")}</Text>
-            </View>
-            {deaconOnly && !editing && <Pressable accessibilityRole="button" accessibilityState={{ expanded: true }} disabled={saving} onPress={() => setExpanded(false)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: palette.secondaryText }}>{uk ? "Згорнути" : "Collapse"}</Text></Pressable>}
+            {deaconOnly ? disclosure : <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={18} color={palette.accent} />
+                <Text accessibilityRole="header" style={{ color: palette.secondaryText, fontSize: 14, fontWeight: "600" }}>{uk ? "Нотатка" : "Note"}</Text>
+            </View>}
             {note && editable && !editing && <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginLeft: "auto" }}>
                 {saving && <ActivityIndicator color={palette.accent} />}
                 <Pressable accessibilityRole="button" accessibilityLabel={uk ? "Редагувати нотатку" : "Edit note"} disabled={saving} onPress={openEditor} style={{ minHeight: 44, justifyContent: "center" }}>
