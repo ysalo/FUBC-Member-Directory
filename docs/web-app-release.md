@@ -769,3 +769,33 @@ Deacons can open Edit family from the member editor for members in their group. 
 Backend readiness: on 2026-10-07, with explicit user authorization, manually applied `mobile/supabase/migrations/20261007000000_deacon_care_notes_and_family.sql` to the documented FUBC Member Directory project after a rolled-back live rehearsal. Post-deployment authenticated smoke checks verified deacon note access, pastor denial, stale/delete-recreate conflicts, group scope and reciprocal audited family edits. All test changes were rolled back; 850 people, 42 family edges, two existing notes and 1,053 audit events remained unchanged, with zero new care notes persisted. PR #157 remains unmerged at the user’s request. Do not use `db push`; migration history is unreconciled. The additive table may remain during frontend rollback; older clients continue using existing notes/family contracts. Restrict family authorization again if rolling back permissions is required. Do not drop the notes table after users have entered care notes.
 
 Validation: `pnpm verify` passed 332 tests (two optional external PostgreSQL concurrency tests skipped); `pnpm build:web` passed with synthetic public configuration. The new PGlite permission tests additionally verify pastor/admin denial, shared editing by assigned deacons, revocation/group movement/archival, revision conflicts including delete/recreate, validation and audited reciprocal family edits. Four Chromium cases at 390/1440px passed for deacons and pastors, including save, cancel/delete confirmation, family selection/save, roster presence/filter, no horizontal overflow and zero notification calls. Screenshots are in `docs/deacon-care-images/`. Browser checks use fully intercepted synthetic accounts/data, not live OAuth or physical native devices.
+
+## Native Save to Contacts (stacked on PR #157)
+
+Member profiles expose Save to Contacts on iPhone and Android. Expo SDK 57
+`Contact.presentCreateForm` opens the system form with full structured names
+(including patronymic), phone, and address; email follows the profile's existing
+leadership-only display rule. Legacy names remain intact. Care notes, family,
+birthdays, photos and membership details are not exported. The user owns Save
+or Cancel. Repeated taps are blocked while the form is open; presentation failures
+show a localized error and allow retry. English/Ukrainian labels wrap. The browser
+adapter renders nothing and imports no native contacts runtime.
+
+Adds expo-contacts 57.0.6 and its configuration plugin. No backend change.
+A new native binary is required for custom development/production builds;
+JavaScript alone cannot install the native module. Expo Go includes contacts,
+but must match SDK 57. The app does not request address-book read access or
+write directly to the contacts database; native forms handle user confirmation.
+The plugin supplies the iOS usage description and Android manifest permissions.
+Physical iPhone/Android checks must confirm populated fields, Save, Cancel,
+return to profile, and retry with an unavailable contact app before native release.
+
+Validation: pnpm verify passes (323 main, one visitation, 14 groups; two existing
+PostgreSQL concurrency tests skipped without a disposable server). Four new
+behavioral tests cover exported fields, privacy, legacy names, localized native
+handlers, cancel, rapid taps, failures/retry, and the empty browser adapter.
+Web build and iOS/Android bundle exports pass. Four synthetic authenticated
+browser cases pass at 390/1440px, including profile/group navigation, note
+confirmations and zero notification side effects, with no page errors or unexpected
+writes. CI/Preview results are recorded in the stacked PR. Native OS form behavior is not claimed
+as physically verified. Reverting this frontend is compatible with the backend.
