@@ -41,6 +41,10 @@ export type Database = {
       person_leadership_ministries: { Row: { person_id: string; leadership_ministry: Exclude<LeadershipMinistry, null> }; Relationships: [] };
     };
     Functions: {
+      management_summary: { Args: Record<string, never>; Returns: Json };
+      management_page: { Args: { p_resource: string; p_query?: string; p_filters?: Json; p_limit?: number; p_offset?: number }; Returns: Json };
+      management_group_context: { Args: { p_group_id?: string | null }; Returns: Json };
+      management_group_move_preview: { Args: { p_group_id: string | null; p_kind: string; p_member_ids: string[]; p_deacon_ids: string[] }; Returns: number };
       audit_history: { Args: { p_filters: Json; p_limit: number; p_offset: number }; Returns: Json };
       audit_action_details: { Args: { p_action_id: string; p_limit: number; p_offset: number }; Returns: Json };
       preview_audit_rollback: { Args: { p_action_id: string; p_limit: number; p_offset: number }; Returns: Json };

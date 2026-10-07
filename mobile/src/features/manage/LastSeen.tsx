@@ -33,7 +33,7 @@ export function LastSeen({ value }: { value?: string | null }) {
     year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
   }).format(new Date(value)) : "";
   return <>
-    <Pressable accessibilityRole={value ? "button" : undefined} accessibilityLabel={value ? `${words.label}: ${relative}. ${words.name}` : words.unknown} disabled={!value} onPress={() => setOpen(true)}>
+    <Pressable style={{ minHeight: value ? 44 : undefined, justifyContent: "center", alignSelf: "flex-start" }} accessibilityRole={value ? "button" : undefined} accessibilityLabel={value ? `${words.label}: ${relative}. ${words.name}` : words.unknown} disabled={!value} onPress={() => setOpen(true)}>
       <Text selectable style={{ color: palette.secondaryText, fontSize: 13 }}>{words.label}: {relative ?? words.unknown}</Text>
     </Pressable>
     {value ? <Modal animationType="fade" onRequestClose={() => setOpen(false)} transparent visible={open}>
