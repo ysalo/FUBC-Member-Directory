@@ -35,7 +35,7 @@ test("the app-wide text size preference scales text, inputs, and native tab labe
             "utf8",
         ),
         readFile(new URL("../src/app/_layout.tsx", import.meta.url), "utf8"),
-        readFile(new URL("../src/app/menu.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../src/app/menu/index.tsx", import.meta.url), "utf8"),
     ]);
     assert.match(provider, /SecureStore\.setItemAsync/);
     assert.match(provider, /small: 0\.9, standard: 1, large: 1\.18/);
@@ -47,20 +47,15 @@ test("the app-wide text size preference scales text, inputs, and native tab labe
     assert.match(menu, /labels\.textSize/);
 });
 
-test("icon attribution is tucked behind an accessible About sheet", async () => {
-    const menu = await readFile(
-        new URL("../src/app/menu.tsx", import.meta.url),
-        "utf8",
-    );
-    assert.match(menu, /labels\.about/);
-    assert.match(await readFile(new URL("../src/features/menu/AboutDialog.tsx", import.meta.url), "utf8"), /presentationStyle="pageSheet"/);
-    assert.match(menu, /Constants\.expoConfig\?\.version/);
-    assert.match(menu, /version: "Version"/);
-    assert.match(menu, /version: "Версія"/);
-    assert.match(menu, /styles\.versionText[\s\S]*labels\.licenses/);
-    assert.doesNotMatch(menu, /1\.0\.0/);
-    assert.match(menu, /Ionicons — MIT License/);
-    assert.doesNotMatch(menu, /copy\.menu\.licenses/);
+test("About shares localized attribution between the browser dialog and native page", async () => {
+    const content = await readFile(new URL("../src/features/menu/AboutContent.tsx", import.meta.url), "utf8");
+    const copy = await readFile(new URL("../src/features/menu/menu-copy.ts", import.meta.url), "utf8");
+    assert.match(content, /Constants\.expoConfig\?\.version/);
+    assert.match(content, /labels\.licenses/);
+    assert.match(copy, /version: "Version"/);
+    assert.match(copy, /version: "Версія"/);
+    assert.match(copy, /Ionicons — MIT License/);
+    assert.doesNotMatch(content, /1\.0\.0/);
 });
 
 test("public group UI omits the redundant membership-group wording", async () => {
