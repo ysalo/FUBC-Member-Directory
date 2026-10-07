@@ -3,6 +3,7 @@ import type { ImageSourcePropType } from "react-native";
 export type GroupMember = {
   id: string;
   hasNote?: boolean;
+  hasDeaconNote?: boolean;
   name: string;
   first_name?: string;
   last_name?: string;

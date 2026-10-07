@@ -15,6 +15,8 @@ import type { FamilyChanges, FamilySnapshot } from "@/features/family/family-rep
 import { useSession } from "@/features/session/SessionProvider";
 import { formatMemberName } from "@/lib/member-name";
 import { sessionCacheScope } from "@/lib/session-cache";
+import { listDirectory } from "@/features/directory/directory-repository";
+import { canManageDirectory } from "@/lib/permissions";
 import { managementRepository } from "./management-repository";
 import type { ManagedMember } from "./model";
 import { clearFamilyDraft, holdFamilyDraft, takeFamilyDraft } from "./family-draft";
@@ -30,7 +32,8 @@ function changesFromSnapshot(family: FamilySnapshot): FamilyChanges {
 export function FamilyEditorScreen() {
   const { memberId, createdId } = useLocalSearchParams<{ memberId: string; createdId?: string }>();
   const router = useRouter();
-  useSession();
+  const session = useSession();
+  const fullManagement = session.status === "ready" && canManageDirectory(session.account);
   const scope = (() => { try { return sessionCacheScope(); } catch { return null; } })();
   const identity = `${scope}:${memberId}`;
   const currentIdentity = useRef(identity);
@@ -64,7 +67,7 @@ export function FamilyEditorScreen() {
     setBusy(true); setError(null);
     if (scope === null) { setBusy(false); return; }
     try {
-      const [family, catalog] = await Promise.all([managementRepository.loadFamily(memberId), managementRepository.load()]);
+      const [family, catalog] = await Promise.all([managementRepository.loadFamily(memberId), fullManagement ? managementRepository.load() : listDirectory().then(rows => ({ members: rows.map(row => ({ ...row, group: "", archived: false, photo: row.avatar })) }))]);
       if (!isCurrent(ticket)) return;
       if (family.memberId !== memberId) throw new Error("Family response belongs to another member");
       setLoaded({ identity, family }); setMembers(catalog.members);
@@ -83,7 +86,7 @@ export function FamilyEditorScreen() {
     finally { if (isCurrent(ticket)) setBusy(false); }
   }
   useEffect(() => { void load(); return () => { request.current++; }; }, [memberId, scope, createdId]);
-  function exit() { clearFamilyDraft(); guard.allowLeave(); router.replace(`/manage/member/${memberId}`); }
+  function exit() { clearFamilyDraft(); guard.allowLeave(); router.replace(fullManagement ? `/manage/member/${memberId}` : `/members/${memberId}`); }
   function cancel() { guard.confirmLeave(exit); }
   function ids(kind: Category) { return kind === "parents" ? changes.parentIds : kind === "children" ? changes.childIds : kind === "siblings" ? changes.siblingIds : changes.spouseId ? [changes.spouseId] : []; }
   function select(kind: Category, id: string, remove = false) {
@@ -191,8 +194,8 @@ export function FamilyEditorScreen() {
             ListEmptyComponent={<Text style={[styles.empty, { color: palette.secondaryText }]}>{copy.noMatches}</Text>} />
           <View style={[styles.pickerFooter, { borderTopColor: palette.line }]}>
             <Text style={[styles.hint, { color: palette.secondaryText }]}>{copy.selected(ids(category).length)}</Text>
-            {textAction(copy.create, createMember)}
-            <Text style={[styles.hint, { color: palette.secondaryText }]}>{copy.createHint}</Text>
+            {fullManagement && textAction(copy.create, createMember)}
+            {fullManagement && <Text style={[styles.hint, { color: palette.secondaryText }]}>{copy.createHint}</Text>}
           </View>
         </View>
       </KeyboardAvoidingView>
