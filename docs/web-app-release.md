@@ -790,7 +790,7 @@ The plugin supplies the iOS usage description and Android manifest permissions.
 Physical iPhone/Android checks must confirm populated fields, Save, Cancel,
 return to profile, and retry with an unavailable contact app before native release.
 
-Validation: pnpm verify passes (323 main, one visitation, 14 groups; two existing
+Validation: pnpm verify passes (321 main, one visitation, 14 groups; two existing
 PostgreSQL concurrency tests skipped without a disposable server). Four new
 behavioral tests cover exported fields, privacy, legacy names, localized native
 handlers, cancel, rapid taps, failures/retry, and the empty browser adapter.
