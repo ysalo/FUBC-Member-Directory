@@ -96,3 +96,13 @@ context, no member-page birth dates and denied ordinary-member access. All 850
 people, six profiles, 82 photos and 1,029 audit events remained unchanged. No
 test records were created. Migration history remains unreconciled; no `db push`
 was used.
+
+## Pastor note ownership (2026-10-06)
+
+Reviewed and manually applied `20261006040000_member_note_ownership.sql` through
+authenticated CLI SQL after a rolled-back live rehearsal. Creator identity is
+server-derived; pastors may create for any active member, and edits/removal
+require current care-note read access plus ownership. Legacy unattributed notes
+remain read-only. Existing RPC signatures and note privacy stay compatible.
+Smoke notes were rolled back; no migration-history reconciliation or db push.
+Retain the additive backend when rolling back the frontend.

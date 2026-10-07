@@ -1,3 +1,34 @@
+## Pastor note ownership (2026-10-06, version 1.8.2)
+
+Pastors can create a care note for any active member. Pastors and responsible
+group deacons retain read access; only the creator can edit or remove a note
+while still holding that read access. One note per member remains the existing
+contract. The server records the authenticated account as creator and rejects
+cross-author saves/removals. Historical notes with no recorded creator remain
+read-only, as do notes whose creator account has been deleted. No authors are
+inferred. Membership date remains optional and clearable, with no known/unknown
+switch; that UI change was already included in 1.8.1.
+
+Reviewed and manually applied `20261006040000_member_note_ownership.sql` after a
+rolled-back live rehearsal of pastor creation/update, other-pastor read access,
+denied cross-author save/removal and author removal. No smoke notes persisted.
+No Edge Function change or migration-history reconciliation; do not use db push.
+Older clients remain compatible with the RPC signatures but now enforce the
+same server ownership restrictions. Retain the additive backend on rollback.
+
+Release follows feature → dev → main. Local checks cover database scope,
+ownership, legacy notes, revisions, deletion/recreation and denied direct writes,
+plus phone/desktop synthetic browser workflows. Physical native/live OAuth and
+authenticated hosted Preview are not claimed. Final CI, Preview accessibility
+and production evidence belong to the feature/release PRs.
+
+Investigation of 1.8.1: release PR #144 merged to main as `8b20a8a` with passing
+GitHub CI, but GitHub records no deployment for that main commit. Its successful
+Vercel PR status belongs to dev Preview `3034710`, not Production. The public
+site still served the 1.8.0 `entry-ff7d70c7dfbfe0c29aa07ec2a10d695c.js` bundle
+when this release began. This establishes a missing production deployment;
+Vercel account settings/event logs are needed to establish why it was skipped.
+
 ## Management refinements (2026-10-06, version 1.8.1)
 
 Group assignments use neutral rows with checked controls, membership language and a stable draft roster: unchecking someone keeps them available through search and tab changes. Group management creates and lists membership groups only; care type controls are removed and care imports rejected explicitly. A read-only live preflight found zero care groups, so no records were deleted. Row disclosure arrows are removed throughout the directory.
