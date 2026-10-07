@@ -1,8 +1,8 @@
 // Synthetic authenticated acceptance; every backend request is intercepted.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright-core');
-const browser = await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+const { chromium, webkit } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright-core');
+const browser = process.env.FUBC_BROWSER_ENGINE==='webkit' ? await webkit.launch({headless:true}) : await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
 const site=process.env.FUBC_SITE_URL??'http://localhost:4173';
 const out=process.env.FUBC_BROWSER_OUT??'/tmp/deacon-care-browser';await mkdir(out,{recursive:true});
 const actor='40000000-0000-4000-8000-000000000001',deacon='60000000-0000-4000-8000-000000000001',member='60000000-0000-4000-8000-000000000002',relative='60000000-0000-4000-8000-000000000003',group='50000000-0000-4000-8000-000000000001';
@@ -11,7 +11,7 @@ const storageKey=`sb-${process.env.FUBC_SUPABASE_REF??'example'}-auth-token`;
 const token='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({sub:actor,exp:Math.floor(Date.now()/1000)+3600})).toString('base64url')+'.fixture';
 let cases=0;
 try {for(const width of [390,1440])for(const leadership of ['deacon','pastor']) {
- const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],unexpected=[];
+ const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<1024}),page=await context.newPage(),errors=[],unexpected=[];
  let note={body:'Prayer for recovery',revision:1},family={memberId:member,revision:0,parents:[],spouse:null,children:[],siblings:[]};
  page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(12000);
  await page.addInitScript(({actor,token,storageKey})=>{localStorage.setItem(storageKey,JSON.stringify({access_token:token,refresh_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:actor,aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{}}}));window.__notificationCalls=0;if(window.Notification)window.Notification.requestPermission=()=>{window.__notificationCalls++;return Promise.resolve('denied')};},{actor,token,storageKey});
@@ -47,8 +47,24 @@ try {for(const width of [390,1440])for(const leadership of ['deacon','pastor']) 
   await route.fulfill({status,headers,contentType:'application/json',body:JSON.stringify(body)});
  });
  await page.goto(`${site}/members/${member}`);await page.getByText('Anna Member',{exact:true}).first().waitFor();
+ const saveContact=page.getByRole('button',{name:'Save to Contacts',exact:true});
+ await saveContact.waitFor();
+ await page.evaluate(()=>{Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'canShare',{configurable:true,value:undefined});});
+ const downloadPromise=page.waitForEvent('download');await saveContact.click();const download=await downloadPromise;
+ assert.equal(download.suggestedFilename(),'Anna Member.vcf');
+ const stream=await download.createReadStream();let card='';for await(const chunk of stream)card+=chunk.toString();
+ assert.ok(card.includes('FN:Anna Member\r\n'));assert.ok(card.includes('N:Member;Anna;;;\r\n'));assert.ok(card.includes('ADR;TYPE=HOME:;;Seattle;;;;\r\n'));assert.ok(!card.includes('Prayer'));
+ await page.evaluate(()=>{window.__contactShares=[];Object.defineProperty(navigator,'canShare',{configurable:true,value:data=>data.files[0].type==='text/vcard'});Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{const file=data.files[0];window.__contactShares.push({name:file.name,body:await file.text()});}});});
+ await saveContact.click();await page.waitForFunction(()=>window.__contactShares.length===1);
+ assert.equal((await page.evaluate(()=>window.__contactShares[0])).body,card);
+ await page.evaluate(()=>{navigator.share=async()=>{throw new DOMException('Canceled','AbortError');};window.__canceledDownloads=0;const original=URL.createObjectURL;URL.createObjectURL=(...args)=>{window.__canceledDownloads++;return original(...args);};});
+ await saveContact.click();await page.waitForTimeout(100);
+ assert.equal(await page.evaluate(()=>window.__canceledDownloads),0);assert.equal(await page.getByRole('alertdialog').count(),0);
+
  if(leadership==='deacon') {
-  await page.getByTestId('deacon-notes-toggle').click();const section=page.getByTestId('deacon-notes-section');await section.getByText('Prayer for recovery',{exact:true}).waitFor();
+  const toggle=page.getByTestId('deacon-notes-toggle');await toggle.waitFor();
+  assert.ok(await toggle.evaluate((el)=>{const headings=[...document.querySelectorAll('[role=heading]')];return headings.every(h=>!(el.compareDocumentPosition(h)&Node.DOCUMENT_POSITION_FOLLOWING));}),'deacon notes are below profile sections');
+  await toggle.click();const section=page.getByTestId('deacon-notes-section');assert.equal(await section.getByText('Only for this group’s deacons. Prayer needs and care reminders.',{exact:true}).count(),0);await section.getByText('Prayer for recovery',{exact:true}).waitFor();
   await page.screenshot({path:`${out}/member-${width}.png`,fullPage:true});
   await section.getByRole('button',{name:'Edit note',exact:true}).click();await page.getByRole('textbox',{name:'Deacon note',exact:true}).fill('Prayer and follow up');
   await section.getByRole('button',{name:'Save note',exact:true}).click();await section.getByText('Prayer and follow up',{exact:true}).waitFor();

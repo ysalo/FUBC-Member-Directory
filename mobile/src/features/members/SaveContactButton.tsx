@@ -1,4 +1,3 @@
-import { Contact } from "expo-contacts";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
@@ -6,7 +5,7 @@ import { Text } from "@/features/accessibility/app-text";
 import { Alert } from "@/features/platform/alert";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
-import { memberContactRecord } from "./contact-record";
+import { saveMemberContact } from "./save-contact";
 import { getMemberCopy } from "./member-copy";
 import type { MemberProfile } from "./member-repository";
 
@@ -23,9 +22,7 @@ export function SaveContactButton({ profile, name }: SaveContactButtonProps) {
     pending.current = true;
     setBusy(true);
     try {
-      // The system form owns the save; cancel does not create a contact.
-      // No address-book read access or direct contact writes are needed.
-      await Contact.presentCreateForm(memberContactRecord(profile, name));
+      await saveMemberContact(profile, name);
     } catch {
       Alert.alert(copy.saveContactError, copy.saveContactUnavailable);
     } finally {
@@ -34,11 +31,11 @@ export function SaveContactButton({ profile, name }: SaveContactButtonProps) {
     }
   };
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy, busy }}
+    <Pressable accessibilityRole="button" accessibilityLabel={copy.saveContact} accessibilityState={{ disabled: busy, busy }}
       disabled={busy} onPress={() => void save()}
       style={[styles.button, { backgroundColor: palette.accentSoft, opacity: busy ? 0.6 : 1 }]}>
       {busy ? <ActivityIndicator color={palette.accent} size="small" />
-        : <Ionicons color={palette.accent} name="person-add-outline" size={23} />}
+        : <Ionicons accessibilityElementsHidden importantForAccessibility="no" color={palette.accent} name="person-add-outline" size={23} />}
       <Text style={[styles.label, { color: palette.accent }]}>{copy.saveContact}</Text>
     </Pressable>
   );
