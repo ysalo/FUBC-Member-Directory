@@ -1,4 +1,7 @@
 import { PreferenceChoices } from "@/features/menu/PreferenceChoices";
+import { AboutLink } from "@/features/menu/AboutLink";
+import { AboutContent } from "@/features/menu/AboutContent";
+import { menuCopy } from "@/features/menu/menu-copy";
 import { AboutDialog } from "@/features/menu/AboutDialog";
 import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { InstallHelp } from "@/features/shell/InstallHelp";
@@ -20,10 +23,7 @@ import { signOut } from "@/lib/session";
 import { isBackendConfigured } from "@/lib/supabase";
 import { type TextSizePreference, useTextSize } from "@/features/accessibility/TextSizeProvider";
 
-const accountCopy = {
-  en: { account: "Account", linkedMember: "View member profile", signOut: "Sign out", signingOut: "Signing out…", signOutError: "Unable to sign out. Please try again.", preferences: "Preferences", preferencesDetail: "Choose how you read the directory.", advanced: "Advanced", advancedDetail: "Permanent account actions", delete: "Delete account", textSize: "Text size", small: "Small", standard: "Standard", large: "Large", about: "About", done: "Done", version: "Version", unavailable: "Unavailable", licenses: "Open-source licenses", iconLicense: "Ionicons — MIT License", iconCopyright: "© 2015–present Ionic · © 2015 Joel Arvidsson" },
-  uk: { account: "Обліковий запис", linkedMember: "Переглянути профіль учасника", signOut: "Вийти", signingOut: "Вихід…", signOutError: "Не вдалося вийти. Спробуйте ще раз.", preferences: "Налаштування", preferencesDetail: "Виберіть, як відображати довідник.", advanced: "Додатково", advancedDetail: "Незворотні дії з обліковим записом", delete: "Видалити обліковий запис", textSize: "Розмір тексту", small: "Малий", standard: "Стандартний", large: "Великий", about: "Про застосунок", done: "Готово", version: "Версія", unavailable: "Недоступна", licenses: "Ліцензії відкритого коду", iconLicense: "Ionicons — ліцензія MIT", iconCopyright: "© 2015–дотепер Ionic · © 2015 Joel Arvidsson" },
-} as const;
+
 
 export default function MenuRoute() {
   const desktop = useDesktopLayout();
@@ -31,7 +31,7 @@ export default function MenuRoute() {
   const router = useRouter();
   const session = useSession();
   const { palette, preference, setPreference } = useAppearance();
-  const labels = accountCopy[locale];
+  const labels = menuCopy[locale];
   const { preference: textSize, setPreference: setTextSize } = useTextSize();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -105,33 +105,18 @@ export default function MenuRoute() {
         </View> : null}
 
         <View style={[styles.aboutCard, { backgroundColor: palette.surface }]}>
-          <Pressable accessibilityLabel={labels.about} accessibilityRole="button" onPress={() => setAboutOpen(true)} style={({ pressed }) => [styles.aboutRow, pressed && styles.pressed]}>
+          <AboutLink label={labels.about} onOpen={() => setAboutOpen(true)} style={({ pressed }) => [styles.aboutRow, pressed && styles.pressed]}>
             <Ionicons aria-hidden accessibilityElementsHidden color={palette.secondaryText} name="information-circle-outline" size={24} />
             <View style={styles.aboutLinkCopy}><Text style={[styles.aboutLinkTitle, {color: palette.text}]}>{labels.about}</Text><Text style={[styles.advancedDetail, {color: palette.secondaryText}]}>{labels.version} {Constants.expoConfig?.version ?? labels.unavailable}</Text></View>
             <Ionicons aria-hidden accessibilityElementsHidden color={palette.secondaryText} name="chevron-forward" size={20} />
-          </Pressable>
+          </AboutLink>
         </View>
         <InstallHelp />
         </View></View>
       </ScrollView>
       <WebTabBar />
       <AboutDialog open={aboutOpen} label={labels.about} onClose={() => setAboutOpen(false)}>
-        <View accessibilityViewIsModal style={[styles.aboutSheet, { backgroundColor: palette.background }]}>
-          <View style={[styles.aboutHeader, { borderBottomColor: palette.line }]}>
-            <Text accessibilityRole="header" style={[styles.aboutTitle, { color: palette.text }]}>{labels.about}</Text>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setAboutOpen(false)} style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}>
-              <Text style={[styles.doneText, { color: palette.accent }]}>{labels.done}</Text>
-            </Pressable>
-          </View>
-          <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.aboutContent}>
-            <Text selectable style={[styles.versionText, { color: palette.secondaryText }]}>{labels.version} {Constants.expoConfig?.version ?? labels.unavailable}</Text>
-            <Text accessibilityRole="header" style={[styles.licensesTitle, { color: palette.text }]}>{labels.licenses}</Text>
-            <View style={[styles.licensePanel, { backgroundColor: palette.surface }]}>
-              <Text selectable style={[styles.licenseTitle, { color: palette.text }]}>{labels.iconLicense}</Text>
-              <Text selectable style={[styles.copyright, { color: palette.secondaryText }]}>{labels.iconCopyright}</Text>
-            </View>
-          </ScrollView>
-        </View>
+        <AboutContent onClose={() => setAboutOpen(false)} />
       </AboutDialog>
     </View>
   );
@@ -146,17 +131,6 @@ const styles = StyleSheet.create({
   sectionTitle: {fontSize: 22, fontWeight: "700"}, sectionDetail: {fontSize: 15, marginTop: 6, marginBottom: 4}, preferenceRow: {paddingVertical: 20, gap: 12}, settingLabel: {fontSize: 17, fontWeight: "600"}, aboutLinkCopy: {flex: 1, gap: 4, marginLeft: 12, paddingVertical: 12}, aboutLinkTitle: {fontSize: 17, fontWeight: "600"},
   aboutCard: { borderRadius: 16, marginTop: 16, overflow: "hidden" },
   aboutRow: { alignItems: "center", flexDirection: "row", minHeight: 60, paddingHorizontal: 16 },
-  aboutSheet: { flex: 1, minHeight: 0 },
-  aboutHeader: { alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 58, gap: 16, paddingVertical: 8, paddingHorizontal: 20 },
-  aboutTitle: { flex: 1, fontSize: 20, fontWeight: "700" },
-  doneButton: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
-  doneText: { fontSize: 17, fontWeight: "600" },
-  aboutContent: { gap: 18, padding: 20 },
-  versionText: { fontSize: 15, lineHeight: 21 },
-  licensesTitle: { fontSize: 22, fontWeight: "700" },
-  licensePanel: { borderRadius: 16, padding: 18 },
-  licenseTitle: { fontSize: 17, fontWeight: "700" },
-  copyright: { fontSize: 14, lineHeight: 20, marginTop: 8 },
   accountCard: { backgroundColor: "#FAF9F6", borderRadius: 16, padding: 20 },
   sectionLabel: { fontSize: 22, fontWeight: "700" },
   accountIdentity: { alignItems: "center", flexDirection: "row", gap: 13, minHeight: 74, paddingVertical: 8 },

@@ -802,7 +802,7 @@ test("directory creation stays management-only and personal deletion stays colla
             ),
             "utf8",
         ),
-        readFile(new URL("../src/app/menu.tsx", import.meta.url), "utf8"),
+        readFile(new URL("../src/app/menu/index.tsx", import.meta.url), "utf8"),
     ]);
     assert.doesNotMatch(directory, /directory\.addMember|\/manage/);
     assert.match(menu, /advancedOpen \?/);
@@ -856,7 +856,7 @@ test("member email is editable and account linking copies the account email", as
 
 test("menu identifies the linked member and treats sign out as destructive", async () => {
     const menu = await readFile(
-        new URL("../src/app/menu.tsx", import.meta.url),
+        new URL("../src/app/menu/index.tsx", import.meta.url),
         "utf8",
     );
     assert.match(
