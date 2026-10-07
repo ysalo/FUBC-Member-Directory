@@ -23,6 +23,7 @@ for(const width of [320,390,1023,1024,1440]) for(const appearance of ['light','d
   else if(path==='preferences'){if(method==='GET')body=request.headers().accept?.includes('object')?{appearance:savedAppearance}:[{appearance:savedAppearance}];else {savedAppearance=(Array.isArray(request.postDataJSON())?request.postDataJSON()[0]:request.postDataJSON()).appearance;body=null;}}
   else if(path==='record_account_use')body=null;
   else if(path==='member_profile_details'||path==='directory_active_members')body=[];
+  else if(path==='member_family')body={memberId:request.postDataJSON().p_person_id,revision:0,parents:[],spouse:null,children:[],siblings:[]};
   else if(path==='people') {const p={id:person,name:'Anna Example',first_name:'Anna',last_name:'Example',gender:'female',revision:1,photo_path:null,membership_group_id:null,archived_at:null};body=request.headers().accept?.includes('object')?p:[p];}
   else if(path==='management_summary')body={members:1,groups:0,pendingAccounts:0};
   else if(path==='management_page')body={items:[],total:0,offset:0,limit:50};
