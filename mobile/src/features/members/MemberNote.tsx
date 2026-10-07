@@ -41,7 +41,7 @@ export function MemberNote({ memberId, children }: {
         const client = requireSupabase();
         void Promise.all([
             client.rpc("member_note_access", { p_person_id: memberId }),
-            client.rpc("can_edit_group_member", { p_person_id: memberId }),
+            client.rpc("can_write_member_note", { p_person_id: memberId }),
             client.from("member_notes").select("body,revision").eq("person_id", memberId).maybeSingle(),
         ]).then(([allowed, edit, result]) => {
             if (!current()) return;
