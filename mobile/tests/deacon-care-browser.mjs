@@ -12,15 +12,19 @@ const token='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({sub:actor,exp:Ma
 let cases=0;
 try {for(const width of [390,1440])for(const leadership of ['deacon','pastor']) {
  const context=await browser.newContext({viewport:{width,height:900},hasTouch:width<1024}),page=await context.newPage(),errors=[],unexpected=[];
+ let photoUploads=0, photoPublishes=0;
  let note={body:'Prayer for recovery',revision:1},family={memberId:member,revision:0,parents:[],spouse:null,children:[],siblings:[]};
  page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(12000);
  await page.addInitScript(({actor,token,storageKey})=>{localStorage.setItem(storageKey,JSON.stringify({access_token:token,refresh_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:actor,aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{}}}));window.__notificationCalls=0;if(window.Notification)window.Notification.requestPermission=()=>{window.__notificationCalls++;return Promise.resolve('denied')};},{actor,token,storageKey});
  await page.route('**/*',async route=>{
   const req=route.request(),url=new URL(req.url());if(!url.hostname.endsWith('supabase.co'))return route.continue();
-  const path=url.pathname.split('/').at(-1),method=req.method(),payload=method==='POST'?req.postDataJSON():null;let body=[],status=200;
+  const path=url.pathname.split('/').at(-1),method=req.method(),payload=method==='POST'&&!url.pathname.includes('/storage/')?req.postDataJSON():null;let body=[],status=200;
   const headers={'Access-Control-Allow-Origin':new URL(site).origin,'Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,OPTIONS'};
   if(method==='OPTIONS')return route.fulfill({status:204,headers});
-  if(path==='mobile_contract_version')body='expo-directory-v3';
+  if(url.pathname.includes('/storage/v1/object/member-photos/')&&method==='POST'){photoUploads++;body={Key:url.pathname.split('/member-photos/')[1]};}
+  else if(path==='deacon_save_member')body={...people.find(p=>p.id===member),revision:2};
+  else if(path==='set_person_photo_metadata'){photoPublishes++;body=[{id:member,revision:3,photo_path:payload.p_path}];}
+  else if(path==='mobile_contract_version')body='expo-directory-v3';
   else if(path==='current_account')body=[{id:actor,person_id:deacon,display_name:'Daniel Deacon',status:'active',role:'member',leadership_ministry:leadership,revision:1}];
   else if(path==='user')body={id:actor,email:'fixture@example.invalid'};
   else if(path==='preferences')body=[];
@@ -30,6 +34,8 @@ try {for(const width of [390,1440])for(const leadership of ['deacon','pastor']) 
   else if(path==='deacon_group_deacons')body=[{group_id:group,person_id:deacon,slot:1}];
   else if(path==='ministry_accounts')body=[{id:actor,person_id:deacon,leadership_ministry:leadership}];
   else if(path==='person_leadership_ministries')body=url.searchParams.has('person_id')?[{person_id:deacon,leadership_ministry:leadership}]:[];
+  else if(path==='management_member_care_details')body=[{person_id:member,address:'Seattle',birth_date:'1990-05-06',ministry_ids:[]}];
+  else if(path==='ministries'||path==='person_ministries')body=[];
   else if(path==='member_profile_details')body=[{person_id:member,address:'Seattle',birth_date:'1990-05-06'}];
   else if(path==='directory_active_members')body=people.map(p=>({...p,ministry:'',ministry_uk:'',phone:null,leadership_ministry:p.id===deacon?leadership:null,is_orphan:false,is_widow:false}));
   else if(path==='can_edit_group_member')body=leadership==='deacon'&&payload.p_person_id===member;
@@ -63,6 +69,8 @@ try {for(const width of [390,1440])for(const leadership of ['deacon','pastor']) 
   await section.getByRole('button',{name:'Remove note',exact:true}).click();await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.ok(note);
   await section.getByRole('button',{name:'Remove note',exact:true}).click();await page.getByRole('button',{name:'Remove note',exact:true}).last().click();await section.getByRole('button',{name:'Add note',exact:true}).waitFor();
   await section.getByRole('button',{name:'Add note',exact:true}).click();await page.getByRole('textbox',{name:'Deacon note',exact:true}).fill('Prayer for family');await section.getByRole('button',{name:'Save note',exact:true}).click();await section.getByText('Prayer for family',{exact:true}).waitFor();
+  await page.goto(`${site}/manage/member/${member}`);await page.getByRole('button',{name:'Change photo',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Delete member',exact:true}).count(),0);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'photo editor has no horizontal overflow');await page.screenshot({path:`${out}/photo-editor-${width}.png`,fullPage:true});
+  const jpeg=await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d');ctx.fillStyle='#345';ctx.fillRect(0,0,64,64);return canvas.toDataURL('image/jpeg').split(',')[1];});const choosing=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Change photo',exact:true}).click();await (await choosing).setFiles({name:'portrait.jpg',mimeType:'image/jpeg',buffer:Buffer.from(jpeg,'base64')});await page.getByRole('button',{name:'Remove photo',exact:true}).waitFor();await page.getByRole('button',{name:'Save member',exact:true}).click();await page.waitForURL(`**/members/${member}`);assert.equal(photoUploads,2);assert.equal(photoPublishes,1);
   await page.goto(`${site}/manage/member/${member}/family`);await page.getByRole('button',{name:'Add: Spouse',exact:true}).click();await page.getByRole('radio',{name:'Peter Relative',exact:true}).click();await page.getByRole('button',{name:'Done',exact:true}).click();await page.getByRole('button',{name:'Save family',exact:true}).last().click();await page.waitForURL(`**/members/${member}`);assert.equal(family.spouse.id,relative);
  } else {await page.waitForLoadState('networkidle');assert.equal(await page.getByTestId('deacon-notes-toggle').count(),0);}
  await page.goto(`${site}/groups/${group}`);await page.getByText('Anna Member',{exact:true}).waitFor();await page.waitForLoadState('networkidle');

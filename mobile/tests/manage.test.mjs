@@ -177,7 +177,7 @@ const managementCode = ts.transpileModule(await readFile(new URL("../src/feature
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function photoRepository(failure, configured = true) {
+function photoRepository(failure, configured = true, manager = true) {
     const calls = [];
     const invalidations = [];
     const storage = {
@@ -194,13 +194,14 @@ function photoRepository(failure, configured = true) {
         };
         return query;
     }, storage: { from: () => storage }, async rpc(name, args) {
+        if (name === "can_edit_group_member") { calls.push({ type: "scope", name, args }); return { data: failure !== "scope", error: null }; }
         calls.push({ type: "publish", name, args });
         return { data: name === "set_person_photo_metadata" ? [{ id: "member", photo_path: args.p_path, revision: 2 }] : { id: "member", photo_path: args.p_path, revision: 2 }, error: ["conflict", "ambiguous"].includes(failure) ? { message: "Conflict" } : null };
     } };
     const exports = {};
     new Function("require", "exports", managementCode)((id) => {
         if (id === "@/lib/supabase") return { isBackendConfigured: configured, requireSupabase: () => client };
-        if (id === "@/lib/permissions") return { canOpenMemberEditor: () => true, canManageDirectory: () => true };
+        if (id === "@/lib/permissions") return { canOpenMemberEditor: () => true, canManageDirectory: () => manager };
         if (id === "@/lib/repository-helpers") return { activeAccount: () => ({}), unwrap: (result) => { if (result.error) throw new Error(result.error.message); return result.data; } };
         if (id === "@/lib/session-cache") return { invalidateData: (...topics) => invalidations.push(topics), createSessionCache: () => ({ load: (key, loader) => loader() }) };
         if (id === "@/lib/photo-cache") return { thumbnailPath: (path) => `${path}.avatar-256.jpg` };
@@ -1000,4 +1001,14 @@ test('active member loading accepts an absent departure and uses the recorded de
  assert.equal((await repository.loadMember('person')).leftAt,null);
  person.archived_at='2026-10-05T08:00:00Z';departure={date_left:'2026-01-01'};
  assert.equal((await repository.loadMember('person')).leftAt,'2026-01-01');
+});
+
+test("deacon photo uploads preflight member scope before any storage write", async () => {
+    const allowed = photoRepository(null, true, false);
+    await allowed.repository.replacePhoto({ id: "member", revision: 1 }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10));
+    assert.equal(allowed.calls[0].name, "can_edit_group_member");
+    assert.equal(allowed.calls[1].type, "upload");
+    const denied = photoRepository("scope", true, false);
+    await assert.rejects(denied.repository.replacePhoto({ id: "other", revision: 1 }, new ArrayBuffer(20), "image/jpeg", new ArrayBuffer(10)), /Not authorized/);
+    assert.deepEqual(denied.calls.map(call => call.type), ["scope"]);
 });

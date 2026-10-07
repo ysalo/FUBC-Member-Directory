@@ -537,7 +537,7 @@ export function MemberFormScreen() {
                             {labels.photo}
                         </Text>
                         <MemberAvatar name={fullName} source={photoSource} />
-                        {fullManagement && <View style={styles.photoActions}>
+                        <View style={styles.photoActions}>
                             <Pressable
                                 accessibilityRole="button"
                                 disabled={state === "saving"}
@@ -575,7 +575,7 @@ export function MemberFormScreen() {
                                     </Text>
                                 </Pressable>
                             ) : null}
-                        </View>}
+                        </View>
                     </View>
                     <View
                         style={[
