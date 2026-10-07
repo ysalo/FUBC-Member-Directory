@@ -12,7 +12,7 @@ export type Database = {
   public: {
     Tables: {
       member_notes: {
-        Row: { person_id: string; body: string; revision: number; updated_at: string };
+        Row: { person_id: string; body: string; revision: number; updated_at: string; created_by: string | null };
         Insert: { person_id: string; body: string; revision?: number; updated_at?: string };
         Update: { body?: string; revision?: number; updated_at?: string };
         Relationships: [];
@@ -51,6 +51,7 @@ export type Database = {
       execute_audit_rollback: { Args: { p_action_id: string; p_operation_id: string; p_reason: string }; Returns: Json };
       remove_member: { Args: { p_id: string; p_revision: number; p_confirmation: string }; Returns: Json };
 
+      can_write_member_note: { Args: { p_person_id: string }; Returns: boolean };
       member_note_access: { Args: { p_person_id: string }; Returns: boolean };
       remove_member_note: { Args: { p_person_id: string; p_revision: number }; Returns: undefined };
       save_member_note: { Args: { p_person_id: string; p_revision: number | null; p_body: string }; Returns: undefined };
