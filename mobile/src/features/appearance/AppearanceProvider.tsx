@@ -1,4 +1,4 @@
-import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Appearance, DynamicColorIOS, Platform } from "react-native";
 
 import { useSession } from "@/features/session/SessionProvider";
@@ -51,6 +51,7 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   const session = useSession();
   const [systemScheme, setSystemScheme] = useState<"light" | "dark">(() => Appearance.getColorScheme() === "dark" ? "dark" : "light");
   const [preference, setPreferenceState] = useState<AppearancePreference>("system");
+  const preferenceRevision = useRef(0);
   const resolved = preference === "system" ? (systemScheme === "dark" ? "dark" : "light") : preference;
   // On iOS the native trait collection is the authoritative source for
   // "System". This keeps every authenticated screen aligned even when
@@ -66,8 +67,9 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!isBackendConfigured || session.status !== "ready") return;
     let current = true;
+    const revision = preferenceRevision.current;
     void requireSupabase().from("preferences").select("appearance").eq("account_id", session.account.id).maybeSingle().then(({ data }) => {
-      if (current && data?.appearance) setPreferenceState(data.appearance);
+      if (current && revision === preferenceRevision.current && data?.appearance) setPreferenceState(data.appearance);
     });
     return () => { current = false; };
   }, [session]);
@@ -83,9 +85,10 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   }, [palette, preference, resolved]);
 
   const setPreference = (next: AppearancePreference) => {
+    preferenceRevision.current++;
     setPreferenceState(next);
     if (isBackendConfigured && session.status === "ready") {
-      void requireSupabase().from("preferences").upsert({ account_id: session.account.id, appearance: next }, { onConflict: "account_id" });
+      void Promise.resolve(requireSupabase().from("preferences").upsert({ account_id: session.account.id, appearance: next }, { onConflict: "account_id" })).catch(() => undefined);
     }
   };
   const value = useMemo(() => ({ preference, resolved, palette, setPreference }), [palette, preference, resolved]);

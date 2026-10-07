@@ -53,7 +53,7 @@ test("icon attribution is tucked behind an accessible About sheet", async () => 
         "utf8",
     );
     assert.match(menu, /labels\.about/);
-    assert.match(menu, /presentationStyle="pageSheet"/);
+    assert.match(await readFile(new URL("../src/features/menu/AboutDialog.tsx", import.meta.url), "utf8"), /presentationStyle="pageSheet"/);
     assert.match(menu, /Constants\.expoConfig\?\.version/);
     assert.match(menu, /version: "Version"/);
     assert.match(menu, /version: "Версія"/);
