@@ -10,7 +10,7 @@ const dataModule = source => `data:text/javascript;base64,${Buffer.from(source).
 const imports = new Map([
   ['react/jsx-runtime', pathToFileURL(require.resolve('react/jsx-runtime')).href],
   ['react', dataModule('export const useRef=x=>({current:x}); export const useState=x=>[x,v=>globalThis.fixture.states.push(v)];')],
-  ['react-native', dataModule("export const Pressable='Pressable',ActivityIndicator='ActivityIndicator'; export const StyleSheet={create:x=>x};")],
+  ['react-native', dataModule("export const Platform={OS:'ios'};export const Pressable='Pressable',ActivityIndicator='ActivityIndicator'; export const StyleSheet={create:x=>x};")],
   ['expo-contacts', dataModule('export const Contact={presentCreateForm:record=>globalThis.fixture.present(record)};')],
   ['@react-native-vector-icons/ionicons', dataModule("export const Ionicons='Ionicons';")],
   ['@/features/accessibility/app-text', dataModule("export const Text='Text';")],
@@ -76,18 +76,7 @@ test('vCard escapes injected properties and preserves Unicode, multiline address
   assert.equal(vcard.exports.contactFileName('../Іван\n?'),'..Іван.vcf');
 });
 
-test('browser shares a real contact file; cancellation causes no download',async()=>{
-  let shared; const files=[];
-  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{canShare:data=>{files.push(data.files[0]);return true;},share:async data=>{shared=data.files[0];}}});
-  await web.saveMemberContact(profile,'Іван Сало');
-  assert.equal(shared.type,'text/vcard');assert.equal(shared.name,'Іван Сало.vcf');
-  assert.equal(await shared.text(),vcard.exports.memberVCard(profile,'Іван Сало'));
-  navigator.share=async()=>{throw new DOMException('Canceled','AbortError');};
-  await web.saveMemberContact(profile,'Іван Сало');
-  assert.equal(files.length,2);
-});
-
-test('browser downloads when file sharing is unavailable or rejected and releases URLs',async()=>{
+test('Save to Contacts downloads even when sharing is available, without opening the iPhone share menu',async()=>{
   const originalURL=globalThis.URL,originalTimer=globalThis.setTimeout;
   const downloads=[],revoked=[],timers=[];
   globalThis.URL={createObjectURL:file=>{downloads.push(file);return 'blob:contact';},revokeObjectURL:url=>revoked.push(url)};
@@ -97,8 +86,9 @@ test('browser downloads when file sharing is unavailable or rejected and release
   try{
     Object.defineProperty(globalThis,'navigator',{configurable:true,value:{}});
     await web.saveMemberContact(profile,'Іван Сало');
-    navigator.canShare=()=>true;navigator.share=async()=>{throw new Error('File unsupported');};
+    let shareCalls=0;navigator.canShare=()=>true;navigator.share=async()=>{shareCalls++;};
     await web.saveMemberContact(profile,'Іван Сало');
+    assert.equal(shareCalls,0,'Save must not open the share sheet');
     assert.equal(downloads.length,2);
     for(const link of links){assert.equal(link.download,'Іван Сало.vcf');assert.equal(link.href,'blob:contact');assert.ok(link.clicked&&link.removed);}
     assert.equal(await downloads[0].text(),vcard.exports.memberVCard(profile,'Іван Сало'));
@@ -106,4 +96,15 @@ test('browser downloads when file sharing is unavailable or rejected and release
     for(const [callback,delay] of timers){assert.equal(delay,60000);callback();}
     assert.deepEqual(revoked,['blob:contact','blob:contact']);
   }finally{globalThis.URL=originalURL;globalThis.setTimeout=originalTimer;delete globalThis.document;}
+});
+
+test('web button explains import after export instead of claiming the contact was saved',async()=>{
+  const runtime=await import(imports.get('react-native'));
+  runtime.Platform.OS='web';
+  try{
+    globalThis.fixture={locale:'en',states:[],alerts:[],present:async()=>{}};
+    SaveContactButton({profile,name:'display'}).props.onPress();await tick();
+    assert.deepEqual(fixture.alerts,[[copy.exports.memberCopy.en.contactDownloadTitle,copy.exports.memberCopy.en.contactDownloadHelp]]);
+    assert.ok(fixture.alerts[0][1].includes('Messages or Mail'));
+  }finally{runtime.Platform.OS='ios';}
 });

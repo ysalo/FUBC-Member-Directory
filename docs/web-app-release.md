@@ -826,3 +826,22 @@ checks for file content and layout at phone/desktop widths. Actual iPhone/Androi
 Contacts import and home-screen file handoff remain device checks; browser engine
 simulation cannot certify OS import behavior. Hosted Preview may require Vercel
 SSO. No live OAuth or physical native checks are claimed.
+
+## iPhone contact share-sheet correction (1.8.8 candidate)
+
+The user confirmed that 1.8.7's Save to Contacts opened the iPhone share sheet
+from a home-screen launch, with a contact preview but no save action. File sharing
+capability does not imply Contacts import capability. Browser Save now downloads
+`.vcf` directly regardless of Web Share availability and displays import guidance;
+it does not claim that a contact has been saved. Apple's documented import path
+is a .vcf attachment in Messages or Mail; the help explains that route if an iPhone
+file preview lacks import controls. Existing native forms and vCard content remain.
+
+A regression test against the actual web adapter failed with one share call before
+the fix and passes with zero share calls and a downloaded contact file afterward.
+The helper test checks explicit import instructions. This proves the browser path
+change, not iOS Contacts behavior. The exact OS-level save controls cannot be
+reproduced on the Linux host; user/device validation of Safari and home-screen
+handoff is pending before calling the iPhone save problem resolved. No backend
+change or public contact endpoint. Browser file content and URL cleanup remain
+covered; version metadata is 1.8.8. Rollback remains backend-compatible.

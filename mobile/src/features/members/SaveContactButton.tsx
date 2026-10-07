@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet } from "react-native";
 import { Text } from "@/features/accessibility/app-text";
 import { Alert } from "@/features/platform/alert";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
@@ -23,6 +23,7 @@ export function SaveContactButton({ profile, name }: SaveContactButtonProps) {
     setBusy(true);
     try {
       await saveMemberContact(profile, name);
+      if (Platform.OS === "web") Alert.alert(copy.contactDownloadTitle, copy.contactDownloadHelp);
     } catch {
       Alert.alert(copy.saveContactError, copy.saveContactUnavailable);
     } finally {

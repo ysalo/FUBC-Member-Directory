@@ -54,12 +54,12 @@ try {for(const width of [390,1440])for(const leadership of ['deacon','pastor']) 
  assert.equal(download.suggestedFilename(),'Anna Member.vcf');
  const stream=await download.createReadStream();let card='';for await(const chunk of stream)card+=chunk.toString();
  assert.ok(card.includes('FN:Anna Member\r\n'));assert.ok(card.includes('N:Member;Anna;;;\r\n'));assert.ok(card.includes('ADR;TYPE=HOME:;;Seattle;;;;\r\n'));assert.ok(!card.includes('Prayer'));
- await page.evaluate(()=>{window.__contactShares=[];Object.defineProperty(navigator,'canShare',{configurable:true,value:data=>data.files[0].type==='text/vcard'});Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{const file=data.files[0];window.__contactShares.push({name:file.name,body:await file.text()});}});});
- await saveContact.click();await page.waitForFunction(()=>window.__contactShares.length===1);
- assert.equal((await page.evaluate(()=>window.__contactShares[0])).body,card);
- await page.evaluate(()=>{navigator.share=async()=>{throw new DOMException('Canceled','AbortError');};window.__canceledDownloads=0;const original=URL.createObjectURL;URL.createObjectURL=(...args)=>{window.__canceledDownloads++;return original(...args);};});
- await saveContact.click();await page.waitForTimeout(100);
- assert.equal(await page.evaluate(()=>window.__canceledDownloads),0);assert.equal(await page.getByRole('alertdialog').count(),0);
+ await page.getByRole('dialog').getByText('Import the contact file',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'OK',exact:true}).click();
+ await page.evaluate(()=>{window.__contactShares=0;Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async()=>{window.__contactShares++;}});});
+ const repeatDownload=page.waitForEvent('download');await saveContact.click();assert.equal((await repeatDownload).suggestedFilename(),'Anna Member.vcf');
+ assert.equal(await page.evaluate(()=>window.__contactShares),0);
+ await page.getByRole('dialog').getByText('Import the contact file',{exact:true}).waitFor();await page.getByRole('button',{name:'OK',exact:true}).click();
 
  if(leadership==='deacon') {
   const toggle=page.getByTestId('deacon-notes-toggle');await toggle.waitFor();
