@@ -1004,7 +1004,7 @@ const styles = StyleSheet.create({
     cancel: { fontSize: 16 },
     save: { fontSize: 16, fontWeight: "700" },
     disabled: { opacity: 0.5 },
-    field: { gap: 7, flex: 1, minWidth: 0 },
+    field: { gap: 7, flexGrow: 1, minWidth: 0 },
     fieldRow: { gap: 16 },
     fieldRowDesktop: { flexDirection: "row", alignItems: "flex-start" },
     dateField: { flex: 1, minWidth: 0, gap: 7 },

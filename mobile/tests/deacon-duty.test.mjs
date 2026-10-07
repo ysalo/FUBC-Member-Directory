@@ -9,6 +9,7 @@ import {
   moveCandidate,
   includedCandidates,
   moveIncludedCandidate,
+  dropIncludedCandidate,
   nextPeriodForPerson,
   periodsByMonth,
   periodsForPerson,
@@ -214,7 +215,7 @@ function rotationFixture({allowed=true}={}){
  const deacons=[{personId:'a',name:'Alpha'},{personId:'b',name:'Beta'},{personId:'c',name:'Charlie'}];
  const repository={loadYear:async year=>({year,eligibleDeacons:deacons,periods:[]}),saveRotation:async(year,ids)=>{calls.push({year,ids});return {year,eligibleDeacons:deacons,periods:buildRotation(year,deacons.filter(d=>ids.includes(d.personId)).sort((a,b)=>ids.indexOf(a.personId)-ids.indexOf(b.personId)))};}};
  const modules={
-  react:{...React,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],next=>{states[i]=typeof next==='function'?next(states[i]):next;}];},useCallback:f=>f,useMemo:f=>f()},
+  react:{...React,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],next=>{states[i]=typeof next==='function'?next(states[i]):next;}];},useCallback:f=>f,useMemo:f=>f(),useRef:initial=>({current:initial})},
   'react/jsx-runtime':require('react/jsx-runtime'),'expo-router':{useFocusEffect:callback=>focus.push(callback)},
   'react-native':{ActivityIndicator:'Spinner',Pressable:'Button',ScrollView:'Scroll',View:'View',StyleSheet:{create:x=>x,hairlineWidth:1}},
   'react-native-safe-area-context':{SafeAreaView:'SafeArea'},'@react-native-vector-icons/ionicons':{Ionicons:'Icon'},
@@ -222,7 +223,8 @@ function rotationFixture({allowed=true}={}){
   '@/features/directory/directory-repository':{listDirectory:async()=>[]},'@/features/localization/LocalizationProvider':{useLocalization:()=>({locale:'en'})},
   '@/lib/permissions':{canManageSettings:()=>allowed},'@/features/session/SessionProvider':{useSession:()=>({status:'ready',account:{id:'admin'}})},
   '@/lib/async-state':{errorMessage:e=>e.message},'@/features/members/ProfileAvatar':{ProfileAvatar:'Avatar'},'./DeaconPickerSheet':{DeaconPickerSheet:()=>null},
-  './DutySummary':{todayFixedPdt:()=> '2026-10-04'},'./duty-domain':{fridayBeforeSunday,moveIncludedCandidate,includedCandidates,weekendLabel},'./duty-repository':{dutyRepository:repository},
+  './DraggableRotationRow':{DraggableRotationRow:props=>props.children(null)},
+  './DutySummary':{todayFixedPdt:()=> '2026-10-04'},'./duty-domain':{fridayBeforeSunday,moveIncludedCandidate,dropIncludedCandidate,includedCandidates,weekendLabel},'./duty-repository':{dutyRepository:repository},
   '@/features/manage/use-unsaved-changes':{useUnsavedChanges:value=>{dirty=value;}},
  };
  const exports={};new Function('require','exports',managementCode)(id=>{assert.ok(id in modules,id);return modules[id];},exports);
@@ -248,4 +250,15 @@ test('excluding everyone prevents generation and reset restores the saved roster
 });
 test('non-administrators cannot generate or access roster exclusion controls',async()=>{
  const ui=rotationFixture({allowed:false});await ui.load();assert.match(ui.text(),/permission to manage/);assert.ok(!ui.find('Include Alpha in rotation'));assert.deepEqual(ui.calls,[]);
+});
+
+test('dragging a deacon across multiple included positions preserves exclusions and other relative order', () => {
+  const roster = ['a', 'excluded', 'b', 'c', 'd'].map(personId => ({ personId, name: personId }));
+  const ids = values => values.map(value => value.personId);
+  assert.deepEqual(ids(dropIncludedCandidate(roster, ['excluded'], 'a', 'd')), ['b', 'excluded', 'c', 'd', 'a']);
+  assert.deepEqual(ids(dropIncludedCandidate(roster, ['excluded'], 'd', 'a')), ['d', 'excluded', 'a', 'b', 'c']);
+  for (const [from, to] of [['excluded','a'], ['a','excluded'], ['a','missing'], ['a','a']]) {
+    assert.deepEqual(dropIncludedCandidate(roster, ['excluded'], from, to), roster);
+  }
+  assert.deepEqual(ids(roster), ['a', 'excluded', 'b', 'c', 'd']);
 });

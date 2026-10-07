@@ -38,6 +38,19 @@ export function moveIncludedCandidate(candidates: readonly DutyCandidate[], excl
   return candidates.map(candidate => excluded.has(candidate.personId) ? candidate : moved[index++]);
 }
 
+/** Drops a participating deacon at another participant's position; excluded rows stay put. */
+export function dropIncludedCandidate(candidates: readonly DutyCandidate[], excludedIds: readonly string[], personId: string, targetId: string): DutyCandidate[] {
+  const participating = includedCandidates(candidates, excludedIds);
+  const from = participating.findIndex(candidate => candidate.personId === personId);
+  const to = participating.findIndex(candidate => candidate.personId === targetId);
+  if (from < 0 || to < 0 || from === to) return [...candidates];
+  const [moved] = participating.splice(from, 1);
+  participating.splice(to, 0, moved);
+  const excluded = new Set(excludedIds);
+  let index = 0;
+  return candidates.map(candidate => excluded.has(candidate.personId) ? candidate : participating[index++]);
+}
+
 function isSunday(year: number, month: number, day: number): boolean {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay() === 0;
 }
