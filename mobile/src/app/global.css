@@ -166,7 +166,7 @@ input:focus, textarea:focus, [contenteditable="true"]:focus {
 
 /* Segmented choices retain native radio keyboard behavior. */
 .menu-choices { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: var(--app-subtle); }
-.menu-choice { position: relative; display: flex; flex: 1 1 84px; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 10px 8px; border: 2px solid transparent; border-radius: 9px; color: var(--app-secondaryText); font-weight: 600; text-align: center; cursor: pointer; overflow-wrap: anywhere; }
+.menu-choice { position: relative; display: flex; flex: 1 1 0; min-width: min-content; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 10px 8px; border: 2px solid transparent; border-radius: 9px; color: var(--app-secondaryText); font-weight: 600; text-align: center; cursor: pointer; }
 .menu-choice[data-checked="true"] { background: var(--app-elevated); color: var(--app-text); border-color: var(--app-accent); }
 .menu-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
 .menu-choice-sample { font-weight: 700; color: var(--app-text); }

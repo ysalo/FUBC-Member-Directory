@@ -744,7 +744,7 @@ The harness intercepts Supabase, blocks unknown writes, checks 320/390/1023/1024
 
 ## Menu corrections 1.8.5
 
-The overall Menu layout is retained. Preference choices return to segmented controls with a filled selection, system/sun/moon appearance icons, and Small/Standard/Large Aa previews. Browser radios retain arrow-key selection and visible focus; shared native controls retain radio accessibility semantics. Full names and wrapping labels remain readable in Ukrainian and at large text sizes.
+The overall Menu layout is retained. Preference choices return to segmented controls with a filled selection, system/sun/moon appearance icons, and Small/Standard/Large Aa previews. Browser radios retain arrow-key selection and visible focus; shared native controls retain radio accessibility semantics. Full names remain whole; segments wrap rather than splitting labels in Ukrainian and at large text sizes.
 
 Mobile browser About returns to the shared full-screen modal used before 1.8.4. Desktop keeps its bounded dialog when supported, with the full-screen modal as a fallback. With showModal unavailable, 1.8.4 threw and unmounted Menu; this compatibility failure was reproduced, although the user's exact device failure was not confirmed. Native page-sheet behavior is retained; physical native testing is not claimed.
 

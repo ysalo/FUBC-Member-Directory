@@ -47,6 +47,7 @@ for(const width of (process.env.FUBC_DISABLE_DIALOG ? [390,1440] : [320,390,1023
  await page.getByRole('radio',{name:appearance==='light'?'Світлий':'Темний',exact:true}).check();
  for(const radio of await page.getByRole('radio').all()){const b=await radio.locator('..').boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width+1&&b.height>=44,'choice bounds and target');}
  if(out)await page.screenshot({path:`${out}/menu-${width}-${appearance}-uk-large.png`,fullPage:true});
+ for(const label of await page.locator('.menu-choice > span:last-child').all()){const fontSize=await label.evaluate(e=>parseFloat(getComputedStyle(e).fontSize));const bounds=await label.boundingBox();assert.ok(bounds.height<=fontSize*1.5,'preference label stays whole');}
  const samples=await page.locator('.menu-choice-sample').evaluateAll(nodes=>nodes.map(e=>parseFloat(getComputedStyle(e).fontSize)));assert.equal(samples.length,3);assert.ok(samples[0]<samples[1]&&samples[1]<samples[2],'text size previews grow');
  const selectedStyles=await page.locator('.menu-choice').evaluateAll(nodes=>nodes.map(e=>({selected:e.dataset.checked==='true',background:getComputedStyle(e).backgroundColor})));assert.ok(selectedStyles.some(e=>!e.selected&&e.background==='rgba(0, 0, 0, 0)'));assert.ok(selectedStyles.filter(e=>e.selected).every(e=>e.background!=='rgba(0, 0, 0, 0)'),'filled selected segments');
  if(process.env.FUBC_DISABLE_DIALOG)await page.evaluate(()=>{window.__originalShowModal=HTMLDialogElement.prototype.showModal;HTMLDialogElement.prototype.showModal=undefined;});
