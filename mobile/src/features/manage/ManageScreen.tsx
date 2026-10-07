@@ -1,1334 +1,356 @@
-import { searchMembers } from "@/lib/member-search";
-import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
-import { Text, TextInput } from "@/features/accessibility/app-text";
-import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { type Href, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-    ActivityIndicator,
-    FlatList,
-    Pressable,
-    StyleSheet,
-    View,
-} from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { useFocusEffect, type Href } from "expo-router";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { Ionicons } from "@react-native-vector-icons/ionicons";
+import { Text } from "@/features/accessibility/app-text";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
-import { ProfileAvatar } from "@/features/members/ProfileAvatar";
 import { useSession } from "@/features/session/SessionProvider";
+import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
 import { WebTabBar } from "@/features/shell/WebTabBar";
-import { errorMessage, withTimeout } from "@/lib/async-state";
 import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
 import { isBackendConfigured } from "@/lib/supabase";
+import { errorMessage, withTimeout } from "@/lib/async-state";
 import { managementRepository } from "./management-repository";
-import { BulkMemberDeletion } from "./BulkMemberDeletion";
-import { LastSeen } from "./LastSeen";
+import type { ManagementSummary } from "./management-read-model";
+import { useManagementList } from "./use-management-list";
+import { ManagementFeedback, ManagementLink, ui } from "./ManagementListParts";
 import { managedAccountRoute } from "./route-params";
-import {
-    initialManagementState,
-    orderedAccounts,
-    pendingAccounts,
-    type ManagedAccount,
-    type ManagedMember,
-    type ManagementState,
-} from "./model";
 
 const labels = {
-    en: {
-        title: "Manage",
-        subtitle: "Keep the directory accurate and access up to date.",
-        members: "Members",
-        accounts: "Accounts",
-        active: "Active",
-        archived: "Left membership",
-        formerMembers: "Former members",
-        pending: "Pending",
-        denied: "Denied",
-        revoked: "Revoked",
-        groups: "Groups",
-        groupsDetail: "Assign deacons and review rosters",
-        ministries: "Ministries",
-        ministriesDetail: "Maintain ministry names",
-        schedule: "Schedule",
-        scheduleDetail: "Generate and adjust the Friday/Sunday deacon rotation",
-        addMember: "Add member",
-        audit: "Audit history", auditDetail: "Review changes and preview restoration", importMembers: "Import members", importDetail: "Review and import a CSV member list",
-        loading: "Preparing management tools…",
-        loadingDetail: "Loading members and account access.",
-        error: "Management tools didn’t load",
-        retry: "Try again",
-        noAccess: "You don’t have permission to manage directory records.",
-        waiting: "Waiting for approval",
-        waitingDetail: "Signed-in people who need an administrator’s review.",
-        allCaughtUp: "No accounts are waiting for approval.",
-        emptyMembers: "No members yet",
-        emptyMembersDetail: "Add the first person to start the directory.",
-        emptyAccounts: "No accounts found",
-        emptyAccountsDetail: "New sign-ins will appear here.",
-        opensAccount: "Opens account access settings",
-        opensMember: "Opens member management",
-        searchMembers: "Search people",
-        searchAccounts: "Search accounts",
-        filters: "Filters",
-        clear: "Clear",
-        done: "Done",
-        noMatches: "No matching people",
-        noMatchesDetail: "Try a different name, group, or email.",
-        select: "Select members", selectAll: "Select all shown", clearSelection: "Clear selection", selected: "Selected", cancelSelection: "Cancel selection", deleteSelected: "Delete selected", selfDelete: "Your own member record cannot be deleted here.",
-    },
-    uk: {
-        title: "Керування",
-        subtitle: "Підтримуйте довідник і доступ в актуальному стані.",
-        members: "Учасники",
-        accounts: "Облікові записи",
-        active: "Активний",
-        archived: "Вийшов із членства",
-        formerMembers: "Колишні члени",
-        pending: "Очікує",
-        denied: "Відхилено",
-        revoked: "Відкликано",
-        groups: "Групи",
-        groupsDetail: "Призначення дияконів і склад груп",
-        schedule: "Розклад",
-        scheduleDetail:
-            "Створення та коригування чергування дияконів у п’ятницю й неділю",
-        ministries: "Служіння",
-        ministriesDetail: "Назви служінь",
-        addMember: "Додати учасника",
-        audit: "Історія змін", auditDetail: "Перегляд змін і відновлення", importMembers: "Імпорт учасників", importDetail: "Перегляд та імпорт списку з CSV",
-        loading: "Готуємо інструменти керування…",
-        loadingDetail: "Завантажуємо учасників і доступ до облікових записів.",
-        error: "Не вдалося завантажити керування",
-        retry: "Спробувати ще раз",
-        noAccess: "У вас немає дозволу керувати записами довідника.",
-        waiting: "Очікують схвалення",
-        waitingDetail:
-            "Користувачі, які вже ввійшли й потребують перевірки адміністратора.",
-        allCaughtUp: "Немає облікових записів, що очікують схвалення.",
-        emptyMembers: "Учасників ще немає",
-        emptyMembersDetail: "Додайте першу людину, щоб почати довідник.",
-        emptyAccounts: "Облікових записів не знайдено",
-        emptyAccountsDetail: "Нові користувачі з’являться тут після входу.",
-        opensAccount: "Відкриває налаштування доступу",
-        opensMember: "Відкриває керування учасником",
-        searchMembers: "Пошук людей",
-        searchAccounts: "Пошук облікових записів",
-        filters: "Фільтри",
-        clear: "Очистити",
-        done: "Готово",
-        noMatches: "Людей не знайдено",
-        noMatchesDetail: "Спробуйте інше ім’я, групу або електронну адресу.",
-        select: "Вибрати учасників", selectAll: "Вибрати всіх показаних", clearSelection: "Скасувати вибір", selected: "Вибрано", cancelSelection: "Завершити вибір", deleteSelected: "Видалити вибраних", selfDelete: "Тут не можна видалити власний запис учасника.",
-    },
+  en: {
+    title: "Manage",
+    subtitle: "Keep member records and access up to date.",
+    members: "Members",
+    membersDetail: "Find, edit and review member records",
+    accounts: "Account access",
+    accountsDetail: "Approve sign-ins and manage access",
+    groups: "Groups",
+    groupsDetail: "Members and responsible deacons",
+    add: "Add member",
+    waiting: "Waiting for approval",
+    caughtUp: "No accounts are waiting for approval.",
+    allAccounts: "Review all pending accounts",
+    tools: "Other tools",
+    ministries: "Ministries",
+    schedule: "Deacon schedule",
+    import: "Import members",
+    audit: "Audit history",
+    noAccess: "You do not have permission to manage directory records.",
+  },
+  uk: {
+    title: "Керування",
+    subtitle: "Підтримуйте записи учасників і доступ в актуальному стані.",
+    members: "Учасники",
+    membersDetail: "Пошук, редагування та перегляд записів",
+    accounts: "Доступ до облікових записів",
+    accountsDetail: "Схвалення входів і керування доступом",
+    groups: "Групи",
+    groupsDetail: "Учасники та відповідальні диякони",
+    add: "Додати учасника",
+    waiting: "Очікують схвалення",
+    caughtUp: "Немає облікових записів, що очікують схвалення.",
+    allAccounts: "Переглянути всі запити на схвалення",
+    tools: "Інші інструменти",
+    ministries: "Служіння",
+    schedule: "Розклад дияконів",
+    import: "Імпорт учасників",
+    audit: "Історія змін",
+    noAccess: "У вас немає дозволу керувати записами довідника.",
+  },
 } as const;
 
 export function ManageScreen() {
-    const desktop = useDesktopLayout();
-    const { palette } = useAppearance();
-    const { locale } = useLocalization();
-    const session = useSession();
-    const router = useRouter();
-    const copy = labels[locale];
-    const actor = session.status === "ready" ? session.account : null;
-    const allowed = !isBackendConfigured || canManageDirectory(actor);
-    const accountsAllowed = !isBackendConfigured || canManageAccounts(actor);
-    const [panel, setPanel] = useState<"members" | "accounts">("members");
-    const [state, setState] = useState<ManagementState>(() =>
-        isBackendConfigured
-            ? { members: [], accounts: [] }
-            : initialManagementState,
-    );
-    const [loading, setLoading] = useState(true);
-    const [failure, setFailure] = useState<string | null>(null);
-    const [query, setQuery] = useState("");
-    const [showFormer, setShowFormer] = useState(false);
-    const [filterOpen, setFilterOpen] = useState(false);
-    const [selecting, setSelecting] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [deletionMembers, setDeletionMembers] = useState<ManagedMember[] | null>(null);
-    const deletionAllowed = canManageAccounts(actor);
-
-    useEffect(() => {
-        setSelectedIds([]);
-        setSelecting(false);
-    }, [panel, query, showFormer, actor?.id, deletionAllowed]);
-
-    const load = useCallback(() => {
-        if (!allowed) return;
-        setSelectedIds([]);
-        setSelecting(false);
-        setLoading(true);
-        setFailure(null);
-        void withTimeout(managementRepository.load())
-            .then(setState)
-            .catch((cause) => setFailure(errorMessage(cause)))
-            .finally(() => setLoading(false));
-    }, [allowed]);
-
-    useFocusEffect(
-        useCallback(() => {
-            load();
-        }, [load]),
-    );
-
-    const approvalQueue = useMemo(
-        () => pendingAccounts(state.accounts),
-        [state.accounts],
-    );
-    const data = useMemo(() => {
-        const needle = query.trim().toLocaleLowerCase(locale);
-        const source =
-            panel === "members"
-                ? state.members
-                : accountsAllowed
-                  ? orderedAccounts(state.accounts)
-                  : [];
-        const visible = source
-            .filter(
-                (item) =>
-                    panel !== "members" ||
-                    (item as ManagedMember).archived === showFormer,
-            );
-        return panel === "members"
-            ? searchMembers(visible, needle, item => item as ManagedMember)
-            : visible.filter(item => !needle || `${(item as ManagedAccount).name} ${(item as ManagedAccount).email}`.toLocaleLowerCase(locale).includes(needle));
-    }, [accountsAllowed, locale, panel, query, showFormer, state]);
-    const openAccount = (accountId: string) => {
-        router.push(managedAccountRoute(accountId));
-    };
-    const selectableMembers = panel === "members" ? (data as ManagedMember[]).filter((member) => member.id !== actor?.personId && member.revision != null) : [];
-    const selectedMembers = selectableMembers.filter((member) => selectedIds.includes(member.id));
-    const allSelected = selectableMembers.length > 0 && selectedMembers.length === selectableMembers.length;
-    const toggleMember = (member: ManagedMember) => {
-        if (!deletionAllowed || member.id === actor?.personId || member.revision == null) return;
-        setSelectedIds((current) => current.includes(member.id) ? current.filter((id) => id !== member.id) : [...current, member.id]);
-    };
-
-    if (!allowed) {
-        return (
-            <SafeAreaView
-                style={[styles.safe, { backgroundColor: palette.background }]}
-            >
-                <StateView
-                    detail={copy.noAccess}
-                    icon="lock-closed-outline"
-                    title={copy.title}
-                />
-                <WebTabBar />
-            </SafeAreaView>
-        );
-    }
-
-    return (
-        <SafeAreaView
-            style={[styles.safe, { backgroundColor: palette.background }]}
-        >
-            <FlatList
-                contentInsetAdjustmentBehavior="automatic"
-                refreshing={loading}
-                onRefresh={load}
-                contentContainerStyle={[
-                    styles.content,
-                    desktop && styles.desktopContent,
-                ]}
-                data={loading || failure ? [] : data}
-                keyExtractor={(item) => item.id}
-                ListHeaderComponent={
-                    <>
-                        <View style={styles.heading}>
-                            <View style={styles.flex}>
-                                <Text
-                                    accessibilityRole="header"
-                                    selectable
-                                    style={[
-                                        styles.title,
-                                        { color: palette.text },
-                                    ]}
-                                >
-                                    {copy.title}
-                                </Text>
-                                <Text
-                                    selectable
-                                    style={[
-                                        styles.subtitle,
-                                        { color: palette.secondaryText },
-                                    ]}
-                                >
-                                    {copy.subtitle}
-                                </Text>
-                            </View>
-                            <Pressable
-                                accessibilityLabel={copy.addMember}
-                                accessibilityRole="button"
-                                onPress={() =>
-                                    router.push("/manage/member/new" as Href)
-                                }
-                                style={({ pressed }) => [
-                                    styles.add,
-                                    { backgroundColor: palette.accent },
-                                    pressed && styles.pressed,
-                                ]}
-                            >
-                                <Ionicons
-                                    accessibilityElementsHidden
-                                    color="#FFF"
-                                    name="add"
-                                    size={21}
-                                />
-                                <Text style={styles.addText}>{copy.addMember}</Text>
-                            </Pressable>
-                        </View>
-
-                        <View
-                            accessibilityRole="tablist"
-                            style={[
-                                styles.segmented,
-                                { backgroundColor: palette.subtle },
-                            ]}
-                        >
-                            {(
-                                [
-                                    "members",
-                                    ...(accountsAllowed ? ["accounts" as const] : []),
-                                ] as const
-                            ).map((value) => (
-                                <Pressable
-                                    accessibilityRole="tab"
-                                    accessibilityState={{
-                                        selected: panel === value,
-                                    }}
-                                    key={value}
-                                    onPress={() => {
-                                        setPanel(value);
-                                        setFilterOpen(false);
-                                    }}
-                                    style={[
-                                        styles.segment,
-                                        panel === value && {
-                                            backgroundColor: palette.elevated,
-                                        },
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.segmentText,
-                                            {
-                                                color:
-                                                    panel === value
-                                                        ? palette.text
-                                                        : palette.secondaryText,
-                                            },
-                                        ]}
-                                    >
-                                        {copy[value]}
-                                    </Text>
-                                </Pressable>
-                            ))}
-                        </View>
-
-                        <View style={styles.searchArea}>
-                            <View
-                                style={[
-                                    styles.search,
-                                    { backgroundColor: palette.subtle },
-                                ]}
-                            >
-                                <Ionicons
-                                    accessibilityElementsHidden
-                                    color={palette.secondaryText}
-                                    name="search-outline"
-                                    size={20}
-                                />
-                                <TextInput
-                                    accessibilityLabel={
-                                        panel === "members"
-                                            ? copy.searchMembers
-                                            : copy.searchAccounts
-                                    }
-                                    autoCapitalize="none"
-                                    clearButtonMode="while-editing"
-                                    onChangeText={setQuery}
-                                    placeholder={
-                                        panel === "members"
-                                            ? copy.searchMembers
-                                            : copy.searchAccounts
-                                    }
-                                    placeholderTextColor={palette.secondaryText}
-                                    returnKeyType="search"
-                                    style={[
-                                        styles.searchInput,
-                                        { color: palette.text },
-                                    ]}
-                                    value={query}
-                                />
-                                {panel === "members" ? (
-                                    <Pressable
-                                        accessibilityLabel={copy.filters}
-                                        accessibilityRole="button"
-                                        accessibilityState={{
-                                            expanded: filterOpen,
-                                        }}
-                                        onPress={() =>
-                                            setFilterOpen((open) => !open)
-                                        }
-                                        style={styles.filterButton}
-                                    >
-                                        <Ionicons
-                                            accessibilityElementsHidden
-                                            color={
-                                                showFormer
-                                                    ? palette.accent
-                                                    : palette.secondaryText
-                                            }
-                                            name="options-outline"
-                                            size={21}
-                                        />
-                                        <Text style={{ color: showFormer ? palette.accent : palette.text, fontWeight: "700" }}>{copy.filters}</Text>
-                                        {showFormer ? (
-                                            <View
-                                                style={[
-                                                    styles.filterCount,
-                                                    {
-                                                        backgroundColor:
-                                                            palette.accent,
-                                                    },
-                                                ]}
-                                            >
-                                                <Text
-                                                    style={
-                                                        styles.filterCountText
-                                                    }
-                                                >
-                                                    1
-                                                </Text>
-                                            </View>
-                                        ) : null}
-                                    </Pressable>
-                                ) : null}
-                            </View>
-                            {panel === "members" && filterOpen ? (
-                                <View
-                                    accessibilityViewIsModal
-                                    style={[
-                                        styles.filterPopover,
-                                        {
-                                            backgroundColor: palette.elevated,
-                                            borderColor: palette.line,
-                                        },
-                                    ]}
-                                >
-                                    <View style={styles.filterPopoverHeader}>
-                                        <Text
-                                            accessibilityRole="header"
-                                            style={[
-                                                styles.filterPopoverTitle,
-                                                { color: palette.text },
-                                            ]}
-                                        >
-                                            {copy.filters}
-                                        </Text>
-                                        {showFormer ? (
-                                            <Pressable
-                                                accessibilityRole="button"
-                                                onPress={() =>
-                                                    setShowFormer(false)
-                                                }
-                                                style={styles.clearButton}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.clearText,
-                                                        {
-                                                            color: palette.accent,
-                                                        },
-                                                    ]}
-                                                >
-                                                    {copy.clear}
-                                                </Text>
-                                            </Pressable>
-                                        ) : null}
-                                    </View>
-                                    <Pressable
-                                        accessibilityRole="checkbox"
-                                        accessibilityState={{
-                                            checked: showFormer,
-                                        }}
-                                        onPress={() =>
-                                            setShowFormer((value) => !value)
-                                        }
-                                        style={styles.filterOption}
-                                    >
-                                        <View
-                                            style={[
-                                                styles.checkbox,
-                                                {
-                                                    backgroundColor: showFormer
-                                                        ? palette.accent
-                                                        : "transparent",
-                                                    borderColor: showFormer
-                                                        ? palette.accent
-                                                        : palette.line,
-                                                },
-                                            ]}
-                                        >
-                                            {showFormer ? (
-                                                <Ionicons
-                                                    accessibilityElementsHidden
-                                                    color="#FFF"
-                                                    name="checkmark"
-                                                    size={15}
-                                                />
-                                            ) : null}
-                                        </View>
-                                        <Text
-                                            style={[
-                                                styles.filterOptionText,
-                                                { color: palette.text },
-                                            ]}
-                                        >
-                                            {copy.formerMembers}
-                                        </Text>
-                                    </Pressable>
-                                    <Pressable
-                                        accessibilityRole="button"
-                                        onPress={() => setFilterOpen(false)}
-                                        style={[
-                                            styles.doneButton,
-                                            { backgroundColor: palette.accent },
-                                        ]}
-                                    >
-                                        <Text style={styles.doneText}>
-                                            {copy.done}
-                                        </Text>
-                                    </Pressable>
-                                </View>
-                            ) : null}
-                        </View>
-
-                        <View
-                            style={[
-                                styles.shortcuts,
-                                desktop && styles.desktopShortcuts,
-                            ]}
-                        >
-                            {desktop && canManageAccounts(actor) ? <Shortcut detail={copy.auditDetail} icon="time-outline" label={copy.audit} onPress={() => router.push("/manage/audit" as Href)} /> : null}
-                            {accountsAllowed ? <Shortcut detail={copy.importDetail} icon="cloud-upload-outline" label={copy.importMembers} onPress={() => router.push("/manage/import" as Href)} /> : null}
-                            <Shortcut
-                                detail={copy.groupsDetail}
-                                icon="people-outline"
-                                label={copy.groups}
-                                onPress={() =>
-                                    router.push("/manage/groups" as Href)
-                                }
-                            />
-                            <Shortcut
-                                detail={copy.ministriesDetail}
-                                icon="layers-outline"
-                                label={copy.ministries}
-                                onPress={() =>
-                                    router.push("/manage/ministries" as Href)
-                                }
-                            />
-                            <Shortcut
-                                detail={copy.scheduleDetail}
-                                icon="calendar-outline"
-                                label={copy.schedule}
-                                onPress={() =>
-                                    router.push("/manage/schedule" as Href)
-                                }
-                            />
-                        </View>
-
-                        {accountsAllowed &&
-                        !loading &&
-                        !failure &&
-                        approvalQueue.length > 0 ? (
-                            <ApprovalQueue
-                                accounts={approvalQueue}
-                                onOpen={openAccount}
-                            />
-                        ) : null}
-                        {deletionAllowed && panel === "members" && !loading && !failure && data.length > 0 ? <View style={{ gap: 8, paddingVertical: 12 }}>
-                            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
-                                <Pressable accessibilityRole="button" onPress={() => { setSelecting(!selecting); setSelectedIds([]); }} style={{ minHeight: 44, justifyContent: "center" }}>
-                                    <Text style={{ color: palette.accent, fontWeight: "700" }}>{selecting ? copy.cancelSelection : copy.select}</Text>
-                                </Pressable>
-                                {selecting ? <Text accessibilityLiveRegion="polite" style={{ color: palette.text }}>{copy.selected}: {selectedMembers.length}</Text> : null}
-                            </View>
-                            {selecting ? <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
-                                <Pressable accessibilityRole="checkbox" accessibilityLabel={copy.selectAll} accessibilityState={{ checked: allSelected, disabled: !selectableMembers.length }} disabled={!selectableMembers.length} onPress={() => setSelectedIds(allSelected ? [] : selectableMembers.map((member) => member.id))} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                    <Ionicons accessibilityElementsHidden color={palette.accent} name={allSelected ? "checkbox" : "square-outline"} size={24} />
-                                    <Text style={{ color: palette.text }}>{copy.selectAll}</Text>
-                                </Pressable>
-                                <Pressable accessibilityRole="button" disabled={!selectedMembers.length} onPress={() => setSelectedIds([])} style={{ minHeight: 44, justifyContent: "center", opacity: selectedMembers.length ? 1 : 0.5 }}><Text style={{ color: palette.accent }}>{copy.clearSelection}</Text></Pressable>
-                                <Pressable accessibilityRole="button" accessibilityState={{ disabled: !selectedMembers.length }} disabled={!selectedMembers.length} onPress={() => setDeletionMembers(selectedMembers)} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8, opacity: selectedMembers.length ? 1 : 0.5 }}>
-                                    <Ionicons accessibilityElementsHidden color={palette.danger} name="trash-outline" size={21} />
-                                    <Text style={{ color: palette.danger, fontWeight: "700" }}>{copy.deleteSelected} ({selectedMembers.length})</Text>
-                                </Pressable>
-                            </View> : null}
-                        </View> : null}
-                    </>
-                }
-                ListEmptyComponent={
-                    loading ? (
-                        <StateView
-                            detail={copy.loadingDetail}
-                            icon="sync-outline"
-                            loading
-                            title={copy.loading}
-                        />
-                    ) : failure ? (
-                        <StateView
-                            action={load}
-                            actionLabel={copy.retry}
-                            detail={failure}
-                            icon="cloud-offline-outline"
-                            title={copy.error}
-                        />
-                    ) : query.trim() ? (
-                        <StateView
-                            detail={copy.noMatchesDetail}
-                            icon="search-outline"
-                            title={copy.noMatches}
-                        />
-                    ) : (
-                        <StateView
-                            detail={
-                                panel === "members"
-                                    ? copy.emptyMembersDetail
-                                    : copy.emptyAccountsDetail
-                            }
-                            icon={
-                                panel === "members"
-                                    ? "person-add-outline"
-                                    : "key-outline"
-                            }
-                            title={
-                                panel === "members"
-                                    ? copy.emptyMembers
-                                    : copy.emptyAccounts
-                            }
-                        />
-                    )
-                }
-                renderItem={({ item }) =>
-                    panel === "members" ? (
-                        <MemberRow
-                            item={item as ManagedMember}
-                            onPress={() =>
-                                router.push(`/manage/member/${item.id}` as Href)
-                            }
-                        />
-                    ) : (
-                        <AccountRow
-                            item={item as ManagedAccount}
-                            onPress={() => openAccount(item.id)}
-                        />
-                    )
-                }
-            />
-            {deletionMembers ? <BulkMemberDeletion members={deletionMembers} onClose={(attempted) => { setDeletionMembers(null); if (attempted) load(); }} /> : null}
-            <WebTabBar />
-        </SafeAreaView>
-    );
-
-    function Shortcut({
-        detail,
-        icon,
-        label,
-        onPress,
-    }: {
-        detail: string;
-        icon: "people-outline" | "layers-outline" | "calendar-outline" | "cloud-upload-outline" | "time-outline";
-        label: string;
-        onPress: () => void;
-    }) {
-        return (
-            <Pressable
-                accessibilityHint={detail}
-                accessibilityRole="button"
-                onPress={onPress}
-                style={({ pressed }) => [
-                    styles.shortcut,
-                    desktop && styles.desktopShortcut,
-                    {
-                        backgroundColor: palette.surface,
-                        borderColor: palette.line,
-                    },
-                    pressed && styles.pressed,
-                ]}
-            >
-                <View
-                    style={[
-                        styles.shortcutIcon,
-                        { backgroundColor: palette.accentSoft },
-                    ]}
-                >
+  const desktop = useDesktopLayout();
+  const { palette } = useAppearance();
+  const { locale } = useLocalization();
+  const copy = labels[locale];
+  const session = useSession();
+  const actor = session.status === "ready" ? session.account : null;
+  const allowed = !isBackendConfigured || canManageDirectory(actor),
+    accountsAllowed = !isBackendConfigured || canManageAccounts(actor);
+  const identity = actor
+    ? `${actor.id}:${actor.status}:${actor.role}`
+    : session.status;
+  const [summary, setSummary] = useState<{
+    identity: string;
+    value: ManagementSummary;
+  } | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const ticket = useRef(0);
+  const load = useCallback(() => {
+    const generation = ++ticket.current;
+    setFailure(null);
+    if (allowed)
+      void withTimeout(managementRepository.loadSummary())
+        .then((value) => {
+          if (generation === ticket.current) setSummary({ identity, value });
+        })
+        .catch((cause) => {
+          if (generation === ticket.current) setFailure(errorMessage(cause));
+        });
+  }, [allowed, identity]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      return () => {
+        ticket.current++;
+      };
+    }, [load]),
+  );
+  const pending = useManagementList(
+    "hub-pending",
+    (request) => managementRepository.loadAccountsPage(request),
+    { limit: 5, filters: { status: "pending" } },
+    accountsAllowed && allowed,
+  );
+  const counts = summary?.identity === identity ? summary.value : null;
+  const tasks: {
+    href: Href;
+    title: string;
+    detail: string;
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+    count?: number | null;
+  }[] = [
+    {
+      href: "/manage/members",
+      title: copy.members,
+      detail: copy.membersDetail,
+      icon: "people-outline",
+      count: counts?.members,
+    },
+    ...(accountsAllowed
+      ? [
+          {
+            href: "/manage/accounts" as Href,
+            title: copy.accounts,
+            detail: copy.accountsDetail,
+            icon: "key-outline" as const,
+          },
+        ]
+      : []),
+    {
+      href: "/manage/groups",
+      title: copy.groups,
+      detail: copy.groupsDetail,
+      icon: "grid-outline",
+      count: counts?.groups,
+    },
+  ];
+  return (
+    <SafeAreaView
+      edges={["top"]}
+      style={[ui.root, { backgroundColor: palette.background }]}
+    >
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[styles.content, ui.width]}
+      >
+        <View style={ui.heading}>
+          <Text
+            accessibilityRole="header"
+            style={[ui.title, { color: palette.text }]}
+          >
+            {copy.title}
+          </Text>
+          {allowed ? (
+            <ManagementLink href="/manage/member/new">
+              <Text
+                style={{
+                  color: palette.accent,
+                  fontWeight: "700",
+                  fontSize: 16,
+                }}
+              >
+                {copy.add}
+              </Text>
+            </ManagementLink>
+          ) : null}
+        </View>
+        <Text style={[ui.detail, { color: palette.secondaryText }]}>
+          {allowed ? copy.subtitle : copy.noAccess}
+        </Text>
+        {allowed ? (
+          <>
+            <View style={[styles.tasks, { borderColor: palette.line }]}>
+              {tasks.map((task) => (
+                <ManagementLink href={task.href} key={task.title}>
+                  <View
+                    style={[styles.task, { borderBottomColor: palette.line }]}
+                  >
                     <Ionicons
+                      accessibilityElementsHidden
+                      color={palette.accent}
+                      name={task.icon}
+                      size={25}
+                    />
+                    <View style={ui.rowCopy}>
+                      <Text style={[ui.sectionTitle, { color: palette.text }]}>
+                        {task.title}
+                      </Text>
+                      <Text
+                        style={[ui.detail, { color: palette.secondaryText }]}
+                      >
+                        {task.detail}
+                      </Text>
+                    </View>
+                    {task.count != null ? (
+                      <Text
+                        style={{ color: palette.secondaryText, fontSize: 17 }}
+                      >
+                        {task.count}
+                      </Text>
+                    ) : null}
+                    <Ionicons
+                      accessibilityElementsHidden
+                      color={palette.secondaryText}
+                      name="chevron-forward"
+                      size={19}
+                    />
+                  </View>
+                </ManagementLink>
+              ))}
+            </View>
+            <ManagementFeedback error={failure} retry={load} />
+            {accountsAllowed ? (
+              <View style={styles.section}>
+                <View style={ui.heading}>
+                  <Text
+                    accessibilityRole="header"
+                    style={[ui.sectionTitle, { color: palette.text }]}
+                  >
+                    {copy.waiting}
+                  </Text>
+                  {counts?.pendingAccounts ? (
+                    <Text style={{ color: palette.accent, fontWeight: "700" }}>
+                      {counts.pendingAccounts}
+                    </Text>
+                  ) : null}
+                </View>
+                <ManagementFeedback
+                  loading={pending.loading !== null}
+                  error={pending.error}
+                  retry={pending.retry}
+                />
+                {pending.items.map((account) => (
+                  <ManagementLink
+                    href={managedAccountRoute(account.id)}
+                    key={account.id}
+                  >
+                    <View
+                      style={[
+                        styles.approval,
+                        { borderBottomColor: palette.line },
+                      ]}
+                    >
+                      <View style={ui.rowCopy}>
+                        <Text style={[ui.name, { color: palette.text }]}>
+                          {account.name || account.email}
+                        </Text>
+                        <Text
+                          style={[ui.detail, { color: palette.secondaryText }]}
+                        >
+                          {account.email}
+                        </Text>
+                      </View>
+                      <Ionicons
                         accessibilityElementsHidden
                         color={palette.accent}
-                        name={icon}
-                        size={21}
+                        name="chevron-forward"
+                        size={19}
+                      />
+                    </View>
+                  </ManagementLink>
+                ))}
+                {!pending.loading && !pending.error && !pending.items.length ? (
+                  <Text style={[ui.detail, { color: palette.secondaryText }]}>
+                    {copy.caughtUp}
+                  </Text>
+                ) : null}
+                {pending.items.length ? (
+                  <ManagementLink
+                    href={{
+                      pathname: "/manage/accounts",
+                      params: { status: "pending" },
+                    }}
+                  >
+                    <Text style={{ color: palette.accent, fontWeight: "700" }}>
+                      {copy.allAccounts}
+                    </Text>
+                  </ManagementLink>
+                ) : null}
+              </View>
+            ) : null}
+            <View style={styles.section}>
+              <Text
+                accessibilityRole="header"
+                style={[ui.sectionTitle, { color: palette.text }]}
+              >
+                {copy.tools}
+              </Text>
+              {[
+                { href: "/manage/ministries", label: copy.ministries },
+                { href: "/manage/schedule", label: copy.schedule },
+                ...(accountsAllowed
+                  ? [{ href: "/manage/import", label: copy.import }]
+                  : []),
+                ...(Platform.OS === "web" && desktop && accountsAllowed
+                  ? [{ href: "/manage/audit", label: copy.audit }]
+                  : []),
+              ].map((tool) => (
+                <ManagementLink href={tool.href as Href} key={tool.href}>
+                  <View style={styles.tool}>
+                    <Text
+                      style={{
+                        color: palette.text,
+                        fontSize: 16,
+                        flexShrink: 1,
+                      }}
+                    >
+                      {tool.label}
+                    </Text>
+                    <Ionicons
+                      accessibilityElementsHidden
+                      color={palette.secondaryText}
+                      name="chevron-forward"
+                      size={18}
                     />
-                </View>
-                <View style={styles.flex}>
-                    <Text
-                        style={[styles.shortcutTitle, { color: palette.text }]}
-                    >
-                        {label}
-                    </Text>
-                    <Text
-                        numberOfLines={2}
-                        style={[
-                            styles.shortcutDetail,
-                            { color: palette.secondaryText },
-                        ]}
-                    >
-                        {detail}
-                    </Text>
-                </View>
-                <Ionicons
-                    accessibilityElementsHidden
-                    color={palette.secondaryText}
-                    name="chevron-forward"
-                    size={18}
-                />
-            </Pressable>
-        );
-    }
-
-    function ApprovalQueue({
-        accounts,
-        onOpen,
-    }: {
-        accounts: ManagedAccount[];
-        onOpen: (id: string) => void;
-    }) {
-        return (
-            <View
-                style={[
-                    styles.approval,
-                    { backgroundColor: palette.warningSoft },
-                ]}
-            >
-                <View style={styles.approvalHeading}>
-                    <View
-                        style={[
-                            styles.approvalIcon,
-                            { backgroundColor: palette.elevated },
-                        ]}
-                    >
-                        <Ionicons
-                            accessibilityElementsHidden
-                            color={palette.accent}
-                            name="time-outline"
-                            size={21}
-                        />
-                    </View>
-                    <View style={styles.flex}>
-                        <View style={styles.approvalTitleRow}>
-                            <Text
-                                accessibilityRole="header"
-                                style={[
-                                    styles.approvalTitle,
-                                    { color: palette.text },
-                                ]}
-                            >
-                                {copy.waiting}
-                            </Text>
-                            <Text
-                                style={[
-                                    styles.count,
-                                    {
-                                        backgroundColor: palette.accent,
-                                        color: "#FFF",
-                                    },
-                                ]}
-                            >
-                                {accounts.length}
-                            </Text>
-                        </View>
-                        <Text
-                            style={[
-                                styles.approvalDetail,
-                                { color: palette.secondaryText },
-                            ]}
-                        >
-                            {copy.waitingDetail}
-                        </Text>
-                    </View>
-                </View>
-                {accounts.length === 0 ? (
-                    <View
-                        style={[
-                            styles.caughtUp,
-                            { borderTopColor: palette.line },
-                        ]}
-                    >
-                        <Ionicons
-                            accessibilityElementsHidden
-                            color={palette.secondaryText}
-                            name="checkmark-circle-outline"
-                            size={20}
-                        />
-                        <Text
-                            style={[
-                                styles.caughtUpText,
-                                { color: palette.secondaryText },
-                            ]}
-                        >
-                            {copy.allCaughtUp}
-                        </Text>
-                    </View>
-                ) : (
-                    accounts.map((account) => (
-                        <Pressable
-                            accessibilityHint={copy.opensAccount}
-                            accessibilityLabel={`${account.name}, ${account.email}, ${copy.pending}`}
-                            accessibilityRole="button"
-                            key={account.id}
-                            onPress={() => onOpen(account.id)}
-                            style={({ pressed }) => [
-                                styles.approvalRow,
-                                { borderTopColor: palette.line },
-                                pressed && styles.pressed,
-                            ]}
-                        >
-                            <ProfileAvatar
-                                name={account.name || account.email}
-                                source={
-                                    state.members.find(
-                                        (member) =>
-                                            member.id === account.personId,
-                                    )?.photo
-                                }
-                                size={38}
-                            />
-                            <View style={styles.flex}>
-                                <Text
-                                    numberOfLines={1}
-                                    style={[
-                                        styles.cardTitle,
-                                        { color: palette.text },
-                                    ]}
-                                >
-                                    {account.name || account.email}
-                                </Text>
-                                <Text
-                                    numberOfLines={1}
-                                    selectable
-                                    style={[
-                                        styles.rowDetail,
-                                        { color: palette.secondaryText },
-                                    ]}
-                                >
-                                    {account.email}
-                                </Text>
-                                <LastSeen value={account.lastSeenAt} />
-                            </View>
-                            <Ionicons
-                                accessibilityElementsHidden
-                                color={palette.accent}
-                                name="chevron-forward"
-                                size={20}
-                            />
-                        </Pressable>
-                    ))
-                )}
+                  </View>
+                </ManagementLink>
+              ))}
             </View>
-        );
-    }
-
-    function MemberRow({
-        item,
-        onPress,
-    }: {
-        item: ManagedMember;
-        onPress: () => void;
-    }) {
-        const detail =
-            item.archived && item.leftAt
-                ? `${locale === "uk" ? "Дата виходу" : "Left"}: ${new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", { dateStyle: "medium" }).format(new Date(item.leftAt.length === 10 ? `${item.leftAt}T12:00:00` : item.leftAt))}`
-                : item.group;
-        return (
-            <Pressable
-                accessibilityHint={selecting ? item.id === actor?.personId ? copy.selfDelete : undefined : copy.opensMember}
-                accessibilityLabel={item.name}
-                accessibilityRole={selecting ? "checkbox" : "button"}
-                accessibilityState={selecting ? { checked: selectedIds.includes(item.id), disabled: item.id === actor?.personId || item.revision == null } : undefined}
-                disabled={selecting && (item.id === actor?.personId || item.revision == null)}
-                onPress={selecting ? () => toggleMember(item) : onPress}
-                style={({ pressed }) => [
-                    styles.row,
-                    {
-                        backgroundColor: selecting && selectedIds.includes(item.id) ? palette.accentSoft : palette.surface,
-                        borderColor: palette.line,
-                    },
-                    pressed && styles.pressed,
-                ]}
-            >
-                {selecting ? <Ionicons accessibilityElementsHidden color={item.id === actor?.personId ? palette.secondaryText : palette.accent} name={selectedIds.includes(item.id) ? "checkbox" : "square-outline"} size={24} /> : null}
-                <ProfileAvatar
-                    name={item.name}
-                    source={item.photo}
-                />
-                <View style={styles.flex}>
-                    <Text style={[styles.cardTitle, { color: palette.text }]}>
-                        {item.name}
-                    </Text>
-                    {detail ? (
-                        <Text
-                            numberOfLines={1}
-                            style={[
-                                styles.rowDetail,
-                                { color: palette.secondaryText },
-                            ]}
-                        >
-                            {detail}
-                        </Text>
-                    ) : null}
-                </View>
-                {item.archived ? (
-                    <StatusPill label={copy.archived} tone="muted" />
-                ) : null}
-                {!selecting || item.id === actor?.personId ? <Ionicons
-                    accessibilityElementsHidden
-                    color={palette.secondaryText}
-                    name={selecting ? "lock-closed-outline" : "chevron-forward"}
-                    size={19}
-                /> : null}
-            </Pressable>
-        );
-    }
-
-    function AccountRow({
-        item,
-        onPress,
-    }: {
-        item: ManagedAccount;
-        onPress: () => void;
-    }) {
-        return (
-            <Pressable
-                accessibilityHint={copy.opensAccount}
-                accessibilityLabel={`${item.name}, ${item.email}, ${copy[item.status]}`}
-                accessibilityRole="button"
-                onPress={onPress}
-                style={({ pressed }) => [
-                    styles.row,
-                    {
-                        backgroundColor: palette.surface,
-                        borderColor: palette.line,
-                    },
-                    pressed && styles.pressed,
-                ]}
-            >
-                <ProfileAvatar
-                    name={item.name || item.email}
-                    source={
-                        state.members.find(
-                            (member) => member.id === item.personId,
-                        )?.photo
-                    }
-                />
-                <View style={styles.flex}>
-                    <Text
-                        numberOfLines={1}
-                        style={[styles.cardTitle, { color: palette.text }]}
-                    >
-                        {item.name || item.email}
-                    </Text>
-                    <Text
-                        numberOfLines={1}
-                        selectable
-                        style={[
-                            styles.rowDetail,
-                            { color: palette.secondaryText },
-                        ]}
-                    >
-                        {item.email || "—"}
-                    </Text>
-                    <LastSeen value={item.lastSeenAt} />
-                </View>
-                <StatusPill
-                    label={copy[item.status]}
-                    tone={
-                        item.status === "pending"
-                            ? "attention"
-                            : item.status === "active"
-                              ? "success"
-                              : "muted"
-                    }
-                />
-                <Ionicons
-                    accessibilityElementsHidden
-                    color={palette.secondaryText}
-                    name="chevron-forward"
-                    size={19}
-                />
-            </Pressable>
-        );
-    }
-
-    function StatusPill({
-        label,
-        tone,
-    }: {
-        label: string;
-        tone: "attention" | "success" | "muted";
-    }) {
-        const backgroundColor =
-            tone === "attention"
-                ? palette.warningSoft
-                : tone === "success"
-                  ? palette.successSoft
-                  : palette.subtle;
-        return (
-            <View style={[styles.status, { backgroundColor }]}>
-                <Text
-                    style={[
-                        styles.statusText,
-                        {
-                            color:
-                                tone === "attention"
-                                    ? palette.accent
-                                    : palette.secondaryText,
-                        },
-                    ]}
-                >
-                    {label}
-                </Text>
-            </View>
-        );
-    }
-
-    function StateView({
-        action,
-        actionLabel,
-        detail,
-        icon,
-        loading: busy,
-        title,
-    }: {
-        action?: () => void;
-        actionLabel?: string;
-        detail: string;
-        icon:
-            | "cloud-offline-outline"
-            | "key-outline"
-            | "lock-closed-outline"
-            | "person-add-outline"
-            | "search-outline"
-            | "sync-outline"
-            | "cloud-upload-outline";
-        loading?: boolean;
-        title: string;
-    }) {
-        return (
-            <View accessibilityLiveRegion="polite" style={styles.state}>
-                <View
-                    style={[
-                        styles.stateIcon,
-                        { backgroundColor: palette.accentSoft },
-                    ]}
-                >
-                    {busy ? (
-                        <ActivityIndicator color={palette.accent} />
-                    ) : (
-                        <Ionicons
-                            accessibilityElementsHidden
-                            color={palette.accent}
-                            name={icon}
-                            size={27}
-                        />
-                    )}
-                </View>
-                <Text
-                    accessibilityRole="header"
-                    selectable
-                    style={[styles.stateTitle, { color: palette.text }]}
-                >
-                    {title}
-                </Text>
-                <Text
-                    selectable
-                    style={[
-                        styles.stateDetail,
-                        { color: palette.secondaryText },
-                    ]}
-                >
-                    {detail}
-                </Text>
-                {action ? (
-                    <Pressable
-                        accessibilityRole="button"
-                        onPress={action}
-                        style={({ pressed }) => [
-                            styles.retry,
-                            { backgroundColor: palette.accent },
-                            pressed && styles.pressed,
-                        ]}
-                    >
-                        <Text style={styles.retryText}>{actionLabel}</Text>
-                    </Pressable>
-                ) : null}
-            </View>
-        );
-    }
+          </>
+        ) : null}
+      </ScrollView>
+      <WebTabBar />
+    </SafeAreaView>
+  );
 }
-
 const styles = StyleSheet.create({
-    desktopContent: { paddingHorizontal: 32, paddingBottom: 48 },
-    desktopShortcuts: { flexDirection: "row", gap: 16 },
-    desktopShortcut: { flex: 1 },
-    safe: { flex: 1 },
-    content: { gap: 10, paddingBottom: 116, paddingHorizontal: 18 },
-    heading: {
-        alignItems: "center",
-        flexDirection: "row",
-        gap: 16,
-        justifyContent: "space-between",
-        paddingTop: 22,
-    },
-    title: { fontSize: 30, fontWeight: "800", letterSpacing: -1.3 },
-    subtitle: { fontSize: 15, lineHeight: 21, marginTop: 3 },
-    flex: { flex: 1, minWidth: 0 },
-    add: {
-        alignItems: "center",
-        borderCurve: "continuous",
-        borderRadius: 15,
-        flexDirection: "row",
-        gap: 6,
-        justifyContent: "center",
-        minHeight: 48,
-        paddingHorizontal: 16,
-    },
-    addText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
-    segmented: {
-        borderCurve: "continuous",
-        borderRadius: 13,
-        flexDirection: "row",
-        marginTop: 14,
-        padding: 3,
-    },
-    segment: {
-        alignItems: "center",
-        borderCurve: "continuous",
-        borderRadius: 10,
-        flex: 1,
-        minHeight: 40,
-        justifyContent: "center",
-        paddingHorizontal: 10,
-    },
-    segmentText: { fontSize: 15, fontWeight: "700" },
-    searchArea: { position: "relative", zIndex: 20 },
-    search: {
-        alignItems: "center",
-        borderRadius: 13,
-        flexDirection: "row",
-        gap: 9,
-        marginTop: 4,
-        minHeight: 46,
-        paddingHorizontal: 13,
-    },
-    searchInput: { flex: 1, fontSize: 16, paddingVertical: 10 },
-    filterButton: {
-        alignItems: "center",
-        flexDirection: "row",
-        gap: 5,
-        justifyContent: "center",
-        minHeight: 40,
-        paddingHorizontal: 4,
-        position: "relative",
-    },
-    filterCount: {
-        alignItems: "center",
-        borderRadius: 8,
-        height: 16,
-        justifyContent: "center",
-        position: "absolute",
-        right: -2,
-        top: 1,
-        width: 16,
-    },
-    filterCountText: { color: "#FFF", fontSize: 10, fontWeight: "800" },
-    filterPopover: {
-        borderCurve: "continuous",
-        borderRadius: 16,
-        borderWidth: StyleSheet.hairlineWidth,
-        elevation: 8,
-        padding: 12,
-        position: "absolute",
-        right: 0,
-        shadowColor: "#000",
-        shadowOffset: { height: 4, width: 0 },
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
-        top: 53,
-        width: 244,
-        zIndex: 20,
-    },
-    filterPopoverHeader: {
-        alignItems: "center",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        minHeight: 34,
-        paddingHorizontal: 4,
-    },
-    filterPopoverTitle: { fontSize: 17, fontWeight: "800" },
-    clearButton: {
-        justifyContent: "center",
-        minHeight: 36,
-        paddingLeft: 12,
-    },
-    clearText: { fontSize: 14, fontWeight: "700" },
-    filterOption: {
-        alignItems: "center",
-        flexDirection: "row",
-        gap: 11,
-        minHeight: 44,
-        paddingHorizontal: 4,
-    },
-    checkbox: {
-        alignItems: "center",
-        borderRadius: 6,
-        borderWidth: 1.5,
-        height: 23,
-        justifyContent: "center",
-        width: 23,
-    },
-    filterOptionText: { flex: 1, fontSize: 15, fontWeight: "600" },
-    doneButton: {
-        alignItems: "center",
-        borderRadius: 11,
-        justifyContent: "center",
-        marginTop: 7,
-        minHeight: 42,
-    },
-    doneText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
-    shortcuts: { gap: 8, marginTop: 4 },
-    shortcut: {
-        alignItems: "center",
-        borderCurve: "continuous",
-        borderRadius: 14,
-        borderWidth: StyleSheet.hairlineWidth,
-        flexDirection: "row",
-        gap: 11,
-        minHeight: 66,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-    },
-    shortcutIcon: {
-        alignItems: "center",
-        borderRadius: 10,
-        height: 38,
-        justifyContent: "center",
-        width: 38,
-    },
-    shortcutTitle: { fontSize: 16, fontWeight: "700" },
-    shortcutDetail: { fontSize: 13, lineHeight: 17, marginTop: 2 },
-    approval: {
-        borderCurve: "continuous",
-        borderRadius: 16,
-        marginBottom: 4,
-        marginTop: 6,
-        overflow: "hidden",
-        paddingHorizontal: 14,
-        paddingTop: 14,
-    },
-    approvalHeading: {
-        alignItems: "flex-start",
-        flexDirection: "row",
-        gap: 11,
-        paddingBottom: 13,
-    },
-    approvalIcon: {
-        alignItems: "center",
-        borderRadius: 10,
-        height: 38,
-        justifyContent: "center",
-        width: 38,
-    },
-    approvalTitleRow: { alignItems: "center", flexDirection: "row", gap: 8 },
-    approvalTitle: { fontSize: 18, fontWeight: "800" },
-    approvalDetail: { fontSize: 13, lineHeight: 18, marginTop: 3 },
-    count: {
-        borderRadius: 9,
-        fontSize: 12,
-        fontVariant: ["tabular-nums"],
-        fontWeight: "800",
-        minWidth: 20,
-        overflow: "hidden",
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        textAlign: "center",
-    },
-    approvalRow: {
-        alignItems: "center",
-        borderTopWidth: StyleSheet.hairlineWidth,
-        flexDirection: "row",
-        gap: 10,
-        minHeight: 60,
-        paddingVertical: 10,
-    },
-    caughtUp: {
-        alignItems: "center",
-        borderTopWidth: StyleSheet.hairlineWidth,
-        flexDirection: "row",
-        gap: 8,
-        minHeight: 50,
-    },
-    caughtUpText: { flex: 1, fontSize: 14, lineHeight: 19 },
-    row: {
-        alignItems: "center",
-        borderCurve: "continuous",
-        borderRadius: 14,
-        borderWidth: StyleSheet.hairlineWidth,
-        flexDirection: "row",
-        gap: 11,
-        minHeight: 70,
-        padding: 12,
-    },
-    cardTitle: { fontSize: 16, fontWeight: "700" },
-    rowDetail: { fontSize: 13, lineHeight: 18, marginTop: 2 },
-    status: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 5 },
-    statusText: { fontSize: 11, fontWeight: "800" },
-    state: {
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: 260,
-        paddingHorizontal: 26,
-        paddingVertical: 34,
-    },
-    stateIcon: {
-        alignItems: "center",
-        borderRadius: 25,
-        height: 50,
-        justifyContent: "center",
-        width: 50,
-    },
-    stateTitle: {
-        fontSize: 21,
-        fontWeight: "800",
-        marginTop: 15,
-        textAlign: "center",
-    },
-    stateDetail: {
-        fontSize: 15,
-        lineHeight: 21,
-        marginTop: 7,
-        maxWidth: 330,
-        textAlign: "center",
-    },
-    retry: {
-        borderCurve: "continuous",
-        borderRadius: 13,
-        marginTop: 18,
-        minHeight: 46,
-        justifyContent: "center",
-        paddingHorizontal: 20,
-    },
-    retryText: { color: "#FFF", fontSize: 15, fontWeight: "800" },
-    pressed: { opacity: 0.72 },
+  content: { padding: 20, paddingBottom: 36, gap: 12 },
+  tasks: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 12 },
+  task: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  section: { gap: 8, marginTop: 22 },
+  approval: {
+    minHeight: 64,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  tool: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
 });

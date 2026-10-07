@@ -352,7 +352,7 @@ export function MemberFormScreen() {
             }
             if (accountId && saved.id) {
                 stage = "link";
-                const management = await managementRepository.load();
+                const management = await managementRepository.loadAccount(accountId);
                 await managementRepository.apply(management, {
                     type: "link-account",
                     accountId,

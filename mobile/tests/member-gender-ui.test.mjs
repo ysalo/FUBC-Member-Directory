@@ -34,6 +34,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, f
     async saveMemberDetails(details) { saves.push(details); if (saveBarrier) await saveBarrier; return { id: existing?.id ?? 'new', revision: 2 }; },
     async replacePhoto(person) { photos.push(person); return { person: { revision: 3, photo_path: null }, cleanupWarning: null }; },
     async load() { return { members: familyCandidates, accounts: [] }; },
+    async loadAccount(id) { return { members: [], accounts: [{ id, revision: 1 }] }; },
     async apply(_state, action) { links.push(action); if (failLinkOnce) { failLinkOnce = false; throw new Error('offline'); } },
   };
   const modules = new Map([
