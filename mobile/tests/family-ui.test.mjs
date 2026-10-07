@@ -9,7 +9,7 @@ const compile = async path => ts.transpileModule(await readFile(new URL(path, im
 const source = await compile('../src/features/manage/FamilyEditorScreen.tsx');
 const memberName = {}; new Function('exports', await compile('../src/lib/member-name.ts'))(memberName);
 const copy = {}; new Function('exports', await compile('../src/features/family/family-copy.ts'))(copy);
-function fixture({ locale = 'en', failure = null, loadFamily } = {}) {
+function fixture({ locale = 'en', failure = null, loadFamily, deacon = false } = {}) {
   const states = [], refs = []; let cursor = 0, refCursor = 0, effect, cleanup, dependencies, exits = 0, reads = 0, memberId = "0", scope = "account-a", createdId;
   const saves = [], routes = []; let handoff = null;
   const members = ['Subject Person', 'Parent Person', 'Sibling Person', 'Match Person'].map((name, index) => ({ id: String(index), name, archived: index === 1 }));
@@ -28,7 +28,9 @@ function fixture({ locale = 'en', failure = null, loadFamily } = {}) {
     '@/features/appearance/AppearanceProvider': { useAppearance: () => ({ palette: {} }) },
     '@/features/localization/LocalizationProvider': { useLocalization: () => ({ locale }) },
     '@/features/family/family-copy': copy,
-    '@/features/session/SessionProvider': { useSession: () => ({ status: 'ready' }) },
+    '@/features/session/SessionProvider': { useSession: () => ({ status: 'ready', account: { status: 'active', role: deacon ? 'member' : 'admin', leadershipMinistry: deacon ? 'deacon' : null } }) },
+    '@/lib/permissions': { canManageDirectory: actor => actor.role === 'admin' },
+    '@/features/directory/directory-repository': { listDirectory: async () => members.filter(p => !p.archived).map(p => ({ ...p, avatar: {} })) },
     '@react-native-vector-icons/ionicons': { Ionicons: 'Icon' },
     '@/features/shell/use-desktop-layout': { useDesktopLayout: () => false },
     '@/features/members/ProfileAvatar': { ProfileAvatar: 'Avatar' },
@@ -165,3 +167,11 @@ test('family picker toggles a selected row off and preserves edits when dismisse
  const ui=fixture();await ui.load();await ui.press('Add: Children');await ui.press('Match Person');await ui.press('Match Person');
  await ui.press('Done');await ui.press('Save family');assert.deepEqual(ui.saves[0][2].childIds,[]);
 });
+
+ test('deacon family editor uses active directory candidates, hides member creation and returns to profile',async()=>{
+ const ui=fixture({deacon:true});await ui.load();await ui.press('Add: Children');
+ assert.doesNotMatch(ui.text(),/Create a new member/);
+ assert.equal(ui.render().filter(n=>n.props?.accessibilityLabel==='Parent Person').length,0);
+ await ui.press('Done');await ui.press('Save family');
+ assert.deepEqual(ui.routes,['/members/0']);
+ });

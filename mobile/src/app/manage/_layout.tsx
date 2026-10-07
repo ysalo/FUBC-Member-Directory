@@ -18,7 +18,7 @@ export default function ManageLayout() {
   const pathname = usePathname();
   const actor = session.status === "ready" ? session.account : null;
   const memberRoute = pathname === "/manage/members" || pathname === "/manage/audit" || pathname === "/manage" || /^\/manage\/member\/[^/]+(?:\/(?:family|departure))?\/?$/.test(pathname);
-  const editRoute = /^\/manage\/member\/(?!new(?:\/|$))[^/]+\/?$/.test(pathname);
+  const editRoute = /^\/manage\/member\/(?!new(?:\/|$))[^/]+(?:\/family)?\/?$/.test(pathname);
   const groupRoute = pathname === "/manage/groups" || /^\/manage\/group\/[^/]+\/?$/.test(pathname);
   const settingsRoute = pathname === "/manage/schedule" || pathname === "/manage/ministries" || /^\/manage\/ministry\/[^/]+\/?$/.test(pathname);
   if (isBackendConfigured && !(editRoute ? canOpenMemberEditor(actor) : memberRoute ? canManageDirectory(actor) : groupRoute ? canManageGroups(actor) : settingsRoute ? canManageSettings(actor) : canManageAccounts(actor))) return <Redirect href="/" />;
