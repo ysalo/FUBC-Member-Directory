@@ -76,11 +76,11 @@ export default function MenuRoute() {
           </View>
           <View style={[styles.preferenceRow, {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.line}]}>
             <Text style={[styles.settingLabel, {color: palette.text}]}>{copy.menu.appearance}</Text>
-            <PreferenceChoices label={copy.menu.appearance} value={preference} options={(["system", "light", "dark"] as AppearancePreference[]).map(value => ({value, label: copy.menu[value]}))} onChange={setPreference} />
+            <PreferenceChoices label={copy.menu.appearance} value={preference} options={(["system", "light", "dark"] as AppearancePreference[]).map(value => ({value, label: copy.menu[value], icon: value === "system" ? "contrast-outline" as const : value === "light" ? "sunny-outline" as const : "moon-outline" as const}))} onChange={setPreference} />
           </View>
           <View style={[styles.preferenceRow, {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.line}]}>
             <Text style={[styles.settingLabel, {color: palette.text}]}>{labels.textSize}</Text>
-            <PreferenceChoices label={labels.textSize} value={textSize} options={(["small", "standard", "large"] as TextSizePreference[]).map(value => ({value, label: labels[value]}))} onChange={setTextSize} />
+            <PreferenceChoices label={labels.textSize} value={textSize} options={(["small", "standard", "large"] as TextSizePreference[]).map(value => ({value, label: labels[value], sampleSize: value === "small" ? 13 : value === "standard" ? 17 : 22}))} onChange={setTextSize} />
           </View>
         </View>
         </View><View style={[styles.column, desktop && styles.accountColumn]}>
