@@ -1,4 +1,7 @@
-import { createContext, type PropsWithChildren, useContext, useMemo, useState } from "react";
+import { createLocaleHydration } from "./locale-preference";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
+import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 export type AppLocale = "en" | "uk";
 
@@ -78,7 +81,22 @@ type LocalizationValue = {
 const LocalizationContext = createContext<LocalizationValue | null>(null);
 
 export function LocalizationProvider({ children }: PropsWithChildren) {
-  const [locale, setLocale] = useState<AppLocale>("en");
+  const [locale, setLocaleState] = useState<AppLocale>("en");
+  const hydration = useRef<ReturnType<typeof createLocaleHydration> | null>(null);
+  useEffect(() => {
+    const pending = createLocaleHydration();
+    hydration.current = pending;
+    const read = async () => Platform.OS === "web" ? window.localStorage.getItem("fubc.locale") : SecureStore.getItemAsync("fubc.locale");
+    void pending.restore(read, setLocaleState);
+    return pending.cancel;
+  }, []);
+  const setLocale = (next: AppLocale) => {
+    hydration.current?.cancel();
+    setLocaleState(next);
+    if (Platform.OS === "web") {
+      try { window.localStorage.setItem("fubc.locale", next); } catch { /* Keep the current language when storage is unavailable. */ }
+    } else void SecureStore.setItemAsync("fubc.locale", next).catch(() => undefined);
+  };
   const value = useMemo(() => ({ copy: translations[locale], locale, setLocale }), [locale]);
   return <LocalizationContext.Provider value={value}>{children}</LocalizationContext.Provider>;
 }

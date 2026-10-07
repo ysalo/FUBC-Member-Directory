@@ -163,3 +163,14 @@ input:focus, textarea:focus, [contenteditable="true"]:focus {
 
 [data-testid="directory-scroll"] { scrollbar-width: none; scrollbar-gutter: auto; }
 [data-testid="directory-scroll"]::-webkit-scrollbar { display: none; }
+
+/* Menu choices use browser radio semantics, including arrow-key selection. */
+.menu-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.menu-choice { display: flex; flex: 1 1 120px; align-items: center; gap: 10px; min-height: 48px; padding: 12px; border: 1px solid var(--app-line); border-radius: 10px; background: var(--app-elevated); color: var(--app-text); font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
+.menu-choice[data-checked="true"] { border-color: var(--app-accent); }
+.menu-choice input { margin: 0; flex-shrink: 0; width: 18px; height: 18px; accent-color: var(--app-accent); cursor: pointer; }
+.menu-choice:has(input:focus-visible) { outline: 3px solid var(--app-accent); outline-offset: 3px; }
+.menu-choice:hover { background: var(--app-surface); }
+.menu-about-dialog { padding: 0; border: 1px solid var(--app-line); border-radius: 18px; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); color: var(--app-text); background: var(--app-background); overflow: hidden; }
+.menu-about-dialog[open] { display: flex; flex-direction: column; }
+.menu-about-dialog::backdrop { background: rgba(0, 0, 0, .45); }
