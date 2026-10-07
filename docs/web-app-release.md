@@ -826,3 +826,28 @@ checks for file content and layout at phone/desktop widths. Actual iPhone/Androi
 Contacts import and home-screen file handoff remain device checks; browser engine
 simulation cannot certify OS import behavior. Hosted Preview may require Vercel
 SSO. No live OAuth or physical native checks are claimed.
+
+## Remove contact saving and refine deacon notes (1.8.8)
+
+At the user's request, removes Save to Contacts from the shared member profile,
+native/browser save adapters, vCard generation, localized export copy, contacts
+config plugin and expo-contacts dependency. The existing Share text, call, email,
+maps and copy actions remain. The unmerged 1.8.8 download-workaround PR #162 was
+closed; none of its guidance or handoff changes are part of this release.
+
+Deacon notes now share one full-width disclosure header in both states: clipboard
+icon, title and a right-aligned down/up chevron. The literal Collapse label is
+removed. The entire header is the toggle, with an accessible localized name and
+expanded state. The arrow remains visible but disabled while editing/saving so
+an unsaved draft cannot be hidden. Edit/Remove stay separate from the toggle.
+The notes section remains at the bottom and all authorization/revision/save/delete
+contracts are unchanged. Version metadata advances from 1.8.7 to 1.8.8.
+
+No backend change or migration is needed; rollback remains compatible. Local
+pnpm verify passes (317 main, one visitation, 14 groups; two existing PostgreSQL
+concurrency tests skipped locally), and pnpm build:web passes. Updated synthetic
+browser acceptance covers absent Save to Contacts, expanded-state toggle/reopen,
+no literal Collapse text, disabled disclosure during edits, note confirmations,
+family/group navigation, overflow and zero notification effects. Feature/release
+PRs record browser evidence, CI with PostgreSQL, Preview and production results.
+Physical native and live OAuth checks are not claimed.
