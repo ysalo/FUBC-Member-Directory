@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type Ref } from "react";
 import { StyleSheet, Text as NativeText, TextInput as NativeTextInput, type TextInputProps, type TextProps, type TextStyle } from "react-native";
 
 import { useTextSize } from "./TextSizeProvider";
@@ -17,7 +17,7 @@ export function Text({ style, ...props }: TextProps) {
   return <NativeText {...props} style={[style, typography]} />;
 }
 
-export function TextInput({ style, ...props }: TextInputProps) {
+export function TextInput({ style, ...props }: TextInputProps & { ref?: Ref<NativeTextInput> }) {
   const { scale } = useTextSize();
   const typography = useMemo(() => scaledTypography(style, scale), [scale, style]);
   return <NativeTextInput {...props} style={[style, typography]} />;

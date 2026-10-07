@@ -1,60 +1,328 @@
-import { useDesktopLayout } from "@/features/shell/use-desktop-layout";
-import { useLocalization } from "@/features/localization/LocalizationProvider";
-import { Text, TextInput } from "@/features/accessibility/app-text";
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useEffect, useRef, useState } from "react";
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  View,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@react-native-vector-icons/ionicons";
+import { Text } from "@/features/accessibility/app-text";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
+import { useLocalization } from "@/features/localization/LocalizationProvider";
+import { useSession } from "@/features/session/SessionProvider";
 import { ProfileAvatar } from "@/features/members/ProfileAvatar";
+import { canManageAccounts } from "@/lib/permissions";
+import { isBackendConfigured } from "@/lib/supabase";
+import { formatMemberName } from "@/lib/member-name";
+import { errorMessage, withTimeout } from "@/lib/async-state";
 import { managementRepository } from "./management-repository";
-import type { ManagementState } from "./model";
+import type { ManagementState, ManagedMember } from "./model";
 import { managedAccountHref, normalizeAccountId } from "./route-params";
 import { useUnsavedChanges } from "./use-unsaved-changes";
+import { useManagementList } from "./use-management-list";
+import { useManagementSearch } from "./use-management-search";
+import {
+  ManagementFeedback,
+  ManagementListFooter,
+  ManagementSearch,
+  ui,
+} from "./ManagementListParts";
 
 export function MemberLinkScreen() {
-  const desktop = useDesktopLayout();
+  const insets = useSafeAreaInsets();
+  const { palette } = useAppearance();
   const { locale } = useLocalization();
-  const copy = locale === "uk" ? { title: "Пов’язати учасника", search: "Пошук учасників", empty: "Немає доступних учасників", save: "Зберегти зв’язок", cancel: "Скасувати", error: "Не вдалося завершити дію. Спробуйте ще раз.", retry: "Спробувати ще раз", invalid: "Недійсне посилання на обліковий запис." } : { title: "Link member", search: "Search members", empty: "No available members", save: "Save link", cancel: "Cancel", error: "Unable to complete this action. Please try again.", retry: "Try again", invalid: "This account link is invalid." };
+  const copy =
+    locale === "uk"
+      ? {
+          title: "Пов’язати учасника",
+          search: "Пошук учасників",
+          empty: "Немає доступних учасників",
+          save: "Зберегти зв’язок",
+          saving: "Збереження…",
+          cancel: "Скасувати",
+          invalid: "Недійсне посилання на обліковий запис.",
+          missing: "Цей обліковий запис недоступний.",
+          selected: "Вибрано",
+        }
+      : {
+          title: "Link member",
+          search: "Search members",
+          empty: "No available members",
+          save: "Save link",
+          saving: "Saving…",
+          cancel: "Cancel",
+          invalid: "This account link is invalid.",
+          missing: "This account is unavailable.",
+          selected: "Selected",
+        };
   const params = useLocalSearchParams<{ accountId?: string | string[] }>();
   const accountId = normalizeAccountId(params.accountId);
   const router = useRouter();
-  const { palette } = useAppearance();
-  const [state, setState] = useState<ManagementState | null>(null);
-  const [q, setQ] = useState("");
-
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const guard = useUnsavedChanges(selectedPersonId !== null);
-  const [reload, setReload] = useState(0);
+  const session = useSession();
+  const actor = session.status === "ready" ? session.account : null;
+  const allowed = !isBackendConfigured || canManageAccounts(actor);
+  const identity = `${actor?.id}:${actor?.status}:${actor?.role}:${accountId}`;
+  const currentIdentity = useRef(identity);
+  currentIdentity.current = identity;
+  const [loaded, setLoaded] = useState<{
+      identity: string;
+      value: ManagementState;
+    } | null>(null),
+    [error, setError] = useState<string | null>(null),
+    [busy, setBusy] = useState(false),
+    [selected, setSelected] = useState<ManagedMember | null>(null),
+    [reload, setReload] = useState(0);
+  const state = loaded?.identity === identity ? loaded.value : null,
+    submitting = useRef(false);
+  const guard = useUnsavedChanges(Boolean(selected));
+  const { query, setQuery, committedQuery } = useManagementSearch();
+  const list = useManagementList(
+    `link:${accountId}:${committedQuery}`,
+    (request) => managementRepository.loadMembersPage(request),
+    {
+      query: committedQuery,
+      filters: { linkable: true, accountId: accountId ?? undefined },
+    },
+    allowed &&
+      Boolean(
+        accountId &&
+          state?.accounts.some((account) => account.id === accountId),
+      ),
+  );
   useEffect(() => {
     let active = true;
+    setLoaded(null);
+    setSelected(null);
     setError(null);
-    void managementRepository.load().then((next) => { if (active) setState(next); }).catch(() => { if (active) setError(copy.error); });
-    return () => { active = false; };
-  }, [reload, copy.error]);
+    setBusy(false);
+    submitting.current = false;
+    if (accountId && allowed)
+      void withTimeout(managementRepository.loadAccount(accountId))
+        .then((value) => {
+          if (active && currentIdentity.current === identity)
+            setLoaded({ identity, value });
+        })
+        .catch((cause) => {
+          if (active && currentIdentity.current === identity)
+            setError(errorMessage(cause));
+        });
+    return () => {
+      active = false;
+    };
+  }, [accountId, allowed, identity, reload]);
   async function linkMember() {
-    if (!accountId || !state || !selectedPersonId || busy) return;
-    setBusy(true); setError(null);
+    if (
+      !accountId ||
+      !state ||
+      !selected ||
+      busy ||
+      submitting.current ||
+      !allowed
+    )
+      return;
+    submitting.current = true;
+    setBusy(true);
+    setError(null);
+    const origin = identity;
     try {
-      await managementRepository.apply(state, { type: "link-account", accountId, personId: selectedPersonId });
-      guard.allowLeave();
-      router.replace(managedAccountHref(accountId));
-    } catch { setError(copy.error); setBusy(false); }
+      await managementRepository.apply(state, {
+        type: "link-account",
+        accountId,
+        personId: selected.id,
+      });
+      if (currentIdentity.current === origin) {
+        guard.allowLeave();
+        router.replace(managedAccountHref(accountId));
+      }
+    } catch (cause) {
+      if (currentIdentity.current === origin) {
+        setError(errorMessage(cause));
+        setBusy(false);
+        submitting.current = false;
+      }
+    }
   }
-  const members = useMemo(() => (state?.members ?? []).filter((m) => !m.archived && m.name.toLocaleLowerCase().includes(q.toLocaleLowerCase())), [state, q]);
-  if (!accountId || !state) return <View style={[styles.center, { backgroundColor: palette.background }]}>{!accountId || error ? <><Text accessibilityLiveRegion="polite" style={{ color: palette.text }}>{!accountId ? copy.invalid : error}</Text>{accountId ? <Pressable accessibilityRole="button" onPress={() => setReload((value) => value + 1)}><Text style={{ color: palette.accent }}>{copy.retry}</Text></Pressable> : null}</> : <ActivityIndicator color={palette.accent} />}</View>;
-
-  return <View style={[styles.root, desktop && styles.desktopRoot, { backgroundColor: palette.background }]}>
-    <Text style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
-    {error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{error}</Text> : null}
-    <TextInput accessibilityLabel={copy.search} autoFocus onChangeText={setQ} placeholder={copy.search} placeholderTextColor={palette.secondaryText} style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.line, color: palette.text }]} value={q} />
-    <FlatList contentInsetAdjustmentBehavior="automatic" data={members} keyExtractor={(m) => m.id} keyboardShouldPersistTaps="handled" renderItem={({ item }) => <Pressable accessibilityRole="radio" accessibilityState={{ checked: selectedPersonId === item.id, disabled: busy }} disabled={busy} onPress={() => setSelectedPersonId(item.id)} style={[styles.row, { borderBottomColor: palette.line, backgroundColor: selectedPersonId === item.id ? palette.accentSoft : palette.background }]}>
-      <ProfileAvatar name={item.name} source={item.photo} />
-      <Text style={[styles.rowText, { color: palette.text }]}>{item.name}</Text>
-    </Pressable>} ListEmptyComponent={<Text style={{ color: palette.secondaryText }}>{copy.empty}</Text>} />
-    <View style={styles.actions}><Pressable accessibilityRole="button" disabled={busy || !selectedPersonId} onPress={() => void linkMember()} style={[styles.save, { backgroundColor: palette.accent }, (busy || !selectedPersonId) && { opacity: 0.5 }]}><Text style={styles.saveText}>{copy.save}</Text></Pressable><Pressable accessibilityRole="button" disabled={busy} onPress={() => guard.confirmLeave(() => router.replace(managedAccountHref(accountId)))} style={styles.cancel}><Text style={{ color: palette.accent }}>{copy.cancel}</Text></Pressable></View>
-  </View>;
+  if (
+    !accountId ||
+    !state ||
+    !state.accounts.some((account) => account.id === accountId)
+  )
+    return (
+      <View
+        style={[
+          ui.root,
+          ui.empty,
+          { backgroundColor: palette.background, justifyContent: "center" },
+        ]}
+      >
+        {!accountId || state ? (
+          <Text style={{ color: palette.text }}>
+            {!accountId ? copy.invalid : copy.missing}
+          </Text>
+        ) : (
+          <ManagementFeedback
+            error={error}
+            loading={!error}
+            retry={() => setReload((value) => value + 1)}
+          />
+        )}
+      </View>
+    );
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={[ui.root, { backgroundColor: palette.background }]}
+    >
+      <View style={[ui.toolbar, ui.width, { borderBottomColor: palette.line }]}>
+        <Text
+          accessibilityRole="header"
+          style={[ui.title, { color: palette.text }]}
+        >
+          {copy.title}
+        </Text>
+        <Text style={[ui.detail, { color: palette.secondaryText }]}>
+          {state.accounts.find((account) => account.id === accountId)?.email}
+        </Text>
+        <ManagementSearch
+          label={copy.search}
+          query={query}
+          onChange={setQuery}
+          disabled={busy}
+        />
+        <ManagementFeedback error={error} />
+        <ManagementFeedback
+          error={list.failedOperation === "refresh" ? list.error : null}
+          loading={list.loading === "refresh"}
+          retry={list.retry}
+        />
+        {selected ? (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={{ color: palette.text }}
+          >
+            {copy.selected}: {formatMemberName(selected, undefined, true)}
+          </Text>
+        ) : null}
+      </View>
+      <FlatList
+        style={ui.width}
+        data={list.items}
+        keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
+        onEndReached={list.error ? undefined : list.append}
+        renderItem={({ item }) => (
+          <Pressable
+            accessibilityLabel={formatMemberName(item)}
+            accessibilityRole="radio"
+            accessibilityState={{
+              checked: selected?.id === item.id,
+              disabled: busy,
+            }}
+            disabled={busy}
+            onPress={() => setSelected(item)}
+            style={[
+              ui.row,
+              {
+                borderBottomColor: palette.line,
+                backgroundColor:
+                  selected?.id === item.id
+                    ? palette.accentSoft
+                    : palette.background,
+              },
+            ]}
+          >
+            <ProfileAvatar name={item.name} source={item.photo} />
+            <View style={ui.rowCopy}>
+              <Text style={[ui.name, { color: palette.text }]}>
+                {formatMemberName(item, undefined, true)}
+              </Text>
+              <Text style={[ui.detail, { color: palette.secondaryText }]}>
+                {item.group}
+              </Text>
+            </View>
+            <Ionicons
+              accessibilityElementsHidden
+              color={palette.accent}
+              name={
+                selected?.id === item.id
+                  ? "radio-button-on"
+                  : "radio-button-off"
+              }
+              size={22}
+            />
+          </Pressable>
+        )}
+        ListEmptyComponent={
+          <View style={ui.empty}>
+            {list.loading || list.error ? (
+              <ManagementFeedback
+                error={list.error}
+                loading={list.loading !== null}
+                retry={list.retry}
+              />
+            ) : (
+              <Text style={{ color: palette.secondaryText }}>{copy.empty}</Text>
+            )}
+          </View>
+        }
+        ListFooterComponent={
+          list.items.length ? (
+            <ManagementListFooter
+              {...list}
+              count={list.items.length}
+              error={list.failedOperation === "append" ? list.error : null}
+            />
+          ) : null
+        }
+      />
+      <View
+        style={[
+          ui.toolbar,
+          ui.width,
+          ui.chips,
+          {
+            borderBottomColor: palette.line,
+            paddingBottom:
+              Platform.OS === "web" ? 18 : Math.max(18, insets.bottom),
+          },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy}
+          onPress={() =>
+            guard.confirmLeave(() =>
+              router.replace(managedAccountHref(accountId)),
+            )
+          }
+          style={[ui.more, { flex: 1, borderColor: palette.line }]}
+        >
+          <Text style={{ color: palette.accent }}>{copy.cancel}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: busy || !selected, busy }}
+          disabled={busy || !selected}
+          onPress={() => void linkMember()}
+          style={[
+            ui.more,
+            {
+              flex: 2,
+              borderColor: palette.accent,
+              backgroundColor: palette.accent,
+            },
+            (busy || !selected) && { opacity: 0.5 },
+          ]}
+        >
+          <Text style={{ color: "#FFF", fontWeight: "700" }}>
+            {busy ? copy.saving : copy.save}
+          </Text>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
+  );
 }
-
-const styles = StyleSheet.create({ desktopRoot: { alignSelf: "center", width: "100%", maxWidth: 1000, padding: 32 }, root: { flex: 1, padding: 22 }, title: { fontSize: 32, fontWeight: "800", marginBottom: 16, marginTop: 20 }, search: { borderRadius: 12, borderWidth: 1, fontSize: 16, marginBottom: 10, padding: 14 }, row: { alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 12, minHeight: 64, paddingVertical: 12 }, rowText: { flex: 1, fontSize: 17, fontWeight: "700" }, center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 20, padding: 24 }, actions: { gap: 8, paddingTop: 12 }, save: { minHeight: 52, borderRadius: 12, alignItems: "center", justifyContent: "center" }, saveText: { color: "#FFF", fontSize: 16, fontWeight: "800" }, cancel: { minHeight: 44, alignItems: "center", justifyContent: "center" } });

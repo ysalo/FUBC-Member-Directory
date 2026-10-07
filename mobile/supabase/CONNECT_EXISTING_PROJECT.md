@@ -79,3 +79,20 @@ unchanged rollback/removal permissions. All 850 members, six profiles and 82
 photos remained intact. No Edge Function update was needed. Migration history
 remains unreconciled; do not use `db push`. Retain the additive labels on frontend
 rollback.
+
+## Management pagination (2026-10-06)
+
+Manually applied `20261006030000_management_pagination.sql` through authenticated
+CLI SQL to the documented FUBC Member Directory project after reviewing the
+functions and rehearsing the migration plus read checks in a rolled-back
+transaction. The additive manager-only read functions provide bounded member,
+account, group and candidate pages, management counts, complete group draft IDs
+and a move-confirmation count. Account reads remain active-admin-only. Existing
+write/audit RPCs are unchanged; retain these functions on frontend rollback.
+
+Post-deployment read checks verified 50-row pages, nonoverlapping next pages,
+search for a person outside the first page, a 100-row hard cap, complete group
+context, no member-page birth dates and denied ordinary-member access. All 850
+people, six profiles, 82 photos and 1,029 audit events remained unchanged. No
+test records were created. Migration history remains unreconciled; no `db push`
+was used.

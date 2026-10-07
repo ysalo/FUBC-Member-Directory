@@ -23,7 +23,9 @@ import type {
 
 export type AccountChangeListener = () => void;
 
-export class SupabaseManagementRepository {
+import { SupabaseManagementReads, DemoManagementReads } from "./management-reads";
+
+export class SupabaseManagementRepository extends SupabaseManagementReads {
     loadFamily = loadFamily;
     saveFamily = saveFamily;
     private readonly accountChangeListeners = new Set<AccountChangeListener>();
@@ -42,8 +44,7 @@ export class SupabaseManagementRepository {
     async loadPendingAccountCount(): Promise<number> {
         if (!canManageAccounts(activeAccount())) return 0;
         return this.pendingCountCache.load("pending", async () => {
-            const accounts = unwrap(await requireSupabase().rpc("management_accounts", {}));
-            return accounts.filter((account) => account.status === "pending").length;
+            return (await this.loadSummary()).pendingAccounts ?? 0;
         });
     }
 
@@ -109,19 +110,7 @@ export class SupabaseManagementRepository {
                 "Account management is unavailable for this account.",
             );
         const client = requireSupabase();
-        const accounts = unwrap(
-            await client.rpc("management_accounts", {}),
-        ).map((row) => ({
-            id: row.id,
-            name: row.display_name,
-            email: row.email ?? "",
-            status: row.status,
-            role: row.role,
-            personId: row.person_id,
-            revision: row.revision,
-            createdAt: row.created_at,
-            lastSeenAt: row.last_seen_at,
-        }));
+        const accounts = (await this.loadAccountsPage({ filters: { id: accountId }, limit: 1 })).items;
         const account = accounts.find(
             (candidate) => candidate.id === accountId,
         );
@@ -626,6 +615,15 @@ function personData(person: PersonRow) {
     };
 }
 class InMemoryManagementRepository {
+    private readonly reads = new DemoManagementReads(() => this.state, () => this.groupManagement);
+    loadSummary = () => this.reads.loadSummary();
+    loadMembersPage = (...args: Parameters<DemoManagementReads["loadMembersPage"]>) => this.reads.loadMembersPage(...args);
+    loadAccountsPage = (...args: Parameters<DemoManagementReads["loadAccountsPage"]>) => this.reads.loadAccountsPage(...args);
+    loadGroupsPage = (...args: Parameters<DemoManagementReads["loadGroupsPage"]>) => this.reads.loadGroupsPage(...args);
+    loadCandidatesPage = (...args: Parameters<DemoManagementReads["loadCandidatesPage"]>) => this.reads.loadCandidatesPage(...args);
+    loadGroupImportCatalog = () => this.reads.loadGroupImportCatalog();
+    loadGroupContext = (...args: Parameters<DemoManagementReads["loadGroupContext"]>) => this.reads.loadGroupContext(...args);
+    previewGroupMoves = (...args: Parameters<DemoManagementReads["previewGroupMoves"]>) => this.reads.previewGroupMoves(...args);
     async loadFamily(memberId: string) { return emptyFamily(memberId); }
     async saveFamily(_memberId: string, _revision: number, _changes: FamilyChanges): Promise<never> { throw new Error("Family editing requires a configured backend."); }
     private state = structuredClone(initialManagementState);

@@ -18,6 +18,7 @@ async function bulkUiFixture(component, role = "admin") {
     let refCursor = 0;
     let effectCursor = 0;
     let pendingEffects = [];
+    let searchQuery = "", memberStatus = "active";
     const actor = { id: "admin", personId: "self", status: "active", role };
     const members = ["self", "first", "second"].map((id) => ({ id, name: id, revision: 7, archived: false, group: "Choir" }));
     const calls = [];
@@ -44,6 +45,10 @@ async function bulkUiFixture(component, role = "admin") {
     const closeCalls = [];
     const keyboardListeners = new Map();
     new Function("require", "exports", "document", code)((id) => {
+        if (id === "./ManagementListParts") return { ui: {}, ManagementLink: ({ children }) => React.createElement("Link", {}, children), ManagementSearch: ({ onChange }) => React.createElement("TextInput", { onChangeText: onChange }), ManagementFeedback: () => null, ManagementListFooter: () => null };
+        if (id === "./use-management-search") return { useManagementSearch: () => ({ query: searchQuery, committedQuery: searchQuery, setQuery: value => { searchQuery = value; } }) };
+        if (id === "./use-management-list") return { useManagementList: () => ({ items: members.filter(member => !searchQuery || member.name.includes(searchQuery)), total: 3, loading: null, error: null, refresh() {}, retry() {}, append() {} }) };
+        if (id === "@/lib/member-name") return { formatMemberName: value => typeof value === "string" ? value : value.name };
         if (id === "@/lib/member-search") return memberSearch;
         if (id === "react") return hooks;
         if (id === "react/jsx-runtime") return require(id);
@@ -57,12 +62,13 @@ async function bulkUiFixture(component, role = "admin") {
         if (id === "@/features/shell/use-desktop-layout") return { useDesktopLayout: () => false };
         if (id === "@/features/shell/WebTabBar") return { WebTabBar: "Tabs" };
         if (id === "@/features/members/ProfileAvatar") return { ProfileAvatar: "Avatar" };
-        if (id === "expo-router") return { useFocusEffect() {}, useRouter: () => ({ push: (route) => calls.push(route) }) };
+        if (id === "expo-router") return { useFocusEffect() {}, useLocalSearchParams: () => ({ status: memberStatus }), useRouter: () => ({ push: (route) => calls.push(route), setParams: value => { memberStatus = value.status; } }) };
         if (id === "@/lib/permissions") return { canManageAccounts: (account) => account?.status === "active" && account.role === "admin", canOpenMemberEditor: () => true, canManageDirectory: () => true };
         if (id === "@/lib/supabase") return { isBackendConfigured: true };
         if (id === "@/lib/async-state") return { withTimeout: (promise) => promise, errorMessage: String };
         if (id === "./management-repository") return { managementRepository: { load: async () => ({ members, accounts: [] }) } };
         if (id === "./route-params") return routeParams;
+        if (id === "./management-reads") return { SupabaseManagementReads: class {}, DemoManagementReads: class {} };
         if (id === "./model") return source;
         if (id === "./BulkMemberDeletion") return { BulkMemberDeletion: "BulkMemberDeletion" };
         if (id === "./LastSeen") return { LastSeen: "LastSeen" };
@@ -89,25 +95,23 @@ async function bulkUiFixture(component, role = "admin") {
     return { render, button, calls, closeCalls, finish, actor, escape: () => keyboardListeners.get("keydown")?.({ key: "Escape", preventDefault() {}, stopPropagation() {} }) };
 }
 
-test("member selection excludes self, follows shown members, and clears across searches and panels", async () => {
-    const ui = await bulkUiFixture("ManageScreen");
+test("member selection excludes self, selects only loaded members, and clears across searches and status", async () => {
+    const ui = await bulkUiFixture("MembersManagementScreen");
     ui.button("Select members").props.onPress();
     let rows = ui.render().filter((node) => node.props?.accessibilityRole === "checkbox");
     assert.equal(rows.find((node) => node.props.accessibilityLabel === "self").props.disabled, true);
-    ui.button("Select all shown").props.onPress();
-    ui.button("Delete selected (2)").props.onPress();
+    ui.button("Select loaded").props.onPress();
+    ui.button("Delete selected").props.onPress();
     assert.deepEqual(ui.render().find((node) => node.type === "BulkMemberDeletion").props.members.map((member) => member.id), ["first", "second"]);
     ui.render().find((node) => node.type === "BulkMemberDeletion").props.onClose(false);
     ui.render().find((node) => node.type === "TextInput").props.onChangeText("first");
     ui.render();
     ui.button("Select members").props.onPress();
-    ui.button("Select all shown").props.onPress();
-    assert.equal(ui.button("Delete selected (1)").props.disabled, false);
-    ui.button("Accounts").props.onPress(); ui.render();
-    assert.equal(ui.button("Select members"), undefined);
-    ui.button("Members").props.onPress(); ui.render();
+    ui.button("Select loaded").props.onPress();
+    assert.equal(ui.button("Delete selected").props.disabled, false);
+    ui.button("Former members").props.onPress(); ui.render();
     assert.ok(ui.button("Select members"));
-    const editor = await bulkUiFixture("ManageScreen", "editor");
+    const editor = await bulkUiFixture("MembersManagementScreen", "editor");
     assert.equal(editor.button("Select members"), undefined);
 });
 
@@ -200,6 +204,7 @@ function photoRepository(failure, configured = true) {
         if (id === "@/lib/repository-helpers") return { activeAccount: () => ({}), unwrap: (result) => { if (result.error) throw new Error(result.error.message); return result.data; } };
         if (id === "@/lib/session-cache") return { invalidateData: (...topics) => invalidations.push(topics), createSessionCache: () => ({ load: (key, loader) => loader() }) };
         if (id === "@/lib/photo-cache") return { thumbnailPath: (path) => `${path}.avatar-256.jpg` };
+        if (id === "./management-reads") return { SupabaseManagementReads: class {}, DemoManagementReads: class {} };
         if (id === "./model") return source;
         if (id === "@/features/family/family-repository") return { loadFamily: async () => { throw new Error("Family loading is outside this management fixture"); }, saveFamily: async () => { throw new Error("Family saving is outside this management fixture"); } };
         throw new Error(`Unexpected module ${id}`);
@@ -444,12 +449,11 @@ test("membership departure removes group assignments and stays available to mana
     assert.match(migration, /delete from public\.deacon_group_members where person_id=result\.id/);
     assert.match(migration, /delete from public\.deacon_group_deacons where person_id=result\.id/);
     assert.match(repository, /membership_group_id: null,[\s\S]*?archived: !active/);
-    assert.match(manage, /formerMembers: "Former members"/);
-    assert.match(manage, /archived === showFormer/);
-    assert.match(manage, /name="options-outline"/);
-    assert.match(manage, /accessibilityViewIsModal/);
-    assert.match(manage, /accessibilityState=\{\{[\s\S]*?checked: showFormer/);
-    assert.doesNotMatch(manage, /styles\.formerFilter/);
+    const membersScreen = await readFile(new URL('../src/features/manage/MembersManagementScreen.tsx', import.meta.url), 'utf8');
+    assert.match(membersScreen, /Former members/);
+    assert.match(membersScreen, /filters: \{ archived \}/);
+    assert.match(membersScreen, /accessibilityState=\{\{ selected: archived === value \}\}/);
+
 });
 
 test("the group management editor creates groups and searches and saves multiple existing members", async () => {
@@ -484,14 +488,14 @@ test("the group management editor creates groups and searches and saves multiple
     assert.match(screen, /@expo\/ui\/community\/segmented-control/);
     assert.match(screen, /Search members/);
     assert.match(screen, /selectedMembers/);
-    assert.match(screen, /p_name: nextName/);
+    assert.match(screen, /p_name: name\.trim\(\)/);
     assert.match(screen, /p_member_ids: selectedMembers/);
     assert.match(
         screen,
         /managementRepository\.deleteGroup\(group\.id, group\.revision\)/,
     );
     assert.match(screen, /Members will not be deleted/);
-    assert.match(screen, /style: "destructive"/);
+    assert.match(screen, /style: ['"]destructive['"]/);
     assert.match(list, /\/manage\/group\/new/);
     assert.match(route, /<GroupAssignmentScreen creating/);
     assert.match(repository, /currentMembershipGroupId/);
@@ -721,10 +725,11 @@ test("management keeps pending approvals visible and preserves actionable load f
             "utf8",
         ),
     ]);
-    assert.match(screen, /pendingAccounts\(state\.accounts\)/);
+    assert.match(screen, /loadAccountsPage\(request\)/);
+    assert.match(screen, /limit: 5/);
     assert.match(screen, /Waiting for approval/);
     assert.match(screen, /setFailure\(errorMessage\(cause\)\)/);
-    assert.match(screen, /router\.push\(managedAccountRoute\(accountId\)\)/);
+    assert.match(screen, /managedAccountRoute\(account\.id\)/);
     assert.match(
         repository,
         /privatePhotoSources[\s\S]*\.catch\(\(\) => new Map\(\)\)/,
@@ -773,7 +778,7 @@ test("managed navigation exposes the pending approval count badge", async () => 
             ),
         ]);
     assert.match(repository, /loadPendingAccountCount/);
-    assert.match(repository, /status === "pending"/);
+    assert.match(repository, /loadSummary\(\)/);
     assert.match(repository, /canManageAccounts\(activeAccount\(\)\)/);
     assert.match(hook, /usePendingAccountCount/);
     assert.match(hook, /subscribeAccountChanges/);
@@ -968,6 +973,7 @@ test('management catalog keeps patronymics for family member disambiguation', as
   if(id==='@/lib/repository-helpers')return {activeAccount:()=>({}),unwrap:r=>r.data,privatePhotoSources:async()=>new Map()};
   if(id==='@/lib/session-cache')return {createSessionCache:()=>({load:(key,loader)=>loader()})};
   if(id==='@/lib/photo-cache')return {};
+  if(id==='./management-reads')return {SupabaseManagementReads:class{},DemoManagementReads:class{}};
   if(id==='./model')return source;
   if(id==='@/features/family/family-repository')return {};
   throw new Error(id);
@@ -986,6 +992,7 @@ test('active member loading accepts an absent departure and uses the recorded de
   if(id==='@/lib/repository-helpers')return {activeAccount:()=>({}),unwrap:r=>{if(r.error||r.data===null)throw Error('Unavailable');return r.data;},privatePhotoSources:async()=>new Map()};
   if(id==='@/lib/session-cache')return {createSessionCache:()=>({})};
   if(id==='@/lib/photo-cache'||id==='@/features/family/family-repository')return {};
+  if(id==='./management-reads')return {SupabaseManagementReads:class{},DemoManagementReads:class{}};
   if(id==='./model')return source;
   throw Error(id);
  },exports);

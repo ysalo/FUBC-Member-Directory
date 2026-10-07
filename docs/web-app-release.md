@@ -1,3 +1,41 @@
+## Management workspace and paged group editing (2026-10-06, version 1.8.0)
+
+The management revamp follows [the specification](manage-experience-spec.md) and
+[delivery plan](manage-experience-plan.md), tracked by issues #138–#140. Manage
+becomes a compact task hub with dedicated member/account pages. Interactive
+member, account, group and candidate searches use bounded backend pages;
+patronymic initials distinguish people and complete draft IDs preserve group
+assignments outside the visible page. Group editing has selected/all views,
+virtualized candidates, persistent Save/Cancel actions, guarded navigation and
+on-demand file-import matching. Audit history retains its desktop-admin entry
+point and existing mutation capture.
+
+Manually applied `20261006030000_management_pagination.sql` after independent
+review, full-chain database tests and a rolled-back live rehearsal. Post-apply
+read checks passed for 50-row pages, nonoverlapping next pages, search outside
+the first page, the hard cap, complete group context and denied ordinary-member
+access. Preserved 850 people, six profiles, 82 photos and 1,029 audit events.
+No Edge Function changes, automatic migration push or history reconciliation.
+Retain the additive read functions when rolling back the frontend; existing
+write contracts and released clients remain compatible.
+
+Validation: Node 24 `pnpm verify` passed 317 tests with zero skips, including
+real PostgreSQL concurrency, and `pnpm build:web` passed. Synthetic browser
+checks passed the ten-case phone/desktop, English/Ukrainian, light/dark and
+320px large-text matrix. Behavioral checks cover page retry/end boundaries,
+keyboard Load more, stale search/session responses, scoped bulk selection,
+complete group saves, failed-save retry, move/leave confirmation, targeted
+account linking, role restrictions, visible refresh errors and zero notification
+calls. Final selection checks preserve backend offsets after first-page removal,
+retain the bottom position without refetching, and save the complete remaining
+draft. Last-seen details open by click/keyboard without navigating away.
+Screenshots were inspected; before/after review images are in
+`docs/manage-experience-images/` and contain only synthetic records.
+
+Physical native and live OAuth checks are not claimed. Feature/release PRs
+record CI, Vercel Preview accessibility and production deployment evidence.
+Release follows feature → dev → main through Vercel Git integration.
+
 ## Readable audit subjects (2026-10-06)
 
 Audit history shows affected member/group names, readable action and record labels,

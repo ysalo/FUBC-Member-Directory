@@ -109,25 +109,35 @@ test('dirty navigation offers keep editing or discard, and web unload uses the b
 test('account linking requires a selected member and an explicit Save', async () => {
   const linkSource = await readFile(new URL('../src/features/manage/MemberLinkScreen.tsx', import.meta.url), 'utf8');
   const linkCode = ts.transpileModule(linkSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  const states = [], actions = []; let cursor = 0, effect;
+  const states = [], refs = [], actions = []; let cursor = 0, refCursor = 0, effect;
   const member = { id: 'member', name: 'Member Person', archived: false };
-  const hooks = { ...React, useState(initial) { const index = cursor++; if (!(index in states)) states[index] = initial; return [states[index], (value) => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; }, useMemo: (factory) => factory(), useEffect: (callback) => { effect = callback; } };
+  const hooks = { ...React, useState(initial) { const index = cursor++; if (!(index in states)) states[index] = initial; return [states[index], (value) => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; }, useMemo: (factory) => factory(), useRef: initial => refs[refCursor++] ??= { current: initial }, useEffect: (callback) => { effect = callback; } };
   const modules = new Map([
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
-    ['react-native', { ActivityIndicator: 'Spinner', FlatList: ({ data, renderItem }) => React.createElement('List', {}, data.map((item) => renderItem({ item }))), Pressable: 'Button', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 }, View: 'View' }],
+    ['react-native-safe-area-context', { useSafeAreaInsets: () => ({ bottom: 0 }) }],
+    ['react-native', { Platform: { OS: 'web' }, KeyboardAvoidingView: 'KeyboardAvoidingView', ActivityIndicator: 'Spinner', FlatList: ({ data, renderItem }) => React.createElement('List', {}, data.map((item) => renderItem({ item }))), Pressable: 'Button', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 }, View: 'View' }],
     ['expo-router', { useLocalSearchParams: () => ({ accountId: 'account' }), useRouter: () => ({ replace() {} }) }],
     ['@/features/shell/use-desktop-layout', { useDesktopLayout: () => false }],
     ['@/features/localization/LocalizationProvider', { useLocalization: () => ({ locale: 'en' }) }],
     ['@/features/accessibility/app-text', { Text: 'Text', TextInput: 'Input' }],
     ['@/features/appearance/AppearanceProvider', { useAppearance: () => ({ palette: {} }) }],
     ['@/features/members/ProfileAvatar', { ProfileAvatar: 'Avatar' }],
-    ['./management-repository', { managementRepository: { load: async () => ({ members: [member], accounts: [] }), apply: async (_state, action) => { actions.push(action); } } }],
+    ['@react-native-vector-icons/ionicons', { Ionicons: 'Icon' }],
+    ['@/features/session/SessionProvider', { useSession: () => ({ status: 'ready', account: { id: 'admin', role: 'admin', status: 'active' } }) }],
+    ['@/lib/permissions', { canManageAccounts: () => true }],
+    ['@/lib/supabase', { isBackendConfigured: true }],
+    ['@/lib/member-name', { formatMemberName: member => member.name }],
+    ['@/lib/async-state', { errorMessage: String, withTimeout: promise => promise }],
+    ['./use-management-search', { useManagementSearch: () => ({ query: '', committedQuery: '', setQuery() {} }) }],
+    ['./use-management-list', { useManagementList: () => ({ items: [member], total: 1, error: null, loading: null }) }],
+    ['./ManagementListParts', { ui: {}, ManagementSearch: 'Search', ManagementFeedback: 'Feedback', ManagementListFooter: 'Footer' }],
+    ['./management-repository', { managementRepository: { loadAccount: async () => ({ members: [], accounts: [{ id: 'account', email: 'a@example.test' }] }), apply: async (_state, action) => { actions.push(action); } } }],
     ['./route-params', { managedAccountHref: () => '/manage/account/account', normalizeAccountId: (id) => id }],
     ['./use-unsaved-changes', { useUnsavedChanges: () => ({ allowLeave() {}, confirmLeave(callback) { callback(); } }) }],
   ]);
   const exports = {};
   new Function('require', 'exports', linkCode)((id) => { assert.ok(modules.has(id), id); return modules.get(id); }, exports);
-  function render() { cursor = 0; const nodes = []; const walk = (node) => { if (!node || typeof node !== 'object') return; if (Array.isArray(node)) return node.forEach(walk); if (typeof node.type === 'function') return walk(node.type(node.props)); nodes.push(node); walk(node.props?.children); }; walk(exports.MemberLinkScreen()); return nodes; }
+  function render() { cursor = 0; refCursor = 0; const nodes = []; const walk = (node) => { if (!node || typeof node !== 'object') return; if (Array.isArray(node)) return node.forEach(walk); if (typeof node.type === 'function') return walk(node.type(node.props)); nodes.push(node); walk(node.props?.children); }; walk(exports.MemberLinkScreen()); return nodes; }
   render(); effect(); await flush();
   let nodes = render();
   assert.equal(nodes.find((node) => node.type === 'Button' && text(node) === 'Save link').props.disabled, true);
