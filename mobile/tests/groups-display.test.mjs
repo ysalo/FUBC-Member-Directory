@@ -21,7 +21,7 @@ const compiledRepository = ts.transpileModule(repositorySource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function remoteGroups({ memberCount = 1, authorized = true, failure = null, notesVisible = true } = {}) {
+function remoteGroups({ memberCount = 1, authorized = true, failure = null, notesVisible = true, deaconNotesVisible = true } = {}) {
   const calls = [];
   const photos = [];
   const people = Array.from({ length: memberCount }, (_, index) => ({
@@ -40,6 +40,7 @@ function remoteGroups({ memberCount = 1, authorized = true, failure = null, note
     { id: "unrelated", name: "Unrelated", membership_group_id: "other", archived_at: null },
   ];
   const tables = {
+    deacon_member_notes: deaconNotesVisible && people.length ? [{ person_id: people[0].id }] : [],
     member_notes: notesVisible && people.length ? [{ person_id: people[0].id }, { person_id: "unrelated" }] : [],
     deacon_groups: [{ id: "one", name: "One", kind: "membership", archived_at: null }],
     people: [...people, ...excluded],
@@ -123,7 +124,7 @@ for (const memberCount of [0, 1, 50, 100, 101, 500, 999, 1000]) {
     assert.deepEqual(summaries.flatMap((call) => call.ids), result.members.map((member) => member.id));
     assert.equal(calls.filter((call) => call.source === "member_profile_details").length, 0);
     assert.equal(calls.filter((call) => call.source === "person_leadership_ministries").length, 0);
-    assert.equal(calls.length, memberCount ? 6 + 2 * Math.ceil(memberCount / 100) : 5);
+    assert.equal(calls.length, memberCount ? 6 + 3 * Math.ceil(memberCount / 100) : 5);
     const noteQueries = calls.filter(call => call.source === "member_notes");
     assert.equal(noteQueries.length, Math.ceil(memberCount / 100));
     assert.ok(noteQueries.every(call => call.columns === "person_id" && call.ids.length <= 100));
@@ -150,7 +151,14 @@ test("remote group detail stops at authorization, missing groups, and failed rea
 });
 
 test("group notes never imply presence when RLS returns no visible rows", async () => {
-  const { repository } = remoteGroups({ memberCount: 50, notesVisible: false });
-  assert.ok((await repository.getGroup("one")).members.every(member => member.hasNote === false));
+  const { repository } = remoteGroups({ memberCount: 50, notesVisible: false, deaconNotesVisible: false });
+  assert.ok((await repository.getGroup("one")).members.every(member => member.hasNote === false && member.hasDeaconNote === false));
   await assert.rejects(remoteGroups({ failure: "member_notes" }).repository.getGroup("one"), /Read failed/);
+});
+
+test("group deacon note presence is separate from shared notes and fetches no bodies",async()=>{
+ const {repository,calls}=remoteGroups({notesVisible:false});
+ const group=await repository.getGroup('one');
+ assert.equal(group.members[0].hasNote,false);assert.equal(group.members[0].hasDeaconNote,true);
+ assert.ok(calls.filter(call=>call.source==='deacon_member_notes').every(call=>call.columns==='person_id'));
 });

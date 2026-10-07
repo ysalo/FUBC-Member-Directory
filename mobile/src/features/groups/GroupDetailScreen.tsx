@@ -36,7 +36,7 @@ import {
     type GroupSummary,
 } from "./groups-repository";
 
-type GroupMemberFilter = "notes" | "orphan" | "widow" | "deacon" | "pastor";
+type GroupMemberFilter = "deaconNotes" | "notes" | "orphan" | "widow" | "deacon" | "pastor";
 
 export function GroupDetailScreen({ groupId }: { groupId: string }) {
     const router = useRouter();
@@ -80,7 +80,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
                 (member) =>
                     filters.length === 0 ||
                     filters.some((filter) =>
-                        filter === "notes" ? Boolean(notesAllowed && member.hasNote) : filter === "orphan"
+                        filter === "deaconNotes" ? Boolean(assignedDeacon && member.hasDeaconNote) : filter === "notes" ? Boolean(notesAllowed && member.hasNote) : filter === "orphan"
                             ? member.isOrphan
                             : filter === "widow"
                               ? member.isWidow
@@ -96,7 +96,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
                 { member: a, surname: directorySurname(a) },
                 { member: b, surname: directorySurname(b) },
             ));
-    }, [filters, group, locale, query, notesAllowed]);
+    }, [filters, group, locale, query, notesAllowed, assignedDeacon]);
     const filterOptions: Array<{ id: GroupMemberFilter; label: string }> = [
         { id: "orphan", label: locale === "uk" ? "Сироти" : "Orphans" },
         {
@@ -106,6 +106,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
         { id: "deacon", label: locale === "uk" ? "Диякони" : "Deacons" },
         { id: "pastor", label: locale === "uk" ? "Пастори" : "Pastors" },
     ];
+    if (assignedDeacon) filterOptions.push({ id: "deaconNotes", label: locale === "uk" ? "Мають нотатку дияконів" : "Has deacon notes" });
     if (notesAllowed) filterOptions.push({ id: "notes", label: locale === "uk" ? "Мають нотатку" : "Has a note" });
     const toggleFilter = (filter: GroupMemberFilter) =>
         setFilters((current) =>
@@ -688,7 +689,7 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
                         <PersonRow
                             key={member.id}
                             locale={locale}
-                            member={{ ...member, hasNote: Boolean(notesAllowed && member.hasNote) }}
+                            member={{ ...member, hasDeaconNote: Boolean(assignedDeacon && member.hasDeaconNote), hasNote: Boolean(notesAllowed && member.hasNote) }}
                             onPress={() =>
                                 router.push(`/members/${member.id}` as never)
                             }
@@ -798,7 +799,7 @@ function PersonRow({
     locale: "en" | "uk";
     member: Pick<
         GroupMember,
-        "id" | "name" | "first_name" | "last_name" | "patronymic" | "photo" | "leadershipMinistry" | "isOrphan" | "isWidow" | "hasNote"
+        "id" | "name" | "first_name" | "last_name" | "patronymic" | "photo" | "leadershipMinistry" | "isOrphan" | "isWidow" | "hasNote" | "hasDeaconNote"
     >;
     onPress: () => void;
 }) {
@@ -845,6 +846,9 @@ function PersonRow({
                     isWidow={member.isWidow}
                 />
             </View>
+            {member.hasDeaconNote && <View accessibilityLabel={locale === "uk" ? "Має нотатку дияконів" : "Has deacon notes"} accessibilityRole="image" testID="deacon-note-indicator" style={{ marginLeft: 12, width: 24, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="heart-outline" size={18} color={palette.accent} />
+            </View>}
             {member.hasNote && <View accessibilityLabel={locale === "uk" ? "Має нотатку" : "Has a note"} accessibilityRole="image" testID="member-note-indicator" style={{ marginLeft: 12, width: 24, alignItems: "center", justifyContent: "center" }}>
                 <Ionicons accessibilityElementsHidden importantForAccessibility="no" name="document-text-outline" size={18} color={palette.accent} />
             </View>}

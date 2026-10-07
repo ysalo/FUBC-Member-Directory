@@ -31,6 +31,7 @@ import {
     type MemberProfile,
 } from "./member-repository";
 import { MemberNote } from "./MemberNote";
+import { SaveContactButton } from "./SaveContactButton";
 import { FamilySection } from "./FamilySection";
 import { CareStatusBadges } from "./care-status-badges";
 import { LeadershipBadge } from "./leadership-badge";
@@ -266,6 +267,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     label={copy.share}
                     onPress={() => void shareContact()}
                 />
+                <SaveContactButton profile={profile} name={name} />
             </View>
             {profile.phone ? (
                 <ContactValue
@@ -616,6 +618,7 @@ export function MemberProfileScreen({ memberId }: { memberId: string }) {
                     <MemberNote key={`${scope}:${memberId}`} memberId={memberId}>
                         {(noteContent, addNoteAction) => <>
                             {noteContent}
+                            <MemberNote key={`deacon:${scope}:${memberId}`} memberId={memberId} deaconOnly>{content => content}</MemberNote>
                             {desktop ? (
                                 <View style={styles.desktopColumns}>
                                     <View style={styles.desktopContactColumn}>

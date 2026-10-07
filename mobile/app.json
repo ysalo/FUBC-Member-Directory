@@ -48,6 +48,12 @@
         {
           "configureAndroidBackup": true
         }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow $(PRODUCT_NAME) to save member contacts."
+        }
       ]
     ],
     "experiments": {

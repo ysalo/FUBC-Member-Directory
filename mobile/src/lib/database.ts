@@ -11,6 +11,7 @@ type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relati
 export type Database = {
   public: {
     Tables: {
+      deacon_member_notes: Table<{ person_id: string; body: string; revision: number; updated_at: string }>;
       member_notes: {
         Row: { person_id: string; body: string; revision: number; updated_at: string; created_by: string | null };
         Insert: { person_id: string; body: string; revision?: number; updated_at?: string };
@@ -51,6 +52,9 @@ export type Database = {
       execute_audit_rollback: { Args: { p_action_id: string; p_operation_id: string; p_reason: string }; Returns: Json };
       remove_member: { Args: { p_id: string; p_revision: number; p_confirmation: string }; Returns: Json };
 
+      deacon_member_note_access: { Args: { p_person_id: string }; Returns: boolean };
+      save_deacon_member_note: { Args: { p_person_id: string; p_revision: number | null; p_body: string }; Returns: undefined };
+      remove_deacon_member_note: { Args: { p_person_id: string; p_revision: number }; Returns: undefined };
       can_write_member_note: { Args: { p_person_id: string }; Returns: boolean };
       member_note_access: { Args: { p_person_id: string }; Returns: boolean };
       remove_member_note: { Args: { p_person_id: string; p_revision: number }; Returns: undefined };

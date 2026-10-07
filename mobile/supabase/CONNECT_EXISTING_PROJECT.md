@@ -106,3 +106,20 @@ require current care-note read access plus ownership. Legacy unattributed notes
 remain read-only. Existing RPC signatures and note privacy stay compatible.
 Smoke notes were rolled back; no migration-history reconciliation or db push.
 Retain the additive backend when rolling back the frontend.
+
+## Deacon care notes and family editing (2026-10-07)
+
+With explicit user authorization, manually applied
+`20261007000000_deacon_care_notes_and_family.sql` through authenticated CLI SQL
+to FUBC Member Directory (`lxrrjrezpdzyqkevgwyx`). Checked the live catalog and
+rehearsed the migration plus authenticated smoke checks in a rolled-back
+transaction before applying. No migration-history reconciliation or `db push`.
+
+Post-deployment rolled-back checks verified assigned-deacon note save/read/edit,
+stale edits and delete/recreate rejection, denied pastor read/write/removal,
+out-of-group note/family denial, reciprocal family changes and audit capture.
+Catalog checks confirmed notes RLS, authenticated SELECT without direct writes,
+anonymous read denial and preservation of the family audit wrapper. All 850
+people, 42 family edges, two existing notes and 1,053 audit events remained
+unchanged; zero smoke notes persisted. Retain the additive backend on frontend
+rollback. PR #157 remains open and unmerged at the user's request.

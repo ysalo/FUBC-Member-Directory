@@ -502,7 +502,7 @@ export function MemberFormScreen() {
                     desktop && styles.desktopContent,
                 ]}
             >
-                {fullManagement && editing && memberId && (
+                {editing && memberId && (
                     state === "saving" ? (
                         <Pressable accessibilityRole="link" accessibilityState={{ disabled: true }} disabled>
                             <Text style={[styles.link, { color: palette.accent }]}>{locale === "uk" ? "Редагувати родину" : "Edit family"}</Text>

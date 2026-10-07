@@ -177,7 +177,8 @@ test('deacon editing hides administrative and photo controls and returns to the 
   const ui = formFixture({ deacon: true, existing: { id: 'member', name: 'Anna Member', first_name: 'Anna', last_name: 'Member', gender: 'female', revision: 1 } });
   await ui.load();
   const nodes = ui.render();
-  for (const label of ['Edit family', 'Departure history', 'Mark as left membership', 'Delete member', 'Change photo']) assert.equal(ui.button(nodes, label), undefined);
+  for (const label of ['Departure history', 'Mark as left membership', 'Delete member', 'Change photo']) assert.equal(ui.button(nodes, label), undefined);
+  assert.ok(ui.button(nodes, 'Edit family'));
   nodes.find(node => node.props?.accessibilityLabel === 'First name').props.onChangeText('Updated');
   await ui.button(ui.render(), 'Save member').props.onPress();
   assert.equal(ui.saves[0].first_name, 'Updated');
