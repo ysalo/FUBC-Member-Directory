@@ -1,3 +1,26 @@
+## Mobile form layout and duty rotation dragging (2026-10-06, version 1.8.3)
+
+Member editor fields use natural content height so the multiline Address input
+cannot overlap Care status on mobile. Ministry management rows restore a
+visible disclosure chevron. Schedule rotation rows have dedicated touch/mouse
+drag handles with drop feedback and cancellation; excluded rows retain their
+positions and inclusion choices. Up/down buttons remain for keyboard and
+assistive technology, and draft order is saved only by Generate/Regenerate.
+Drag uses the shared React Native responder component; no dependency, backend
+or migration changes. English/Ukrainian instructions include both ways to reorder.
+
+Validation: Node 24 pnpm verify (323 passes, no skips, including real PostgreSQL
+concurrency with safeupdate) and pnpm build:web. Browser fixtures reproduced a
+10px Address/Care status overlap before the fix and verify 24px clearance at
+320/390/1440px with large text, multiline edits and no horizontal overflow.
+Phone touch/desktop mouse rotation tests cover cancellation, excluded deacons,
+reset, empty-roster prevention, draft-only reorder, generation and reinclusion.
+Ministry rows expose a decorative arrow and navigate to the editor. Screenshots
+reviewed; no page errors or notification side effects. Physical native/live OAuth
+are not claimed. Hosted Preview may require SSO. Feature/release PRs record CI
+and deployment evidence; release follows feature → dev → main. Rollback to 1.8.2
+is compatible with the unchanged backend.
+
 ## Pastor note ownership (2026-10-06, version 1.8.2)
 
 Pastors can create a care note for any active member. Pastors and responsible
