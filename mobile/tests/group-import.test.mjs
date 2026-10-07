@@ -52,3 +52,9 @@ test("same-name people require distinct valid birth dates; missing or mixed iden
   }
   assert.throws(() => parseGroupFile(JSON.stringify({ ...group, deacons: ["One", "Two", "Three"] })));
 });
+
+test("care group files are rejected explicitly rather than converted to membership", () => {
+  for (const kind of ["responsibility", "care"]) {
+    assert.throws(() => parseGroupFile(JSON.stringify({ ...file, kind })), /Care group imports are no longer supported/);
+  }
+});

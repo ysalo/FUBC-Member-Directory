@@ -86,7 +86,7 @@ function GroupRow({ featured = false, group, locale, onPress }: { featured?: boo
         {description ? <Text selectable numberOfLines={2} style={[styles.description, { color: palette.secondaryText }]}>{description}</Text> : null}
         <Text selectable style={[styles.meta, { color: featured ? palette.accent : palette.secondaryText }]}>{copy.memberCount(group.memberIds.length)}</Text>
       </View>
-      <Ionicons accessibilityElementsHidden color={featured ? palette.accent : palette.secondaryText} name="chevron-forward" size={featured ? 24 : 20} />
+
     </Pressable>
     <View style={[styles.deaconSection, { borderTopColor: palette.line }]}>
       <Text accessibilityRole="header" selectable style={[styles.deaconHeading, { color: palette.secondaryText }]}>{copy.responsibleDeacons}</Text>

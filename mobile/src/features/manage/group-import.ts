@@ -2,7 +2,7 @@ import type { GroupManagementState } from "./model";
 
 export const groupFileMaxBytes = 256 * 1024;
 export type GroupPerson = string | { name: string; birth_date: string };
-export type GroupFile = { version: 1; name: string; kind: "membership" | "responsibility"; deacons: GroupPerson[]; members: GroupPerson[] };
+export type GroupFile = { version: 1; name: string; kind: "membership"; deacons: GroupPerson[]; members: GroupPerson[] };
 export function groupPersonName(person: GroupPerson): string {
   return typeof person === "string" ? person : person.name;
 }
@@ -27,9 +27,10 @@ export function parseGroupFile(text: string): GroupFile {
     if (!Array.isArray(file.verify)) throw new Error("The verify section must be an array. / Розділ verify має бути масивом.");
     if (file.verify.length) throw new Error("Resolve all names in the verify section before uploading. Move confirmed existing-person names into members/deacons, then empty or remove verify. / Перевірте всі імена в розділі verify перед завантаженням. Перенесіть підтверджені імена наявних учасників до members/deacons і очистіть або видаліть verify.");
   }
+  if (file.kind === "responsibility" || file.kind === "care") throw new Error("Care group imports are no longer supported. Use a membership group file. / Імпорт груп турботи більше не підтримується. Використайте файл членської групи.");
   const validName = (name: unknown): name is string => typeof name === "string" && name.trim().length > 0 && name.length <= 200;
   const validPeople = (people: unknown): people is GroupPerson[] => Array.isArray(people) && people.every(person => typeof person === "string" ? validName(person) : person !== null && typeof person === "object" && validName(person.name) && validBirthDate(person.birth_date));
-  if (file.version !== 1 || typeof file.name !== "string" || !file.name.trim() || file.name.trim().length > 120 || !["membership", "responsibility"].includes(String(file.kind)) || !validPeople(file.deacons) || file.deacons.length < 1 || file.deacons.length > 2 || !validPeople(file.members) || file.members.length > 2000) throw new Error("Expected version 1, group name/type, one or two deacons and member names (optionally with birth_date). / Потрібні версія 1, назва/тип групи, один або два диякони та імена учасників (за потреби з birth_date).");
+  if (file.version !== 1 || typeof file.name !== "string" || !file.name.trim() || file.name.trim().length > 120 || file.kind !== "membership" || !validPeople(file.deacons) || file.deacons.length < 1 || file.deacons.length > 2 || !validPeople(file.members) || file.members.length > 2000) throw new Error("Expected version 1, group name/type, one or two deacons and member names (optionally with birth_date). / Потрібні версія 1, назва/тип групи, один або два диякони та імена учасників (за потреби з birth_date).");
   const datesByName = new Map<string, (string | undefined)[]>();
   for (const person of [...file.deacons, ...file.members]) {
     const name = normalizeGroupName(groupPersonName(person)), birthDate = groupPersonBirthDate(person);

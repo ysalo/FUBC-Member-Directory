@@ -1,6 +1,4 @@
-import { FlatList, Pressable, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { Ionicons } from "@react-native-vector-icons/ionicons";
+import { FlatList, View } from "react-native";
 import { Text } from "@/features/accessibility/app-text";
 import { useAppearance } from "@/features/appearance/AppearanceProvider";
 import { useLocalization } from "@/features/localization/LocalizationProvider";
@@ -21,9 +19,6 @@ const labels = {
   en: {
     add: "Add group",
     search: "Search groups",
-    all: "All groups",
-    membership: "Membership",
-    responsibility: "Care",
     empty: "No matching groups",
     members: "members",
     deacons: "of 2 deacons",
@@ -32,9 +27,6 @@ const labels = {
   uk: {
     add: "Додати групу",
     search: "Пошук груп",
-    all: "Усі групи",
-    membership: "Членська",
-    responsibility: "Турботи",
     empty: "Відповідних груп немає",
     members: "учасників",
     deacons: "з 2 дияконів",
@@ -48,17 +40,11 @@ export function GroupsManagementScreen() {
   const session = useSession();
   const actor = session.status === "ready" ? session.account : null;
   const allowed = !isBackendConfigured || canManageGroups(actor);
-  const router = useRouter();
-  const params = useLocalSearchParams<{ kind?: string }>();
-  const kind =
-    params.kind === "membership" || params.kind === "responsibility"
-      ? params.kind
-      : "all";
   const { query, setQuery, committedQuery } = useManagementSearch();
   const list = useManagementList(
-    `groups:${kind}:${committedQuery}`,
+    `groups:membership:${committedQuery}`,
     (request) => managementRepository.loadGroupsPage(request),
-    { query: committedQuery, filters: { kind } },
+    { query: committedQuery, filters: { kind: "membership" } },
     allowed,
   );
   return (
@@ -79,32 +65,6 @@ export function GroupsManagementScreen() {
           query={query}
           onChange={setQuery}
         />
-        <View style={ui.chips}>
-          {(["all", "membership", "responsibility"] as const).map((value) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: kind === value }}
-              key={value}
-              onPress={() => router.setParams({ kind: value })}
-              style={[
-                ui.chip,
-                {
-                  borderColor: kind === value ? palette.accent : palette.line,
-                  backgroundColor:
-                    kind === value ? palette.accentSoft : palette.surface,
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  color: kind === value ? palette.accent : palette.text,
-                }}
-              >
-                {copy[value]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
         <ManagementFeedback
           error={list.failedOperation === "refresh" ? list.error : null}
           loading={list.loading === "refresh"}
@@ -133,19 +93,10 @@ export function GroupsManagementScreen() {
                   {item.name}
                 </Text>
                 <Text style={[ui.detail, { color: palette.secondaryText }]}>
-                  {copy[item.kind]}
-                </Text>
-                <Text style={[ui.detail, { color: palette.secondaryText }]}>
                   {item.memberCount} {copy.members} · {item.deaconCount}{" "}
                   {copy.deacons}
                 </Text>
               </View>
-              <Ionicons
-                accessibilityElementsHidden
-                color={palette.secondaryText}
-                name="chevron-forward"
-                size={20}
-              />
             </View>
           </ManagementLink>
         )}

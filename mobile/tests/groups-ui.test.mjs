@@ -89,7 +89,7 @@ test("public group UI omits the redundant membership-group wording", async () =>
     assert.match(memberCopy, /group: "Belongs to"/);
 });
 
-test("member profile presents its group as a labeled disclosure action", async () => {
+test("member profile presents its group as a labeled action without a row arrow", async () => {
     const source = await readFile(
         new URL(
             "../src/features/members/MemberProfileScreen.tsx",
@@ -99,7 +99,7 @@ test("member profile presents its group as a labeled disclosure action", async (
     );
     assert.match(source, /accessibilityHint=\{copy\.openGroup\}/);
     assert.match(source, /<Fact\s+disclosure/);
-    assert.match(source, /name="chevron-forward"/);
+    assert.doesNotMatch(source, /name="chevron-forward"/);
     assert.match(source, /editButton: \{ left: "auto", right: 16 \}/);
 });
 
@@ -248,4 +248,72 @@ test("profile avatars fall back to initials when an image fails", async () => {
         avatarFallback.avatarTone("Yaroslav Salo").backgroundColor,
         /^#[0-9A-F]{6}$/,
     );
+});
+
+test("group draft removals remain recheckable across searches and tabs without losing other assignments", async () => {
+    const { createRequire } = await import("node:module");
+    const require = createRequire(import.meta.url);
+    const React = require("react"), ts = require("typescript");
+    const source = await readFile(new URL("../src/features/manage/GroupAssignmentScreen.tsx", import.meta.url), "utf8");
+    const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+    const states = [], refs = [], effects = [], effectDeps = [], saves = [];
+    let cursor = 0, refCursor = 0, effectCursor = 0, query = "";
+    const members = Array.from({ length: 80 }, (_, i) => ({ id: `member-${i}`, name: `Person ${i}`, currentMembershipGroupId: "group" }));
+    const group = { id: "group", kind: "membership", name: "Group", memberIds: members.map(m => m.id), deaconIds: [], revision: "revision" };
+    const hooks = { ...React,
+        useState(initial) { const i = cursor++; if (!(i in states)) states[i] = typeof initial === "function" ? initial() : initial; return [states[i], value => { states[i] = typeof value === "function" ? value(states[i]) : value; }]; },
+        useRef(initial) { return refs[refCursor++] ??= { current: initial }; },
+        useEffect(effect, deps) { const i = effectCursor++; if (!effectDeps[i] || deps.some((v, j) => v !== effectDeps[i][j])) { effectDeps[i] = deps; effects.push(effect); } },
+    };
+    const modules = new Map([
+        ["react", hooks], ["react/jsx-runtime", require("react/jsx-runtime")],
+        ["react-native", { ActivityIndicator: "Spinner", FlatList: "List", SectionList: "SectionList", KeyboardAvoidingView: "Keyboard", Modal: "Modal", Platform: { OS: "web" }, Pressable: "Button", View: "View", StyleSheet: { create: x => x } }],
+        ["expo-router", { useLocalSearchParams: () => ({ groupId: "group" }), useRouter: () => ({ canGoBack: () => false, replace() {} }) }],
+        ["react-native-safe-area-context", { useSafeAreaInsets: () => ({ bottom: 0 }) }],
+        ["@react-native-vector-icons/ionicons", { Ionicons: "Icon" }],
+        ["@/features/accessibility/app-text", { Text: "Text", TextInput: "Input" }],
+        ["@/features/platform/alert", { Alert: { alert() {} } }],
+        ["@/features/appearance/AppearanceProvider", { useAppearance: () => ({ palette: { background: "white", accentSoft: "orange" } }) }],
+        ["@/features/localization/LocalizationProvider", { useLocalization: () => ({ locale: "en" }) }],
+        ["@/features/session/SessionProvider", { useSession: () => ({ status: "ready", account: { id: "admin", role: "admin", status: "active" } }) }],
+        ["@/features/members/ProfileAvatar", { ProfileAvatar: "Avatar" }],
+        ["@/features/shell/use-desktop-layout", { useDesktopLayout: () => false }],
+        ["@/lib/permissions", { canManageGroups: () => true }],
+        ["@/lib/supabase", { isBackendConfigured: true }],
+        ["@/lib/async-state", { withTimeout: p => p, errorMessage: String }],
+        ["@/lib/member-name", { formatMemberName: m => m.name }],
+        ["./management-repository", { managementRepository: { loadGroupContext: async () => ({ group }), previewGroupMoves: async () => 0, saveGroup: async args => saves.push(args) } }],
+        ["./use-management-search", { useManagementSearch: () => ({ query, committedQuery: query, setQuery: value => { query = value; } }) }],
+        ["./use-management-list", { useManagementList: (_key, _loader, request, enabled) => { const items = enabled ? members.filter(m => (!request.filters.selectedOnly || request.filters.selectedIds.includes(m.id)) && m.name.includes(request.query ?? "")) : []; return { items: items.slice(0, 25), total: items.length, loading: null, error: null }; } }],
+        ["./ManagementListParts", { ManagementFeedback: "Feedback", ManagementListFooter: "Footer", ManagementSearch: "Search", ui: {} }],
+        ["./use-unsaved-changes", { useUnsavedChanges: () => ({ allowLeave() {}, confirmLeave(fn) { fn(); } }) }],
+        ["./GroupFileImport", { GroupFileImport: "Import" }],
+    ]);
+    const exports = {};
+    new Function("require", "exports", code)(id => { assert.ok(modules.has(id), id); return modules.get(id); }, exports);
+    const text = node => node == null ? "" : typeof node !== "object" ? String(node) : Array.isArray(node) ? node.map(text).join("") : text(node.props?.children);
+    function render() {
+        cursor = refCursor = effectCursor = 0;
+        const nodes = [];
+        function walk(node) { if (!node || typeof node !== "object") return; if (Array.isArray(node)) return node.forEach(walk); nodes.push(node); walk(node.props?.children); if (node.type === "SectionList") { walk(node.props.renderSectionHeader()); for (const item of node.props.sections[0].data) walk(node.props.renderItem({ item })); } }
+        walk(exports.GroupAssignmentScreen({})); while (effects.length) effects.shift()(); return nodes;
+    }
+    const memberRow = () => render().find(n => n.type === "Button" && n.props.accessibilityLabel?.startsWith("Person 0."));
+    const press = label => { const button = render().find(n => n.type === "Button" && text(n) === label); assert.ok(button, label); button.props.onPress(); };
+    render(); await new Promise(setImmediate);
+    assert.equal(memberRow().props.accessibilityState.checked, true);
+    assert.equal(memberRow().props.style[1].backgroundColor, "white");
+    memberRow().props.onPress();
+    assert.equal(memberRow().props.accessibilityState.checked, false);
+    query = "Person 0";
+    assert.equal(memberRow().props.accessibilityState.checked, false);
+    press("All members"); query = "";
+    press("In this group (79)");
+    assert.equal(memberRow().props.accessibilityState.checked, false);
+    memberRow().props.onPress();
+    assert.equal(memberRow().props.accessibilityState.checked, true);
+    memberRow().props.onPress(); press("Save group"); await new Promise(setImmediate);
+    assert.equal(saves.length, 1);
+    assert.deepEqual(saves[0].p_member_ids, group.memberIds.slice(1));
+    assert.equal(saves[0].p_kind, "membership");
 });

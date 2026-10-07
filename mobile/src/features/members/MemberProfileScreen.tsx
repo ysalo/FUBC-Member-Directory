@@ -819,14 +819,6 @@ function Fact({
                 >
                     {value}
                 </Text>
-                {disclosure ? (
-                    <Ionicons
-                        accessibilityElementsHidden
-                        color={palette.accent}
-                        name="chevron-forward"
-                        size={18}
-                    />
-                ) : null}
             </View>
         </View>
     );

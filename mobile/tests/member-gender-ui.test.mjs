@@ -184,3 +184,48 @@ test('deacon editing hides administrative and photo controls and returns to the 
   assert.deepEqual(ui.routes, ['/members/member']);
   assert.equal(ui.photos.length, 0);
 });
+
+
+test('member actions and validation remain outside the scrolling fields', async () => {
+  const ui = formFixture();
+  await ui.load();
+  let nodes = ui.render();
+  const scroll = nodes.find((node) => node.type === 'ScrollView');
+  assert.ok(!ui.text(scroll).includes('Save member'));
+  assert.equal(nodes.filter((node) => node.type === 'Pressable' && ui.text(node) === 'Save member').length, 1);
+  ui.button(nodes, 'Save member').props.onPress();
+  nodes = ui.render();
+  const error = nodes.find((node) => node.props.accessibilityRole === 'alert');
+  assert.equal(ui.text(error), 'Enter a first and last name.');
+  assert.ok(!ui.text(nodes.find((node) => node.type === 'ScrollView')).includes(ui.text(error)));
+  assert.equal(ui.saves.length, 0);
+});
+
+test('opening member deletion offers to keep the current draft', async () => {
+  const ui = formFixture({ existing: { id: 'saved', name: 'Saved Member', gender: 'male', revision: 1 } });
+  await ui.load();
+  ui.render().find((node) => node.props?.accessibilityLabel === 'First name').props.onChangeText('Changed');
+  ui.button(ui.render(), 'Remove member').props.onPress();
+  assert.deepEqual(ui.routes, []);
+  ui.dialogs.at(-1)[2][0].onPress?.();
+  assert.equal(ui.render().find((node) => node.props?.accessibilityLabel === 'First name').props.value, 'Changed');
+  ui.dialogs.at(-1)[2][1].onPress();
+  assert.deepEqual(ui.routes, ['/manage/member/saved/delete']);
+});
+
+
+test('member dates use one empty optional control each and clear saved values explicitly', async () => {
+  const fresh = formFixture(); await fresh.load();
+  const dates = fresh.render().filter((node) => node.type === 'DateField');
+  assert.deepEqual(dates.map((node) => [node.props.accessibilityLabel, node.props.value]), [['Birthday', ''], ['Member since', '']]);
+  assert.equal(fresh.render().some((node) => node.type === 'TextInput' && /YYYY/.test(node.props.accessibilityLabel)), false);
+  const ui = formFixture({ existing: { id: 'saved', name: 'Saved Member', gender: 'male', revision: 1, birthday: '1980-02-12', membershipJoinedAt: '2000-01-01' } });
+  await ui.load();
+  for (const label of ['Clear: Birthday', 'Clear: Member since']) {
+    ui.render().find((node) => node.props.accessibilityLabel === label).props.onPress();
+  }
+  assert.deepEqual(ui.render().filter((node) => node.type === 'DateField').map((node) => node.props.value), ['', '']);
+  ui.button(ui.render(), 'Save member').props.onPress(); await new Promise(setImmediate);
+  assert.equal(ui.saves[0].birthday, null);
+  assert.equal(ui.saves[0].membershipJoinedAt, null);
+});

@@ -136,18 +136,12 @@ export function MembersManagementScreen() {
           </Text>
         ) : null}
       </View>
-      <Ionicons
+      {selecting ? <Ionicons
         accessibilityElementsHidden
         color={palette.accent}
-        name={
-          selecting
-            ? selectedIds.includes(member.id)
-              ? "checkmark-circle"
-              : "ellipse-outline"
-            : "chevron-forward"
-        }
+        name={selectedIds.includes(member.id) ? "checkmark-circle" : "ellipse-outline"}
         size={22}
-      />
+      /> : null}
     </View>
   );
   return (
