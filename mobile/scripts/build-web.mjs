@@ -22,6 +22,6 @@ if (key.split('.').length === 3) {
   }
 }
 const cli = path.join(path.dirname(require.resolve('expo/package.json')), 'bin/cli');
-const result = spawnSync(process.execPath, [cli, 'export', '-p', 'web'], { cwd: root, env: process.env, stdio: 'inherit' });
+const result = spawnSync(process.execPath, [cli, 'export', '-p', 'web', '--clear'], { cwd: root, env: process.env, stdio: 'inherit' });
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;

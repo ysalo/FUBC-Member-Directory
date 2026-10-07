@@ -725,3 +725,19 @@ No backend migration, new app dependency or permission change. Existing note RLS
 Moved the empty-state Add note action from Member details to the Contact heading. A plus icon, neutral outline/surface, stronger text and pressed feedback make it recognizable as a button while preserving the trailing heading layout. It keeps a 48px touch target and wraps right on narrow/large-text layouts. The action remains hidden during creation/editing and after save; new-note visibility text and saved-note controls remain unchanged.
 
 No backend migration, app dependency or permission change; rollback to 1.7.4 is compatible. Validation: pnpm verify and pnpm build:web, synthetic-backend phone/desktop/light/dark note workflows and 320/768px large English/Ukrainian fixtures. Checks cover Contact placement, action hiding, privacy helper, save/remove retries/cancel, role restrictions, directory/group filtering, callbacks and no overflow/errors/notification calls. Hosted Preview may require Vercel SSO; authenticated hosted Preview, physical native and live OAuth are not claimed. PRs record CI, Preview and production evidence; release follows feature → dev → main.
+
+## Menu redesign 1.8.4
+
+Menu now gives preferences the primary desktop column, wraps full-name radio choices, and presents About in a bounded browser dialog. Native uses the same content with touch choices and a page sheet. Language persists in device storage; appearance writes are actually executed and pending reads cannot overwrite a newer choice. Manage's Other tools navigation rows regain disclosure arrows; ministry list entries do not.
+
+Run synthetic browser acceptance after exporting, without rebuilding while the server is in use:
+
+```bash
+PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
+CHROMIUM_PATH=/usr/bin/chromium FUBC_SITE_URL=http://localhost:4173 \
+FUBC_BROWSER_OUT=/tmp/menu-evidence node tests/menu-browser.mjs
+```
+
+The harness intercepts Supabase, blocks unknown writes, checks 320/390/1023/1024/1440px in both themes with Ukrainian large text, and exercises radio keyboard behavior, persistence/reload, About version/focus/dismissal, account deletion guards, profile navigation, installation help and Manage tool navigation. Remote sign-out failure is tested against the installed Supabase library's behavior: local session is removed and sign-in appears. No real account mutations or notification calls occur.
+
+`build:web` clears Metro cache so Expo Constants uses current release configuration. Preview may require Vercel SSO; unauthenticated Preview access is not validation of the application. Physical native devices and live OAuth remain unverified. No backend migrations are required.

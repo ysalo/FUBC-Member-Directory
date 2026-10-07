@@ -298,6 +298,7 @@ export function ManageScreen() {
                     >
                       {tool.label}
                     </Text>
+                    <Ionicons aria-hidden accessibilityElementsHidden name="chevron-forward" size={18} color={palette.secondaryText} />
                   </View>
                 </ManagementLink>
               ))}
