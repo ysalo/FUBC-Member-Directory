@@ -27,6 +27,7 @@ import {
     syncBirthdayNotifications,
 } from "./birthday-notifications";
 import { upcomingBirthdays } from "./birthday-notification-plan";
+import { useBirthdayDate } from "./use-birthday-date";
 import { getGroupsCopy } from "./groups-copy";
 import {
     groupsRepository,
@@ -72,7 +73,8 @@ export function GroupDetailScreen({ groupId }: { groupId: string }) {
         group.responsibleDeaconIds.includes(account.id),
     );
     const notesAllowed = account?.status === "active" && (assignedDeacon || account.leadershipMinistry === "pastor");
-    const upcoming = useMemo(() => upcomingBirthdays(birthdays), [birthdays]);
+    const birthdayDate = useBirthdayDate();
+    const upcoming = useMemo(() => upcomingBirthdays(birthdays, new Date(`${birthdayDate}T00:00:00-07:00`)), [birthdays, birthdayDate]);
     const filteredMembers = useMemo(() => {
         const needle = query.trim().toLocaleLowerCase(locale);
         return (group?.members ?? [])
