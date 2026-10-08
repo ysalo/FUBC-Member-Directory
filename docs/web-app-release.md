@@ -1,3 +1,23 @@
+## Birthday date refresh (2026-10-08, version 1.8.10)
+
+The group “Next 7 days” section updates at fixed UTC−7 midnight while focused,
+and checks the date on screen focus and app/browser resume. Hidden or unfocused
+screens have no timer. Same-day checks preserve state and the memoized list;
+date changes reuse already-authorized birthday data without network requests
+or notification scheduling. This fixes stale calendar windows, not background
+birthday delivery or synchronization of edited birthdays.
+
+Validation: pnpm verify and pnpm build:web; fake-clock web/native lifecycle tests
+cover midnight, year rollover, multiple-day resume, same-day deduplication,
+focus return and cleanup. Synthetic Chromium checks at 390/1440px confirm a
+birthday leaves and another enters at midnight, resume refreshes the date,
+birthday RPC counts stay unchanged, and no notification calls or page errors
+occur. Existing care-note confirmations and role restrictions also pass.
+Physical native devices and live OAuth are not claimed. Hosted Preview may
+require Vercel SSO; deployment evidence is recorded in the PRs.
+No backend/dependency changes or migrations. Rollback to 1.8.9 is compatible.
+Release follows feature → dev → main through Vercel Git integration.
+
 ## Mobile form layout and duty rotation dragging (2026-10-06, version 1.8.3)
 
 Member editor fields use natural content height so the multiline Address input
