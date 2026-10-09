@@ -1,3 +1,22 @@
+## Save destinations and group deacon search (2026-10-09)
+
+Successful member saves open the saved member profile for administrators and
+assigned deacons. Account linking and family creation retain their specific return
+flows. Successful group saves open the saved group, including direct editor URLs.
+Cancel and failed-save behavior retain the existing unsaved-change handling.
+The Groups search matches group names or either assigned deacon's name, using
+shared member token/prefix matching, name-order independence and patronymics.
+English and Ukrainian search hints describe both options.
+
+Validation: pnpm verify passes (324 main, one visitation, 17 groups; two existing
+PostgreSQL tests skipped locally); pnpm build:web passes. Synthetic authenticated
+Chromium checks at 390/1440px cover administrator/deacon member saves, administrator
+group edits, deacon-name search, empty results, direct routes and failed auth
+callbacks, with no overflow, page errors or notification calls. Backend requests
+are intercepted. Physical native devices and live OAuth are unverified.
+No backend changes, migrations or dependency changes; rollback is compatible.
+Feature and dev → main PRs record CI, hosted Preview and production evidence.
+
 ## Birthday date refresh (2026-10-08, version 1.8.10)
 
 The group “Next 7 days” section updates at fixed UTC−7 midnight while focused,

@@ -317,7 +317,7 @@ export function GroupAssignmentScreen({
     setOperation("saving");
     setError(null);
     try {
-      await managementRepository.saveGroup({
+      const saved = await managementRepository.saveGroup({
         p_id: group?.id ?? null,
         p_revision: group?.revision ?? null,
         p_name: name.trim(),
@@ -329,7 +329,7 @@ export function GroupAssignmentScreen({
       if (ticket !== generation.current || identityRef.current !== origin)
         return;
       guard.allowLeave();
-      leave();
+      router.replace(`/groups/${encodeURIComponent(saved.id)}` as never);
     } catch (cause) {
       if (ticket === generation.current && identityRef.current === origin) {
         setError(errorMessage(cause));

@@ -12,7 +12,7 @@ import { useLocalization } from "@/features/localization/LocalizationProvider";
 import { useSession } from "@/features/session/SessionProvider";
 import { DeaconProfileRow } from "./deacon-profile-row";
 import { getGroupsCopy } from "./groups-copy";
-import { partitionGroups } from "./groups-display";
+import { groupMatchesSearch, partitionGroups } from "./groups-display";
 import { groupsRepository, type MinistryGroup } from "./groups-repository";
 
 const loadGroups = (fresh: boolean) => groupsRepository.listGroups({ fresh });
@@ -38,8 +38,7 @@ export function GroupsScreen() {
     [account?.id, groups, isDeacon],
   );
   const filtered = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase(locale);
-    return others.filter((group) => !needle || `${group.name} ${group.nameUk}`.toLocaleLowerCase(locale).includes(needle));
+    return others.filter((group) => groupMatchesSearch(group, query, locale));
   }, [locale, others, query]);
 
   const openGroup = (group: MinistryGroup) => router.push({ pathname: "/groups/[groupId]", params: { groupId: group.id } });

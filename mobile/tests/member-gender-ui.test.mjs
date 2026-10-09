@@ -242,3 +242,11 @@ test('deacon member editor offers photo replacement and removal without manageme
   await new Promise(setImmediate);
   assert.equal(fixture.photos.length, 1);
 });
+
+for (const deacon of [false, true]) test(`saved member opens profile for ${deacon ? 'deacon' : 'administrator'}`, async () => {
+  const ui = formFixture({ deacon, existing: { id: 'saved', name: 'Saved Member', gender: 'male', revision: 1 } });
+  await ui.load();
+  await ui.button(ui.render(), 'Save member').props.onPress();
+  await new Promise(setImmediate);
+  assert.deepEqual(ui.routes, ['/members/saved']);
+});
