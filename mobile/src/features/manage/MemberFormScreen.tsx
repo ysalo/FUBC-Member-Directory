@@ -367,7 +367,7 @@ export function MemberFormScreen() {
                 router.replace(`/manage/member/${encodeURIComponent(familyReturn)}/family?createdId=${encodeURIComponent(saved.id)}` as never);
             } else {
                 guard.allowLeave();
-                leave();
+                router.replace(`/members/${encodeURIComponent(saved.id)}` as never);
             }
         } catch (e) {
             setError(
