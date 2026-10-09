@@ -251,7 +251,7 @@ test("group draft removals remain recheckable across searches and tabs without l
     const React = require("react"), ts = require("typescript");
     const source = await readFile(new URL("../src/features/manage/GroupAssignmentScreen.tsx", import.meta.url), "utf8");
     const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-    const states = [], refs = [], effects = [], effectDeps = [], saves = [];
+    const states = [], refs = [], effects = [], effectDeps = [], saves = [], routes = [];
     let cursor = 0, refCursor = 0, effectCursor = 0, query = "";
     const members = Array.from({ length: 80 }, (_, i) => ({ id: `member-${i}`, name: `Person ${i}`, currentMembershipGroupId: "group" }));
     const group = { id: "group", kind: "membership", name: "Group", memberIds: members.map(m => m.id), deaconIds: [], revision: "revision" };
@@ -263,7 +263,7 @@ test("group draft removals remain recheckable across searches and tabs without l
     const modules = new Map([
         ["react", hooks], ["react/jsx-runtime", require("react/jsx-runtime")],
         ["react-native", { ActivityIndicator: "Spinner", FlatList: "List", SectionList: "SectionList", KeyboardAvoidingView: "Keyboard", Modal: "Modal", Platform: { OS: "web" }, Pressable: "Button", View: "View", StyleSheet: { create: x => x } }],
-        ["expo-router", { useLocalSearchParams: () => ({ groupId: "group" }), useRouter: () => ({ canGoBack: () => false, replace() {} }) }],
+        ["expo-router", { useLocalSearchParams: () => ({ groupId: "group" }), useRouter: () => ({ canGoBack: () => false, replace(path) { routes.push(path); } }) }],
         ["react-native-safe-area-context", { useSafeAreaInsets: () => ({ bottom: 0 }) }],
         ["@react-native-vector-icons/ionicons", { Ionicons: "Icon" }],
         ["@/features/accessibility/app-text", { Text: "Text", TextInput: "Input" }],
@@ -277,7 +277,7 @@ test("group draft removals remain recheckable across searches and tabs without l
         ["@/lib/supabase", { isBackendConfigured: true }],
         ["@/lib/async-state", { withTimeout: p => p, errorMessage: String }],
         ["@/lib/member-name", { formatMemberName: m => m.name }],
-        ["./management-repository", { managementRepository: { loadGroupContext: async () => ({ group }), previewGroupMoves: async () => 0, saveGroup: async args => saves.push(args) } }],
+        ["./management-repository", { managementRepository: { loadGroupContext: async () => ({ group }), previewGroupMoves: async () => 0, saveGroup: async args => { saves.push(args); return { id: "group" }; } } }],
         ["./use-management-search", { useManagementSearch: () => ({ query, committedQuery: query, setQuery: value => { query = value; } }) }],
         ["./use-management-list", { useManagementList: (_key, _loader, request, enabled) => { const items = enabled ? members.filter(m => (!request.filters.selectedOnly || request.filters.selectedIds.includes(m.id)) && m.name.includes(request.query ?? "")) : []; return { items: items.slice(0, 25), total: items.length, loading: null, error: null }; } }],
         ["./ManagementListParts", { ManagementFeedback: "Feedback", ManagementListFooter: "Footer", ManagementSearch: "Search", ui: {} }],
@@ -311,4 +311,5 @@ test("group draft removals remain recheckable across searches and tabs without l
     assert.equal(saves.length, 1);
     assert.deepEqual(saves[0].p_member_ids, group.memberIds.slice(1));
     assert.equal(saves[0].p_kind, "membership");
+    assert.deepEqual(routes, ["/groups/group"]);
 });

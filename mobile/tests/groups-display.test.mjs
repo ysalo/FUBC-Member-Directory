@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 
-import { partitionGroups } from "../src/features/groups/groups-display.ts";
+import { groupMatchesSearch, partitionGroups } from "../src/features/groups/groups-display.ts";
 import { createAsyncCache } from "../src/lib/query-cache.ts";
 
 const group = (id, deacons = []) => ({ id, name: id, nameUk: id, description: "", descriptionUk: "", kind: "membership", responsibleDeaconIds: deacons, memberIds: [] });
@@ -161,4 +161,16 @@ test("group deacon note presence is separate from shared notes and fetches no bo
  const group=await repository.getGroup('one');
  assert.equal(group.members[0].hasNote,false);assert.equal(group.members[0].hasDeaconNote,true);
  assert.ok(calls.filter(call=>call.source==='deacon_member_notes').every(call=>call.columns==='person_id'));
+});
+
+test("group search matches either assigned deacon, name order and Ukrainian patronymics", () => {
+  const item = { ...group("Group 12"), responsibleDeacons: [
+    { name: "Daniel Smith", first_name: "Daniel", last_name: "Smith" },
+    { name: "Іван Коваль", patronymic: "Петрович" },
+  ] };
+  for (const query of ["", "  ", "group 12", "SMITH", "Smith Dan", "коваль іван", "Петров"]) {
+    assert.equal(groupMatchesSearch(item, query, "uk"), true, query);
+  }
+  assert.equal(groupMatchesSearch(item, "Unrelated", "en"), false);
+  assert.equal(groupMatchesSearch(group("Empty"), "Daniel", "en"), false);
 });
