@@ -160,6 +160,22 @@ try {
     assert.equal(person.last_name,'Changed');
     assert.equal(await db.query("select nullif(current_setting('app.member_name_fields',true),'') as value").then(result => result.rows[0].value),null);
   });
+  test('member admins move and clear one membership group with revision protection; group editing still works', async () => {
+    const groups = (await db.query("insert into public.deacon_groups(name,kind) values('Member edit one','membership'),('Member edit two','membership') returning id,revision")).rows;
+    const save = async (person, groupId, actor = 'editor') => (await as(actor, 'select * from public.save_person($1,$2,$3::jsonb)', [person.id, person.revision, JSON.stringify({name:person.name,membership_group_id:groupId})])).rows[0];
+    let person = (await db.query("insert into public.people(name,gender,membership_group_id) values('Group Editor Member','female',$1) returning *", [groups[0].id])).rows[0];
+    const stale = person;
+    person = await save(person, groups[1].id);
+    assert.equal(person.membership_group_id, groups[1].id);
+    await assert.rejects(save(stale, groups[0].id), /Conflict/);
+    person = await save(person, null, 'admin');
+    assert.equal(person.membership_group_id, null);
+    await as('editor', 'select * from public.save_group($1,$2,$3,$4,$5,$6,$7)', [groups[0].id,groups[0].revision,'Member edit one','membership',false,[],[person.id]]);
+    person = (await db.query('select * from public.people where id=$1', [person.id])).rows[0];
+    assert.equal(person.membership_group_id, groups[0].id);
+    await db.query('delete from public.people where id=$1', [person.id]);
+    await db.query('delete from public.deacon_groups where id=any($1::uuid[])', [groups.map(group => group.id)]);
+  });
   test('deacons edit only active members of their assigned group and cannot change assignments', async () => {
     const deacon = (await db.query("insert into public.people(name,gender) values('Assigned Deacon','male') returning id")).rows[0];
     await db.query("insert into public.person_ministries(person_id,ministry_id) select $1,id from public.ministries where system_key='deacon'", [deacon.id]);

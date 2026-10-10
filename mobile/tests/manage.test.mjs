@@ -1,3 +1,4 @@
+import * as memberName from "../src/lib/member-name.ts";
 import * as memberSearch from "../src/lib/member-search.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -204,6 +205,7 @@ function photoRepository(failure, configured = true, manager = true) {
         if (id === "@/lib/permissions") return { canOpenMemberEditor: () => true, canManageDirectory: () => manager };
         if (id === "@/lib/repository-helpers") return { activeAccount: () => ({}), unwrap: (result) => { if (result.error) throw new Error(result.error.message); return result.data; } };
         if (id === "@/lib/session-cache") return { invalidateData: (...topics) => invalidations.push(topics), createSessionCache: () => ({ load: (key, loader) => loader() }) };
+        if (id === "@/lib/member-name") return memberName;
         if (id === "@/lib/photo-cache") return { thumbnailPath: (path) => `${path}.avatar-256.jpg` };
         if (id === "./management-reads") return { SupabaseManagementReads: class {}, DemoManagementReads: class {} };
         if (id === "./model") return source;
@@ -973,6 +975,7 @@ test('management catalog keeps patronymics for family member disambiguation', as
   if(id==='@/lib/permissions')return {canOpenMemberEditor:()=>true,canManageDirectory:()=>true,canManageAccounts:()=>false};
   if(id==='@/lib/repository-helpers')return {activeAccount:()=>({}),unwrap:r=>r.data,privatePhotoSources:async()=>new Map()};
   if(id==='@/lib/session-cache')return {createSessionCache:()=>({load:(key,loader)=>loader()})};
+  if(id==='@/lib/member-name')return memberName;
   if(id==='@/lib/photo-cache')return {};
   if(id==='./management-reads')return {SupabaseManagementReads:class{},DemoManagementReads:class{}};
   if(id==='./model')return source;
@@ -992,6 +995,7 @@ test('active member loading accepts an absent departure and uses the recorded de
   if(id==='@/lib/permissions')return {canOpenMemberEditor:()=>true,canManageDirectory:()=>true};
   if(id==='@/lib/repository-helpers')return {activeAccount:()=>({}),unwrap:r=>{if(r.error||r.data===null)throw Error('Unavailable');return r.data;},privatePhotoSources:async()=>new Map()};
   if(id==='@/lib/session-cache')return {createSessionCache:()=>({})};
+  if(id==='@/lib/member-name')return memberName;
   if(id==='@/lib/photo-cache'||id==='@/features/family/family-repository')return {};
   if(id==='./management-reads')return {SupabaseManagementReads:class{},DemoManagementReads:class{}};
   if(id==='./model')return source;
