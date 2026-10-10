@@ -19,7 +19,7 @@ export function parseAddressFields(address: string): AddressFields {
     // The new form writes a separate locality line; also recognize common one-line imports.
     if (lines.length === 1) {
         const standaloneLocality = matchLocality(lines[0]);
-        if (standaloneLocality && (/^[A-Z]{2}$/u.test(standaloneLocality[2]) || standaloneLocality[3])) {
+        if (standaloneLocality && /^[A-Z]{2}$/iu.test(standaloneLocality[2])) {
             fields.city = standaloneLocality[1]; fields.region = standaloneLocality[2]; fields.postalCode = standaloneLocality[3] ?? "";
             return fields;
         }
