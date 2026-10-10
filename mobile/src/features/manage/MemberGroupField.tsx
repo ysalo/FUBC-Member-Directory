@@ -57,7 +57,7 @@ export function MemberGroupField({ value, onChange, disabled, currentName }: {
             <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" style={[styles.results, { borderColor: palette.line }]}>
                 {[{ id: null, name: noGroup, deaconIds: [] }, ...results].map(group => <Pressable key={group.id ?? "none"} accessibilityRole="radio" accessibilityState={{ checked: value === group.id, disabled }} disabled={disabled} onPress={() => choose(group.id)} style={[styles.card, { borderColor: palette.line, backgroundColor: value === group.id ? palette.accentSoft : palette.surface }]}>
                     <View style={styles.summary}><Text style={[styles.name, { color: palette.text }]}>{group.name}</Text>{group.id && <Text style={{ color: palette.secondaryText }}>{deacons(group.deaconIds).map(deacon => deacon.name).join(" · ") || (uk ? "Дияконів не призначено" : "No deacons assigned")}</Text>}</View>
-                    <Text style={{ color: palette.accent }}>{value === group.id ? "●" : "○"}</Text>
+                    <View aria-hidden style={[styles.radio, { borderColor: value === group.id ? palette.accent : palette.secondaryText }]}>{value === group.id && <View style={[styles.radioDot, { backgroundColor: palette.accent }]} />}</View>
                 </Pressable>)}
                 {!results.length && <Text accessibilityLiveRegion="polite" style={[styles.empty, { color: palette.secondaryText }]}>{uk ? "Груп не знайдено. Спробуйте іншу назву або ім’я диякона." : "No groups found. Try another group or deacon name."}</Text>}
             </ScrollView>
@@ -73,5 +73,7 @@ const styles = StyleSheet.create({
     search: { minHeight: 50, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, fontSize: 17 },
     results: { maxHeight: 300, borderWidth: StyleSheet.hairlineWidth, borderRadius: 10 },
     empty: { padding: 14 },
+    radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+    radioDot: { width: 10, height: 10, borderRadius: 5 },
     retry: { minHeight: 44, justifyContent: "center" },
 });
