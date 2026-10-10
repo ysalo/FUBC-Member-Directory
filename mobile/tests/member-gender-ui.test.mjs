@@ -312,6 +312,9 @@ test('address formatting round trips standard US and Canadian addresses and pres
     { street: '123 Main St', unit: '', city: 'Seattle', region: 'WA', postalCode: '98101-1234', country: '' },
     { street: '42 King St', unit: 'Suite 2', city: 'Toronto', region: 'ON', postalCode: 'M5V 2T6', country: 'Canada' },
   ]) assert.deepEqual(addressFields.parseAddressFields(addressFields.formatAddressFields(fields)), fields);
+  for (const value of ['123 Main St, Seattle WA 98101', '123 Main St\nSeattle WA 98101']) {
+    assert.deepEqual(addressFields.parseAddressFields(value), { street: '123 Main St', unit: '', city: 'Seattle', region: 'WA', postalCode: '98101', country: '' });
+  }
   assert.equal(addressFields.parseAddressFields('Unfamiliar\nAddress\nDetails').street, 'Unfamiliar\nAddress\nDetails');
   assert.equal(addressFields.formatAddressFields(addressFields.emptyAddressFields()), '');
 });
