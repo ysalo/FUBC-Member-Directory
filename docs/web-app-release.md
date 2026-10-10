@@ -1,3 +1,30 @@
+## Member group editing (2026-10-09, version 1.8.11)
+
+Administrators and member administrators can select or clear a member's single
+membership group in the member editor. The collapsed field shows the selected
+group and its deacons; expanding it provides name/deacon search, checked single
+selection, empty results and a No group option. English/Ukrainian copy, existing
+appearance, saving state and unsaved-change protection are shared across web and
+native. Archived members retain the existing restore workflow. Assigned deacons
+cannot change group assignments. Group editing remains available independently.
+
+The editor uses the existing revision-protected save_person membership_group_id
+field, sending it only when changed; unrelated saves preserve the assignment.
+Catalog reads fetch group metadata and assigned deacon names without private
+care details or photos. No migration, dependency change or backend deployment is
+required. Existing authorization and atomic single-group storage remain in force;
+frontend rollback is compatible.
+
+Validation: pnpm verify and pnpm build:web; member-form tests cover moving,
+clearing, unchanged values and assigned-deacon restrictions; SQL tests cover
+admin/editor moves, clearing, stale revisions and subsequent group editing.
+Synthetic Chromium checks at 390/1440px cover admin/editor/deacon roles, group and
+reversed deacon-name search, empty results, draft-only selection, moving/clearing,
+group editing, auth callback errors, no overflow, page errors or notification
+calls. Backend requests are intercepted; local export uses public fixture config.
+Physical native devices and live OAuth are unverified. Feature and dev → main PRs
+record CI, hosted Preview accessibility and production deployment evidence.
+
 ## Save destinations and group deacon search (2026-10-09)
 
 Successful member saves open the saved member profile for administrators and

@@ -6,6 +6,7 @@ export type ManagedMember = {
     patronymic?: string | null;
     gender?: "male" | "female" | null;
     group: string;
+    membershipGroupId?: string | null;
     archived: boolean;
     leftAt?: string | null;
     revision?: number;

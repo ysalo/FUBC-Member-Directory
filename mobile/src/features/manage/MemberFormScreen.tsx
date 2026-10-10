@@ -24,6 +24,7 @@ import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
 import { formatMemberName } from "@/lib/member-name";
 import { formatPhoneNumber } from "@/lib/phone";
 import { managementRepository } from "./management-repository";
+import { MemberGroupField } from "./MemberGroupField";
 import { MemberAvatar } from "./MemberAvatar";
 import type { ManagedMember, ManagedMinistry } from "./model";
 import { managedAccountHref } from "./route-params";
@@ -54,6 +55,7 @@ export function MemberFormScreen() {
     const fullManagement = session.status === "ready" && canManageDirectory(session.account);
     const leadershipAllowed = session.status === "ready" && canManageAccounts(session.account);
     const [member, setMember] = useState<ManagedMember | null>(null);
+    const [membershipGroupId, setMembershipGroupId] = useState<string | null>(null);
     const [ministries, setMinistries] = useState<ManagedMinistry[]>([]);
     const [familyCandidates, setFamilyCandidates] = useState<ManagedMember[]>([]);
     const [firstName, setFirstName] = useState("");
@@ -76,7 +78,7 @@ export function MemberFormScreen() {
     >(editing ? "loading" : "ready");
     const [error, setError] = useState<string | null>(null);
     const originalName = member ? { firstName: member.first_name ?? splitMemberName(member.name).firstName, lastName: member.last_name ?? splitMemberName(member.name).lastName } : { firstName: "", lastName: "" };
-    const dirty = state === "ready" && (JSON.stringify([firstName, patronymic, lastName, birthday, membershipJoinedAt, phone, email, address, [...ministryIds].sort(), isOrphan, isWidow, gender]) !== JSON.stringify([originalName.firstName, member?.patronymic ?? "", originalName.lastName, member?.birthday ?? "", member?.membershipJoinedAt ?? "", formatPhoneNumber(member?.phone), member?.email ?? "", member?.address ?? "", [...(member?.ministryIds ?? [])].sort(), Boolean(member?.isOrphan), Boolean(member?.isWidow), member?.gender ?? null]) || Boolean(pendingPhoto) || photoRemoved);
+    const dirty = state === "ready" && (JSON.stringify([firstName, patronymic, lastName, birthday, membershipJoinedAt, phone, email, address, [...ministryIds].sort(), isOrphan, isWidow, gender]) !== JSON.stringify([originalName.firstName, member?.patronymic ?? "", originalName.lastName, member?.birthday ?? "", member?.membershipJoinedAt ?? "", formatPhoneNumber(member?.phone), member?.email ?? "", member?.address ?? "", [...(member?.ministryIds ?? [])].sort(), Boolean(member?.isOrphan), Boolean(member?.isWidow), member?.gender ?? null]) || (fullManagement && membershipGroupId !== (member?.membershipGroupId ?? null)) || Boolean(pendingPhoto) || photoRemoved);
     const guard = useUnsavedChanges(dirty);
     const leave = () => familyReturn ? router.replace(`/manage/member/${encodeURIComponent(familyReturn)}/family` as never) : accountId ? router.replace(managedAccountHref(accountId) as never) : fullManagement ? router.replace("/manage") : router.replace(`/members/${memberId}` as never);
     useEffect(() => {
@@ -112,6 +114,7 @@ export function MemberFormScreen() {
                     setIsOrphan(Boolean(found.isOrphan));
                     setIsWidow(Boolean(found.isWidow));
                     setGender(found.gender ?? null);
+                    setMembershipGroupId(found.membershipGroupId ?? null);
                 }
                 setState("ready");
             })
@@ -315,6 +318,7 @@ export function MemberFormScreen() {
                 patronymic: patronymic.trim() || null,
                 birthday: birthday.trim() || null,
                 membershipJoinedAt: membershipJoinedAt || null,
+                ...(fullManagement && membershipGroupId !== (member?.membershipGroupId ?? null) ? { membershipGroupId } : {}),
                 ministryIds,
                 phone: phone.trim() || null,
                 email: email.trim() || null,
@@ -326,7 +330,7 @@ export function MemberFormScreen() {
             const previousPhotoPath =
                 member?.photoPath ??
                 ("photo_path" in saved ? saved.photo_path : null);
-            setMember({ ...member, id: saved.id, name: fullName, first_name: firstName.trim(), last_name: lastName.trim(), patronymic: patronymic.trim() || null, birthday: birthday.trim() || null, membershipJoinedAt: membershipJoinedAt || null, ministryIds, phone: phone.trim() || null, email: email.trim() || null, address: address.trim() || null, isOrphan, isWidow, gender, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
+            setMember({ ...member, id: saved.id, name: fullName, first_name: firstName.trim(), last_name: lastName.trim(), patronymic: patronymic.trim() || null, birthday: birthday.trim() || null, membershipJoinedAt: membershipJoinedAt || null, ministryIds, phone: phone.trim() || null, email: email.trim() || null, address: address.trim() || null, isOrphan, isWidow, gender, membershipGroupId: fullManagement ? membershipGroupId : member?.membershipGroupId, group: member?.group ?? "", archived: member?.archived ?? false, revision: saved.revision, photoPath: previousPhotoPath });
             memberSaved = true;
             stage = "photo";
             const photoChanged =
@@ -700,6 +704,9 @@ export function MemberFormScreen() {
                             palette={palette}
                             multiline
                         />
+                        {fullManagement && !member?.archived ? (
+                            <MemberGroupField value={membershipGroupId} onChange={setMembershipGroupId} disabled={state === "saving"} currentName={member?.group} />
+                        ) : null}
                         <Text style={[styles.section, { color: palette.text }]}>
                             {labels.care}
                         </Text>

@@ -56,6 +56,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, f
     ['@/lib/permissions', { canManageDirectory: () => !deacon, canManageAccounts: () => !deacon }],
     ['@/lib/phone', { formatPhoneNumber: (value) => value ?? '' }],
     ['./management-repository', { managementRepository }],
+    ['./MemberGroupField', { MemberGroupField: 'GroupField' }],
     ['./MemberAvatar', { MemberAvatar: 'Avatar' }],
     ['./route-params', { managedAccountHref: () => '/manage' }],
     ['./photo-thumbnail', { createPhotoRenditions() {} }],
@@ -249,4 +250,29 @@ for (const deacon of [false, true]) test(`saved member opens profile for ${deaco
   await ui.button(ui.render(), 'Save member').props.onPress();
   await new Promise(setImmediate);
   assert.deepEqual(ui.routes, ['/members/saved']);
+});
+
+test('group assignment is a single draft value saved only when changed, including clearing', async () => {
+  const existing = { id: 'member', name: 'Anna Member', first_name: 'Anna', last_name: 'Member', gender: 'female', membershipGroupId: 'one', revision: 4 };
+  for (const next of ['two', null, 'one']) {
+    const ui = formFixture({ existing });
+    await ui.load();
+    const field = ui.render().find(node => node.type === 'GroupField');
+    assert.equal(field.props.value, 'one');
+    field.props.onChange(next);
+    assert.equal(ui.saves.length, 0);
+    await ui.button(ui.render(), 'Save member').props.onPress();
+    assert.equal(ui.saves.length, 1);
+    if (next === 'one') assert.equal(Object.hasOwn(ui.saves[0], 'membershipGroupId'), false);
+    else assert.equal(ui.saves[0].membershipGroupId, next);
+    assert.equal(ui.saves[0].revision, 4);
+  }
+});
+
+test('assigned deacons cannot change group from the member editor', async () => {
+  const ui = formFixture({ deacon: true, existing: { id: 'member', name: 'Anna Member', gender: 'female', membershipGroupId: 'one' } });
+  await ui.load();
+  assert.equal(ui.render().some(node => node.type === 'GroupField'), false);
+  await ui.button(ui.render(), 'Save member').props.onPress();
+  assert.equal(Object.hasOwn(ui.saves[0], 'membershipGroupId'), false);
 });
