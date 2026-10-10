@@ -8,6 +8,7 @@ import {
 } from "@/lib/repository-helpers";
 import { isBackendConfigured, requireSupabase } from "@/lib/supabase";
 import { createSessionCache, invalidateData } from "@/lib/session-cache";
+import { formatMemberName } from "@/lib/member-name";
 import { thumbnailPath } from "@/lib/photo-cache";
 import { initialManagementState, managementReducer } from "./model";
 import type {
@@ -179,6 +180,7 @@ export class SupabaseManagementRepository extends SupabaseManagementReads {
             last_name: row.last_name,
             patronymic: row.patronymic,
             gender: row.gender,
+            membershipGroupId: row.membership_group_id,
             group:
                 groups.find((group) => group.id === row.membership_group_id)
                     ?.name ?? "",
@@ -337,6 +339,7 @@ export class SupabaseManagementRepository extends SupabaseManagementReads {
         isWidow?: boolean;
         gender?: "male" | "female";
         membershipJoinedAt?: string | null;
+        membershipGroupId?: string | null;
     }) {
         if (!canOpenMemberEditor(activeAccount()))
             throw new Error("Not authorized.");
@@ -352,6 +355,7 @@ export class SupabaseManagementRepository extends SupabaseManagementReads {
                     ...(member.patronymic !== undefined ? { patronymic: member.patronymic?.trim() || null } : {}),
                     birth_date: member.birthday ?? null,
                     ...(member.membershipJoinedAt !== undefined ? { membership_joined_at: member.membershipJoinedAt || null } : {}),
+                    ...(canManageDirectory(activeAccount()) && member.membershipGroupId !== undefined ? { membership_group_id: member.membershipGroupId } : {}),
                     ministry_ids: member.ministryIds ?? [],
                     phone: member.phone ?? null,
                     email: member.email ?? null,
@@ -409,6 +413,23 @@ export class SupabaseManagementRepository extends SupabaseManagementReads {
                 .select("*")
                 .order("name"),
         );
+    }
+    async listMemberGroupOptions(): Promise<GroupManagementState> {
+        if (!canManageGroups(activeAccount())) throw new Error("Not authorized.");
+        const client = requireSupabase();
+        const [groupResult, assignmentResult] = await Promise.all([
+            client.from("deacon_groups").select("*").eq("kind", "membership").is("archived_at", null).order("name"),
+            client.from("deacon_group_deacons").select("*").order("slot"),
+        ]);
+        const groups = unwrap(groupResult);
+        const assignments = unwrap(assignmentResult);
+        const ids = [...new Set(assignments.map(item => item.person_id))];
+        const people = ids.length ? unwrap(await client.from("people").select("id,name,first_name,last_name,patronymic").in("id", ids)) : [];
+        return {
+            groups: groups.map(group => ({ id: group.id, name: group.name, kind: group.kind, archived: false, revision: group.revision, memberIds: [], deaconIds: assignments.filter(item => item.group_id === group.id).map(item => item.person_id) })),
+            deacons: people.map(person => ({ personId: person.id, name: formatMemberName(person), currentGroupId: null })),
+            members: [],
+        };
     }
     async loadGroupManagement(): Promise<GroupManagementState> {
         if (!canManageGroups(activeAccount()))
@@ -663,9 +684,10 @@ class InMemoryManagementRepository {
         });
     }
     async loadMember(id: string) {
-        return structuredClone(
-            this.state.members.find((member) => member.id === id) ?? null,
-        );
+        const member = this.state.members.find(member => member.id === id);
+        if (!member) return null;
+        const group = this.groupManagement.groups.find(group => group.kind === "membership" && group.memberIds.includes(id));
+        return structuredClone({ ...member, membershipGroupId: group?.id ?? null, group: group?.name ?? "" });
     }
     async saveMember(id: string | null, _revision: number | null, data: Json) {
         if (id) return this.load();
@@ -803,6 +825,7 @@ class InMemoryManagementRepository {
         email?: string | null;
         address?: string | null;
         membershipJoinedAt?: string | null;
+        membershipGroupId?: string | null;
         gender?: "male" | "female";
     }) {
         let saved = member.id
@@ -844,6 +867,18 @@ class InMemoryManagementRepository {
             };
             this.state.members.push(saved);
         }
+        if (member.membershipGroupId !== undefined) {
+            saved.membershipGroupId = member.membershipGroupId;
+            saved.group = this.groupManagement.groups.find(group => group.id === member.membershipGroupId)?.name ?? "";
+            this.groupManagement.groups.forEach(group => {
+                if (group.kind !== "membership") return;
+                group.memberIds = group.memberIds.filter(id => id !== saved.id);
+                if (group.id === member.membershipGroupId) group.memberIds.push(saved.id);
+            });
+            const candidate = this.groupManagement.members.find(item => item.personId === saved.id);
+            if (candidate) candidate.currentMembershipGroupId = member.membershipGroupId;
+            else this.groupManagement.members.push({ personId: saved.id, name: saved.name, currentMembershipGroupId: member.membershipGroupId, currentResponsibilityGroupId: null });
+        }
         return structuredClone(saved);
     }
     private departures: MemberDepartureRow[] = [];
@@ -869,6 +904,9 @@ class InMemoryManagementRepository {
         return structuredClone(
             this.state.members.find((item) => item.id === member.id),
         );
+    }
+    async listMemberGroupOptions() {
+        return this.loadGroupManagement();
     }
     async loadGroupManagement() {
         return structuredClone(this.groupManagement);
