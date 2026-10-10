@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import {
     ActivityIndicator,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -24,6 +25,8 @@ import { canManageAccounts, canManageDirectory } from "@/lib/permissions";
 import { formatMemberName } from "@/lib/member-name";
 import { formatPhoneNumber } from "@/lib/phone";
 import { managementRepository } from "./management-repository";
+import { emptyAddressFields, parseAddressFields, formatAddressFields } from "./address-fields";
+import type { AddressFields } from "./address-fields";
 import { MemberGroupField } from "./MemberGroupField";
 import { MemberAvatar } from "./MemberAvatar";
 import type { ManagedMember, ManagedMinistry } from "./model";
@@ -65,7 +68,14 @@ export function MemberFormScreen() {
     const [membershipJoinedAt, setMembershipJoinedAt] = useState("");
     const [phone, setPhone] = useState("");
     const [email, setEmail] = useState("");
-    const [address, setAddress] = useState("");
+    const [originalAddress, setAddress] = useState("");
+    const [addressEdited, setAddressEdited] = useState(false);
+    const [addressFields, setAddressFields] = useState<AddressFields>(emptyAddressFields);
+    function changeAddressField(key: keyof AddressFields, value: string) {
+        setAddressFields(previous => ({ ...previous, [key]: value }));
+        setAddressEdited(true);
+    }
+    const address = addressEdited ? formatAddressFields(addressFields) : originalAddress;
     const [ministryIds, setMinistryIds] = useState<string[]>([]);
     const [isOrphan, setIsOrphan] = useState(false);
     const [isWidow, setIsWidow] = useState(false);
@@ -110,6 +120,8 @@ export function MemberFormScreen() {
                     setPhone(formatPhoneNumber(found.phone));
                     setEmail(found.email ?? "");
                     setAddress(found.address ?? "");
+                    setAddressFields(parseAddressFields(found.address ?? ""));
+                    setAddressEdited(false);
                     setMinistryIds(found.ministryIds ?? []);
                     setIsOrphan(Boolean(found.isOrphan));
                     setIsWidow(Boolean(found.isWidow));
@@ -158,6 +170,14 @@ export function MemberFormScreen() {
                       phone: "Телефон",
                       email: "Ел. пошта",
                       address: "Адреса",
+                      street: "Вулиця та номер будинку",
+                      unit: "Квартира, офіс тощо (необов’язково)",
+                      city: "Місто",
+                      region: "Штат / область",
+                      postalCode: "Поштовий індекс",
+                      country: "Країна (необов’язково)",
+                      addressHint: "Необов’язково · заповніть відомі поля",
+
                       photo: "Фото",
                       choosePhoto: editing ? "Змінити фото" : "Додати фото",
                       removePhoto: "Видалити фото",
@@ -210,6 +230,14 @@ export function MemberFormScreen() {
                       phone: "Phone number",
                       email: "Email",
                       address: "Address",
+                      street: "Street address",
+                      unit: "Apartment, suite, etc. (optional)",
+                      city: "City",
+                      region: "State / province",
+                      postalCode: "ZIP / postal code",
+                      country: "Country (optional)",
+                      addressHint: "Optional · fill in the fields you know",
+
                       photo: "Photo",
                       choosePhoto: editing ? "Change photo" : "Add photo",
                       removePhoto: "Remove photo",
@@ -697,13 +725,20 @@ export function MemberFormScreen() {
                             textContentType="emailAddress"
                             value={email}
                         />
-                        <Field
-                            label={labels.address}
-                            value={address}
-                            onChangeText={setAddress}
-                            palette={palette}
-                            multiline
-                        />
+                        <View style={[styles.sectionDivider, { borderTopColor: palette.line }]}>
+                            <Text accessibilityRole="header" style={[styles.section, { color: palette.text }]}>{labels.address}</Text>
+                            <Text style={[styles.sectionHint, { color: palette.secondaryText }]}>{labels.addressHint}</Text>
+                        </View>
+                        <Field label={labels.street} value={addressFields.street} onChangeText={value => changeAddressField("street", value)} palette={palette} textContentType="streetAddressLine1" autoComplete="address-line1" editable={state !== "saving"} multiline={addressFields.street.includes("\n")} />
+                        <Field label={labels.unit} value={addressFields.unit} onChangeText={value => changeAddressField("unit", value)} palette={palette} textContentType="streetAddressLine2" autoComplete="address-line2" editable={state !== "saving"} />
+                        <View style={[styles.fieldRow, desktop && styles.fieldRowDesktop]}>
+                            <Field label={labels.city} value={addressFields.city} onChangeText={value => changeAddressField("city", value)} palette={palette} textContentType="addressCity" autoComplete={Platform.OS === "web" ? "address-level2" as ComponentProps<typeof TextInput>["autoComplete"] : "postal-address-locality"} editable={state !== "saving"} />
+                            <Field label={labels.region} value={addressFields.region} onChangeText={value => changeAddressField("region", value)} palette={palette} textContentType="addressState" autoComplete={Platform.OS === "web" ? "address-level1" as ComponentProps<typeof TextInput>["autoComplete"] : "postal-address-region"} editable={state !== "saving"} />
+                        </View>
+                        <View style={[styles.fieldRow, desktop && styles.fieldRowDesktop]}>
+                            <Field label={labels.postalCode} value={addressFields.postalCode} onChangeText={value => changeAddressField("postalCode", value)} palette={palette} textContentType="postalCode" autoComplete="postal-code" autoCapitalize="characters" autoCorrect={false} editable={state !== "saving"} />
+                            <Field label={labels.country} value={addressFields.country} onChangeText={value => changeAddressField("country", value)} palette={palette} textContentType="countryName" autoComplete="country" editable={state !== "saving"} />
+                        </View>
                         {fullManagement && !member?.archived ? (
                             <MemberGroupField value={membershipGroupId} onChange={setMembershipGroupId} disabled={state === "saving"} currentName={member?.group} />
                         ) : null}
