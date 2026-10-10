@@ -1,3 +1,4 @@
+import * as addressFields from "../src/features/manage/address-fields.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -39,7 +40,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, f
   };
   const modules = new Map([
     ['react', hooks], ['react/jsx-runtime', require('react/jsx-runtime')],
-    ['react-native', { ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 }, Switch: 'Switch', View: 'View' }],
+    ['react-native', { Platform: { OS: 'web' }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles, hairlineWidth: 1 }, Switch: 'Switch', View: 'View' }],
     ['react-native-safe-area-context', { SafeAreaView: 'SafeAreaView' }],
     ['expo-image-picker', {}],
     ['expo-router', { Link: ({ children, onPress, href }) => React.cloneElement(children, { onPress, href }), useLocalSearchParams: () => ({ memberId: existing?.id, accountId, familyReturn }), useRouter: () => ({ canGoBack: () => true, back() {}, replace(path) { routes.push(path); }, push(path) { routes.push(path); } }) }],
@@ -56,6 +57,7 @@ function formFixture({ existing = null, locale = 'en', saveBarrier, accountId, f
     ['@/lib/permissions', { canManageDirectory: () => !deacon, canManageAccounts: () => !deacon }],
     ['@/lib/phone', { formatPhoneNumber: (value) => value ?? '' }],
     ['./management-repository', { managementRepository }],
+    ['./address-fields', addressFields],
     ['./MemberGroupField', { MemberGroupField: 'GroupField' }],
     ['./MemberAvatar', { MemberAvatar: 'Avatar' }],
     ['./route-params', { managedAccountHref: () => '/manage' }],
@@ -275,4 +277,41 @@ test('assigned deacons cannot change group from the member editor', async () => 
   assert.equal(ui.render().some(node => node.type === 'GroupField'), false);
   await ui.button(ui.render(), 'Save member').props.onPress();
   assert.equal(Object.hasOwn(ui.saves[0], 'membershipGroupId'), false);
+});
+
+test('standard address fields load imported addresses, save one compatible address and clear it', async () => {
+  const existing = { id: 'member', name: 'Anna Member', gender: 'female', address: '123 Main St, Apt 2, Seattle, WA 98101', revision: 4 };
+  const ui = formFixture({ existing }); await ui.load();
+  const field = label => ui.render().find(node => node.type === 'TextInput' && node.props.accessibilityLabel === label);
+  assert.equal(field('Street address').props.value, '123 Main St');
+  assert.equal(field('Apartment, suite, etc. (optional)').props.value, 'Apt 2');
+  assert.equal(field('City').props.value, 'Seattle');
+  assert.equal(field('State / province').props.value, 'WA');
+  assert.equal(field('ZIP / postal code').props.value, '98101');
+  field('City').props.onChangeText('Tacoma');
+  field('ZIP / postal code').props.onChangeText('98402');
+  await ui.button(ui.render(), 'Save member').props.onPress();
+  assert.equal(ui.saves[0].address, '123 Main St\nApt 2\nTacoma, WA 98402');
+  const clear = formFixture({ existing }); await clear.load();
+  for (const label of ['Street address', 'Apartment, suite, etc. (optional)', 'City', 'State / province', 'ZIP / postal code', 'Country (optional)']) clear.render().find(node => node.type === 'TextInput' && node.props.accessibilityLabel === label).props.onChangeText('');
+  await clear.button(clear.render(), 'Save member').props.onPress();
+  assert.equal(clear.saves[0].address, null);
+});
+
+test('opening or saving an unrelated edit preserves unfamiliar and imported address text', async () => {
+  for (const address of ['123 Main St, Apt 2, Seattle, WA 98101', 'Складна адреса\nБудинок 4, під’їзд 2\nЛьвів 79000']) {
+    const ui = formFixture({ existing: { id: 'member', name: 'Anna Member', gender: 'female', address } });
+    await ui.load();
+    await ui.button(ui.render(), 'Save member').props.onPress();
+    assert.equal(ui.saves[0].address, address);
+  }
+});
+
+test('address formatting round trips standard US and Canadian addresses and preserves unknown text', () => {
+  for (const fields of [
+    { street: '123 Main St', unit: '', city: 'Seattle', region: 'WA', postalCode: '98101-1234', country: '' },
+    { street: '42 King St', unit: 'Suite 2', city: 'Toronto', region: 'ON', postalCode: 'M5V 2T6', country: 'Canada' },
+  ]) assert.deepEqual(addressFields.parseAddressFields(addressFields.formatAddressFields(fields)), fields);
+  assert.equal(addressFields.parseAddressFields('Unfamiliar\nAddress\nDetails').street, 'Unfamiliar\nAddress\nDetails');
+  assert.equal(addressFields.formatAddressFields(addressFields.emptyAddressFields()), '');
 });

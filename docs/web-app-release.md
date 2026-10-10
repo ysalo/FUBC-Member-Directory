@@ -1,3 +1,30 @@
+## Standard address editing (2026-10-09, version 1.8.12)
+
+The member editor replaces its freeform Address box with Street address,
+Apartment/suite, City, State/province, ZIP/postal code and optional Country.
+Fields stack on phones and pair city/state and postal/country on desktop, using
+the existing field styling, focus feedback, text scaling and saving state.
+Address fields are optional; postal input accepts letters and ZIP+4. Autofill
+hints use platform-appropriate address tokens. English/Ukrainian labels are included.
+
+Common comma-separated imports and multiline US/Canadian addresses populate
+individual fields. Unfamiliar legacy text stays intact in the street field;
+opening or saving unrelated edits preserves the original address. Editing writes
+a readable multiline address through existing revision-protected member RPCs,
+compatible with profiles, maps, sharing and older clients. Clearing all address
+fields saves null. Unsaved-change protection includes address edits. No migration,
+new dependency, backend deployment or permission change is needed; rollback is
+compatible. Parsing is conservative rather than attempting geographic validation.
+
+Validation: pnpm verify and pnpm build:web; tests cover legacy preservation,
+common-address parsing/round trips, editing and clearing. Synthetic Chromium
+checks at 390/1440px exercise admin/editor/assigned-deacon address fields, autofill
+attributes, save/clear payloads, unsaved-edit cancellation, direct member URLs,
+auth callback errors, no overflow/page errors/notification calls. Backend requests
+are intercepted; local export uses public fixture configuration. Native devices
+and live OAuth remain unverified. Feature and dev → main PRs record hosted CI,
+Preview accessibility and production evidence.
+
 ## Member group editing (2026-10-09, version 1.8.11)
 
 Administrators and member administrators can select or clear a member's single
